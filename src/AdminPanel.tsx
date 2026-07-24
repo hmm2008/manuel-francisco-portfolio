@@ -1,23 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import ExifReader from 'exifreader';
 import { auth, db, storage, googleProvider } from './firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { Upload, Trash2, LogOut, LogIn, Loader2, Tags, Check, Plus, X, Edit2, AlertCircle, Settings as SettingsIcon, LayoutDashboard, Camera, Info } from 'lucide-react';
+import { Upload, Trash2, LogOut, LogIn, Loader2, Tags, Check, Plus, X, Edit2, AlertCircle, Settings as SettingsIcon, LayoutDashboard } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import SettingsPanel from './components/SettingsPanel';
-
-interface ExifData {
-  camera?: string;
-  lens?: string;
-  aperture?: string;
-  shutter?: string;
-  iso?: string;
-  focalLength?: string;
-  location?: string;
-  date?: string;
-}
 
 interface PendingPhoto {
   id: string;
@@ -28,74 +16,8 @@ interface PendingPhoto {
   category: string;
   cameraSettings: string;
   description: string;
-  exif?: ExifData;
   status: 'pending' | 'uploading' | 'success' | 'error';
   error?: string;
-}
-
-async function extractExifFromFile(file: File): Promise<{ exif: ExifData; cameraSettings: string } | null> {
-  try {
-    const tags = await ExifReader.load(file);
-    const make = tags.Make?.description || '';
-    const model = tags.Model?.description || '';
-    let camera = '';
-    if (model) {
-      camera = make && !model.toLowerCase().includes(make.toLowerCase()) ? `${make} ${model}` : model;
-    } else {
-      camera = make;
-    }
-
-    const lens = tags.LensModel?.description || tags.Lens?.description || '';
-    
-    let aperture = '';
-    if (tags.FNumber?.description) {
-      const fVal = String(tags.FNumber.description);
-      aperture = fVal.startsWith('f/') ? fVal : `f/${fVal}`;
-    }
-    
-    let shutter = tags.ExposureTime?.description ? String(tags.ExposureTime.description) : '';
-    if (shutter && !shutter.includes('/') && !shutter.endsWith('s')) {
-      shutter = `${shutter}s`;
-    }
-
-    const iso = tags.ISOSpeedRatings?.description ? String(tags.ISOSpeedRatings.description) : (tags.ISO?.description ? String(tags.ISO.description) : '');
-    
-    let focalLength = tags.FocalLength?.description ? String(tags.FocalLength.description) : '';
-    if (focalLength && !focalLength.toLowerCase().includes('mm')) {
-      focalLength = `${focalLength}mm`;
-    }
-
-    const dateRaw = tags.DateTimeOriginal?.description ? String(tags.DateTimeOriginal.description) : (tags.DateTime?.description ? String(tags.DateTime.description) : '');
-    let date = dateRaw;
-    if (dateRaw && dateRaw.includes(':')) {
-      const parts = dateRaw.split(' ')[0].split(':');
-      if (parts.length === 3) {
-        date = `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
-    }
-
-    const settingsParts = [];
-    if (camera) settingsParts.push(camera);
-    if (focalLength) settingsParts.push(focalLength);
-    if (aperture) settingsParts.push(aperture);
-    if (shutter) settingsParts.push(shutter);
-    if (iso) settingsParts.push(`ISO ${iso}`);
-
-    return {
-      exif: {
-        camera,
-        lens,
-        aperture,
-        shutter,
-        iso,
-        focalLength,
-        date
-      },
-      cameraSettings: settingsParts.join(' • ')
-    };
-  } catch (err) {
-    return null;
-  }
 }
 
 export default function AdminPanel({ images, setImages, onLogout }: { images: any[], setImages: any, onLogout?: () => void }) {
@@ -106,7 +28,6 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
   
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [showDeleteCategoryConfirm, setShowDeleteCategoryConfirm] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('TODAS');
   
   // Form State
@@ -123,28 +44,19 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
   const [selectedPendingId, setSelectedPendingId] = useState<string | null>(null);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []) as File[];
     if (selectedFiles.length === 0) return;
 
     if (editingId) {
-      const selectedFile = selectedFiles[0];
-      setFile(selectedFile);
-      const parsed = await extractExifFromFile(selectedFile);
-      if (parsed) {
-        if (parsed.cameraSettings && !cameraSettings) {
-          setCameraSettings(parsed.cameraSettings);
-        }
-      }
+      setFile(selectedFiles[0]);
     } else {
-      const newPendingProms = selectedFiles.map(async f => {
+      const newPending: PendingPhoto[] = selectedFiles.map(f => {
         const lastDot = f.name.lastIndexOf('.');
         const nameWithoutExt = lastDot !== -1 ? f.name.substring(0, lastDot) : f.name;
         const defaultTitle = nameWithoutExt
           .replace(/[_-]/g, ' ')
           .replace(/\b\w/g, char => char.toUpperCase());
-
-        const parsed = await extractExifFromFile(f);
 
         return {
           id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -153,14 +65,11 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
           title: defaultTitle,
           subtitle: subtitle || '',
           category: category || '',
-          cameraSettings: parsed?.cameraSettings || cameraSettings || '',
+          cameraSettings: cameraSettings || '',
           description: description || '',
-          exif: parsed?.exif || {},
-          status: 'pending' as const
+          status: 'pending'
         };
       });
-
-      const newPending = await Promise.all(newPendingProms);
 
       setPendingPhotos(prev => {
         const updated = [...prev, ...newPending];
@@ -263,24 +172,22 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
     }
   };
 
-  const handleDeleteCategory = (catToDelete: string) => {
-    setShowDeleteCategoryConfirm(catToDelete);
-  };
+  const handleDeleteCategory = async (catToDelete: string) => {
+    if (window.confirm(`Tem a certeza que deseja eliminar a categoria "${catToDelete}"?`)) {
+      try {
+        const updatedCategories = currentCategories.filter((c: string) => c !== catToDelete);
+        await setDoc(doc(db, 'settings', 'site'), {
+          ...siteSettings,
+          categories: updatedCategories
+        }, { merge: true });
 
-  const executeDeleteCategory = async (catToDelete: string) => {
-    try {
-      const updatedCategories = currentCategories.filter((c: string) => c !== catToDelete);
-      await setDoc(doc(db, 'settings', 'site'), {
-        ...siteSettings,
-        categories: updatedCategories
-      }, { merge: true });
-
-      if (category === catToDelete) {
-        setCategory('');
+        if (category === catToDelete) {
+          setCategory('');
+        }
+      } catch (error) {
+        console.error("Error deleting category:", error);
+        alert("Erro ao eliminar a categoria.");
       }
-      setShowDeleteCategoryConfirm(null);
-    } catch (error) {
-      console.error("Error deleting category:", error);
     }
   };
 
@@ -411,7 +318,6 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
               category: pending.category || '',
               cameraSettings: pending.cameraSettings || '',
               description: pending.description || '',
-              exif: pending.exif || {},
               createdAt: serverTimestamp(),
               storagePath: snapshot.ref.fullPath
             });
@@ -1174,50 +1080,6 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
                   className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white transition-colors uppercase tracking-widest text-[10px] font-semibold"
                 >
                   Eliminar
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Category Delete Confirmation Modal */}
-      <AnimatePresence>
-        {showDeleteCategoryConfirm && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[75] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="bg-[#f5f2ed] p-8 w-full max-w-sm relative shadow-2xl flex flex-col items-center text-center"
-            >
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-6">
-                <AlertCircle className="text-red-600" size={24} />
-              </div>
-              <h4 className="font-sans text-xl text-[#1a1a1a] mb-2">Eliminar Categoria?</h4>
-              <p className="text-sm text-[#8e8a82] mb-8">
-                Tem a certeza que deseja eliminar a categoria <strong className="text-[#1a1a1a]">"{showDeleteCategoryConfirm}"</strong>?
-              </p>
-              
-              <div className="flex gap-3 w-full">
-                <button 
-                  type="button"
-                  onClick={() => setShowDeleteCategoryConfirm(null)}
-                  className="flex-1 py-3 border border-[#1a1a1a]/10 bg-white text-[#8e8a82] hover:text-[#1a1a1a] transition-colors uppercase tracking-widest text-[10px] font-semibold"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => executeDeleteCategory(showDeleteCategoryConfirm)}
-                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white transition-colors uppercase tracking-widest text-[10px] font-semibold"
-                >
-                  Confirmar
                 </button>
               </div>
             </motion.div>
