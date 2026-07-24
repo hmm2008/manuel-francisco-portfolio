@@ -3,19 +3,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronLeft, ChevronRight, Cookie, ShieldCheck, Home, Image as ImageIcon, User, BookOpen, Mail, Link as LinkIcon, Settings, ArrowRight, ZoomIn, ZoomOut, Maximize, Menu } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Cookie, ShieldCheck, Home, Image as ImageIcon, User, BookOpen, Mail, Link as LinkIcon, Settings, ArrowRight, ZoomIn, ZoomOut, Maximize, Menu, Camera, Info, Keyboard, HelpCircle, Sparkles, Play, Download } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import AdminPanel from './AdminPanel';
-import Biography from './components/Biography';
+import Footer from './components/Footer';
 import AdminPasswordPrompt from './components/AdminPasswordPrompt';
 import GalleryGrid from './components/GalleryGrid';
-import Guestbook from './components/Guestbook';
-import Footer from './components/Footer';
-import Contact from './components/Contact';
-import Links from './components/Links';
+import { getFontFamily } from './utils/fontUtils';
+import { getSlideshowVariants, getLightboxVariants } from './utils/transitionUtils';
+import { getWatermarkClasses } from './utils/watermarkUtils';
+
+const AdminPanel = lazy(() => import('./AdminPanel'));
+const Biography = lazy(() => import('./components/Biography'));
+const Guestbook = lazy(() => import('./components/Guestbook'));
+const Contact = lazy(() => import('./components/Contact'));
+const Links = lazy(() => import('./components/Links'));
+const ZenStoryMode = lazy(() => import('./components/ZenStoryMode'));
 
 const fallbackImages = [
   { id: 1, url: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=1920&q=80', alt: 'Montanhas ao entardecer', title: 'Espelho', subtitle: 'Alcochete' },
@@ -80,13 +85,20 @@ export default function App() {
   const [isMobileLandscape, setIsMobileLandscape] = useState<boolean>(false);
 
   useEffect(() => {
+    let timeoutId: number;
     const checkOrientation = () => {
-      const isL = window.innerWidth > window.innerHeight && window.innerHeight < 600;
-      setIsMobileLandscape(isL);
+      clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        const isL = window.innerWidth > window.innerHeight && window.innerHeight < 600;
+        setIsMobileLandscape(isL);
+      }, 100);
     };
     checkOrientation();
     window.addEventListener('resize', checkOrientation);
-    return () => window.removeEventListener('resize', checkOrientation);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', checkOrientation);
+    };
   }, []);
 
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
@@ -94,16 +106,31 @@ export default function App() {
     return sessionStorage.getItem('admin_unlocked') === 'true';
   });
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const [showExifPanel, setShowExifPanel] = useState<boolean>(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
+  const [showZenMode, setShowZenMode] = useState<boolean>(false);
+  const [swipeHintVisible, setSwipeHintVisible] = useState<boolean>(false);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [touchDelta, setTouchDelta] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [slideIndex, setSlideIndex] = useState(0);
   const [galleryImages, setGalleryImages] = useState<any[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('TODAS');
-  const [zoomLevel, setZoomLevel] = useState(75);
+  const [zoomLevel, setZoomLevel] = useState(100);
   const [siteSettings, setSiteSettings] = useState<any>({
     siteName: 'MANUEL FRANCISCO FOTOGRAFIA',
     siteSubtitle: 'FOTOGRAFIA',
     welcomeMessage: 'Bem vindo a este espaço. Quero que descubra comigo o gosto pela fotografia.',
     contactEmail: 'manuel.francisco3@gmail.com',
+    showExifData: true,
+    enableKeyboardShortcuts: true,
+    enableZenMode: true,
+    enableWatermark: false,
+    watermarkText: '© Manuel Francisco',
+    watermarkPosition: 'bottom-left',
+    enableGallerySearch: true,
+    enableFavorites: true,
+    enablePhotoComparison: true,
   });
 
   const predefinedCategories = ['Paisagem', 'Retrato', 'Rua', 'Arquitetura', 'Natureza', 'Abstrato', 'Documentário', 'Animais'];
@@ -126,13 +153,23 @@ export default function App() {
   useEffect(() => {
     const q = query(collection(db, 'images'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedImages = snapshot.docs.map(doc => ({
+      const fetchedImages: any[] = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         alt: doc.data().title || 'Fotografia',
       }));
       setGalleryImages(fetchedImages);
       setIsInitialLoading(false);
+      
+      // Preload initial batch of images in background for instantaneous navigation
+      if (fetchedImages.length > 0) {
+        fetchedImages.slice(0, 12).forEach((img) => {
+          if (img.url) {
+            const imageObj = new Image();
+            imageObj.src = img.url;
+          }
+        });
+      }
     }, (error) => {
       console.error("Error fetching images:", error);
       setIsInitialLoading(false);
@@ -151,6 +188,56 @@ export default function App() {
       settingsUnsubscribe();
     };
   }, []);
+
+  // Preload adjacent images for slideshow
+  useEffect(() => {
+    if (activeView === 'inicio' && galleryImages.length > 0) {
+      const nextIdx = (slideIndex + 1) % galleryImages.length;
+      const prevIdx = (slideIndex - 1 + galleryImages.length) % galleryImages.length;
+      [nextIdx, prevIdx].forEach(idx => {
+        if (galleryImages[idx]?.url) {
+          const img = new Image();
+          img.src = galleryImages[idx].url;
+        }
+      });
+    }
+  }, [slideIndex, galleryImages, activeView]);
+
+  // Preload adjacent images for Lightbox
+  useEffect(() => {
+    if (selectedImageIndex !== null && filteredGallery.length > 0) {
+      const nextIdx = (selectedImageIndex + 1) % filteredGallery.length;
+      const prevIdx = (selectedImageIndex - 1 + filteredGallery.length) % filteredGallery.length;
+      [nextIdx, prevIdx].forEach(idx => {
+        if (filteredGallery[idx]?.url) {
+          const img = new Image();
+          img.src = filteredGallery[idx].url;
+        }
+      });
+    }
+  }, [selectedImageIndex, filteredGallery]);
+
+  // Global right-click & drag protection when protectPhotos is enabled
+  useEffect(() => {
+    if (siteSettings?.protectPhotos) {
+      const handleContextMenu = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      };
+      const handleDragStart = (e: DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      };
+      window.addEventListener('contextmenu', handleContextMenu, true);
+      window.addEventListener('dragstart', handleDragStart, true);
+      return () => {
+        window.removeEventListener('contextmenu', handleContextMenu, true);
+        window.removeEventListener('dragstart', handleDragStart, true);
+      };
+    }
+  }, [siteSettings?.protectPhotos]);
   
   const [cookiesAccepted, setCookiesAccepted] = useState<boolean>(() => {
     return localStorage.getItem('cookiesAccepted') === 'true';
@@ -163,29 +250,39 @@ export default function App() {
 
   const openLightbox = (index: number) => {
     setSelectedImageIndex(index);
-    setZoomLevel(75);
+    const initialZoom = Number(siteSettings?.defaultZoomLevel) || 100;
+    setZoomLevel(initialZoom);
+    setSwipeHintVisible(true);
+    setTimeout(() => {
+      setSwipeHintVisible(false);
+    }, 4000);
   };
 
   const closeLightbox = () => {
     setSelectedImageIndex(null);
-    setZoomLevel(75);
+    const initialZoom = Number(siteSettings?.defaultZoomLevel) || 100;
+    setZoomLevel(initialZoom);
+    setShowExifPanel(false);
+    setShowShortcutsModal(false);
+    setTouchStart(null);
+    setTouchDelta({ x: 0, y: 0 });
   };
 
   const nextImage = useCallback((e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (selectedImageIndex !== null) {
+    if (selectedImageIndex !== null && filteredGallery.length > 0) {
       setSelectedImageIndex((selectedImageIndex + 1) % filteredGallery.length);
     }
   }, [selectedImageIndex, filteredGallery.length]);
 
   const prevImage = useCallback((e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (selectedImageIndex !== null) {
+    if (selectedImageIndex !== null && filteredGallery.length > 0) {
       setSelectedImageIndex((selectedImageIndex - 1 + filteredGallery.length) % filteredGallery.length);
     }
   }, [selectedImageIndex, filteredGallery.length]);
 
-  const toggleFullScreen = (e?: React.MouseEvent) => {
+  const toggleFullScreen = useCallback((e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(console.error);
@@ -194,7 +291,7 @@ export default function App() {
         document.exitFullscreen();
       }
     }
-  };
+  }, []);
 
   const handleZoom = (e: React.MouseEvent, type: 'in' | 'out') => {
     e.stopPropagation();
@@ -204,18 +301,98 @@ export default function App() {
     });
   };
 
-  // Handle keyboard events for Lightbox
+  // Touch & Swipe handlers for mobile Lightbox
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      setTouchDelta({ x: 0, y: 0 });
+      setSwipeHintVisible(false);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStart || e.touches.length > 1) return;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    setTouchDelta({
+      x: currentX - touchStart.x,
+      y: currentY - touchStart.y
+    });
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart) return;
+    const { x, y } = touchDelta;
+    if (Math.abs(x) > Math.abs(y)) {
+      if (x < -50) {
+        nextImage();
+      } else if (x > 50) {
+        prevImage();
+      }
+    } else {
+      if (y > 70) {
+        closeLightbox();
+      }
+    }
+    setTouchStart(null);
+    setTouchDelta({ x: 0, y: 0 });
+  };
+
+  // Comprehensive Keyboard Shortcuts Event Listener
   useEffect(() => {
+    if (siteSettings?.enableKeyboardShortcuts === false) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (selectedImageIndex === null) return;
-      if (e.key === 'Escape') closeLightbox();
-      if (e.key === 'ArrowRight') nextImage();
-      if (e.key === 'ArrowLeft') prevImage();
+      const activeTag = (document.activeElement?.tagName || '').toUpperCase();
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag)) return;
+
+      if (selectedImageIndex !== null) {
+        if (e.key === 'Escape') {
+          if (showShortcutsModal) {
+            setShowShortcutsModal(false);
+          } else if (showExifPanel) {
+            setShowExifPanel(false);
+          } else {
+            closeLightbox();
+          }
+        } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'j' || e.key === 'J') {
+          nextImage();
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'k' || e.key === 'K') {
+          prevImage();
+        } else if ((e.key === 'i' || e.key === 'I' || e.key === 'e' || e.key === 'E') && siteSettings?.showExifData !== false) {
+          setShowExifPanel(prev => !prev);
+        } else if (e.key === 'f' || e.key === 'F') {
+          toggleFullScreen();
+        } else if (e.key === '+' || e.key === '=') {
+          setZoomLevel(prev => Math.min(prev + 25, 300));
+        } else if (e.key === '-' || e.key === '_') {
+          setZoomLevel(prev => Math.max(prev - 25, 50));
+        } else if (e.key === '?' || e.key === 'h' || e.key === 'H') {
+          setShowShortcutsModal(prev => !prev);
+        }
+      } else {
+        // Global view navigation shortcuts when modal/lightbox is closed
+        if (e.key === 'g' || e.key === 'G') {
+          setActiveView('galeria');
+        } else if (e.key === 'i' || e.key === 'I') {
+          setActiveView('inicio');
+        } else if (e.key === 'b' || e.key === 'B') {
+          setActiveView('biografia');
+        } else if (e.key === 'l' || e.key === 'L') {
+          setActiveView('livro');
+        } else if (e.key === 'c' || e.key === 'C') {
+          setActiveView('contacto');
+        } else if (activeView === 'inicio' && (e.key === 'ArrowRight' || e.key === 'ArrowDown')) {
+          setSlideIndex(prev => (prev + 1) % (galleryImages.length || 1));
+        } else if (activeView === 'inicio' && (e.key === 'ArrowLeft' || e.key === 'ArrowUp')) {
+          setSlideIndex(prev => (prev - 1 + (galleryImages.length || 1)) % (galleryImages.length || 1));
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedImageIndex, nextImage, prevImage]);
+  }, [selectedImageIndex, showShortcutsModal, showExifPanel, activeView, nextImage, prevImage, toggleFullScreen, galleryImages.length, siteSettings?.enableKeyboardShortcuts, siteSettings?.showExifData]);
 
   // Lock body scroll when modal, lightbox or mobile menu is open
   useEffect(() => {
@@ -240,10 +417,12 @@ export default function App() {
 
   const globalStyle = {
     color: siteSettings?.globalColor || '#4a4a4a',
+    fontFamily: getFontFamily(siteSettings?.globalFont),
   };
 
   const menuStyle = {
     color: siteSettings?.menuColor || '#7a7a7a',
+    fontFamily: getFontFamily(siteSettings?.menuFont),
   };
 
   const navItemClass = (isActive: boolean) => `relative flex items-center gap-4 px-10 py-4 border-b border-[#4a4a4a]/5 text-[13px] tracking-widest uppercase transition-colors font-sans ${
@@ -315,9 +494,10 @@ export default function App() {
       <div className={`flex-shrink-0 z-40 bg-[#fafafa] border-b border-[#4a4a4a]/10 px-6 py-4 flex items-center justify-between ${isMobileLandscape ? 'flex' : 'md:hidden'}`}>
         <div style={{ 
           color: siteSettings?.siteNameColor || '#4a4a4a',
-          fontSize: `${Math.max(12, (siteSettings?.siteNameFontSize || 16) * 0.8)}px`
+          fontSize: `${Math.max(12, (siteSettings?.siteNameFontSize || 16) * 0.8)}px`,
+          fontFamily: getFontFamily(siteSettings?.siteNameFont)
         }}>
-          <h1 className="tracking-widest uppercase font-sans font-semibold">{siteSettings.siteName?.replace('\n', ' ')}</h1>
+          <h1 className="tracking-widest uppercase font-semibold">{siteSettings.siteName?.replace('\n', ' ')}</h1>
           <p className="text-[#7a7a7a] tracking-widest text-[12px] font-sans uppercase mt-1">{siteSettings.siteSubtitle}</p>
         </div>
         <button
@@ -504,9 +684,10 @@ export default function App() {
         <div>
           <div className="pt-12 pb-8 px-10 text-center" style={{ 
             color: siteSettings?.siteNameColor || '#4a4a4a',
-            fontSize: `${siteSettings?.siteNameFontSize || 16}px`
+            fontSize: `${siteSettings?.siteNameFontSize || 16}px`,
+            fontFamily: getFontFamily(siteSettings?.siteNameFont)
           }}>
-            <h1 className="tracking-widest leading-tight uppercase whitespace-pre-line font-sans font-semibold">{siteSettings.siteName}</h1>
+            <h1 className="tracking-widest leading-tight uppercase whitespace-pre-line font-semibold">{siteSettings.siteName}</h1>
             <p className="text-[#7a7a7a] tracking-widest text-[12px] font-sans mt-2 uppercase">{siteSettings.siteSubtitle}</p>
           </div>
           <div 
@@ -515,7 +696,8 @@ export default function App() {
               marginTop: `${siteSettings?.messageSpacing || 0}px`,
               fontSize: `${siteSettings?.messageFontSize || 13}px`,
               color: siteSettings?.messageColor || '#4a4a4a',
-              textAlign: siteSettings?.messageAlignment || 'left'
+              textAlign: siteSettings?.messageAlignment || 'left',
+              fontFamily: getFontFamily(siteSettings?.messageFont)
             }}
           >
             <p>{siteSettings.welcomeMessage}</p>
@@ -550,21 +732,32 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 h-full relative overflow-hidden bg-[#f0f0f0]">
         {activeView === 'inicio' ? (
-          <div className="relative w-full h-full bg-[#1a1a1a]">
+          <div 
+            className="relative w-full h-full transition-colors duration-500"
+            style={{ backgroundColor: siteSettings?.slideshowBgColor || '#1a1a1a' }}
+          >
             {galleryImages.length > 0 ? (
               <>
-                <AnimatePresence mode="popLayout">
-                  <motion.img
-                    key={slideIndex}
-                    src={galleryImages[slideIndex]?.url}
-                    alt={galleryImages[slideIndex]?.alt}
-                    initial={{ opacity: 0, scale: 1.05 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: siteSettings?.reduceAnimations ? 0.3 : 1.5, ease: "easeInOut" }}
-                    className={`absolute inset-0 w-full h-full ${siteSettings?.slideshowFit === 'Preencher' ? 'object-cover' : 'object-contain'}`}
-                  />
-                </AnimatePresence>
+                {(() => {
+                  const slideshowVariants = getSlideshowVariants(siteSettings?.slideshowEffect, Number(siteSettings?.slideshowZoom) || 105, siteSettings?.reduceAnimations);
+                  return (
+                    <AnimatePresence mode="popLayout">
+                      <motion.img
+                        key={slideIndex}
+                        src={galleryImages[slideIndex]?.url}
+                        alt={galleryImages[slideIndex]?.alt}
+                        decoding="async"
+                        fetchPriority="high"
+                        referrerPolicy="no-referrer"
+                        initial={slideshowVariants.initial}
+                        animate={slideshowVariants.animate}
+                        exit={slideshowVariants.exit}
+                        transition={slideshowVariants.transition}
+                        className={`absolute inset-0 w-full h-full ${siteSettings?.slideshowFit === 'Preencher' ? 'object-cover' : 'object-contain'}`}
+                      />
+                    </AnimatePresence>
+                  );
+                })()}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10 pointer-events-none" />
                 
                 <div className="absolute bottom-8 md:bottom-16 left-6 md:left-16 z-20 text-white">
@@ -586,13 +779,25 @@ export default function App() {
                   >
                     {galleryImages[slideIndex]?.subtitle}
                   </motion.p>
-                  <button 
-                    onClick={() => setActiveView('galeria')}
-                    className="flex items-center gap-3 py-2 text-[12px] md:text-xs font-sans tracking-[0.2em] uppercase hover:text-white/70 transition-colors border-b border-white/30 hover:border-white pb-1 w-fit font-semibold"
-                  >
-                    <span>VER GALERIA</span>
-                    <ArrowRight className="w-3 h-3" strokeWidth={1.5} />
-                  </button>
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={() => setActiveView('galeria')}
+                      className="flex items-center gap-3 py-2 text-[12px] md:text-xs font-sans tracking-[0.2em] uppercase hover:text-white/70 transition-colors border-b border-white/30 hover:border-white pb-1 w-fit font-semibold"
+                    >
+                      <span>VER GALERIA</span>
+                      <ArrowRight className="w-3 h-3" strokeWidth={1.5} />
+                    </button>
+
+                    {siteSettings?.enableZenMode !== false && (
+                      <button 
+                        onClick={() => setShowZenMode(true)}
+                        className="flex items-center gap-2 px-4 py-1.5 bg-black/40 hover:bg-black/70 border border-white/30 hover:border-white/60 text-[11px] md:text-xs font-sans tracking-[0.2em] uppercase text-amber-200 transition-all rounded-full backdrop-blur-md"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                        <span>MODO ZEN</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Slideshow Indicators */}
@@ -664,9 +869,33 @@ export default function App() {
                         {cat}
                       </button>
                     ))}
+
+                    {siteSettings?.enableZenMode !== false && (
+                      <button 
+                        onClick={() => setShowZenMode(true)}
+                        className="ml-2 px-3 py-1.5 bg-[#1a1a1a] hover:bg-[#333] text-amber-200 border border-amber-300/30 hover:border-amber-300/70 transition-all text-[9px] tracking-[0.1em] uppercase flex items-center gap-1.5 font-bold rounded-full shadow-sm"
+                        title="Apresentação Zen Fullscreen"
+                      >
+                        <Sparkles size={12} className="text-amber-300 animate-pulse" />
+                        <span>Modo Zen</span>
+                      </button>
+                    )}
                   </div>
 
-                  <GalleryGrid images={filteredGallery} onImageClick={openLightbox} />
+                  <GalleryGrid 
+                    images={filteredGallery} 
+                    onImageClick={openLightbox} 
+                    protectPhotos={siteSettings?.protectPhotos}
+                    showCaptions={siteSettings?.showCaptions}
+                    enableWatermark={siteSettings?.enableWatermark}
+                    watermarkText={siteSettings?.watermarkText}
+                    watermarkPosition={siteSettings?.watermarkPosition}
+                    enableFavorites={siteSettings?.enableFavorites}
+                    enableGallerySearch={siteSettings?.enableGallerySearch}
+                    enablePhotoComparison={siteSettings?.enablePhotoComparison}
+                    enableMonochromeToggle={siteSettings?.enableMonochromeToggle}
+                    enablePhotoLikes={siteSettings?.enablePhotoLikes}
+                  />
                 </>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
@@ -693,42 +922,52 @@ export default function App() {
             </div>
           </div>
         ) : activeView === 'biografia' ? (
-          <Biography 
-            settings={siteSettings} 
-            setActiveView={setActiveView} 
-            onOpenTerms={() => setShowTermsModal(true)} 
-          />
+          <Suspense fallback={<div className="flex-1 h-full flex items-center justify-center"><span className="text-[10px] uppercase tracking-widest text-[#7a7a7a]">A carregar...</span></div>}>
+            <Biography 
+              settings={siteSettings} 
+              setActiveView={setActiveView} 
+              onOpenTerms={() => setShowTermsModal(true)} 
+            />
+          </Suspense>
         ) : activeView === 'livro' ? (
-          <Guestbook 
-            settings={siteSettings} 
-            isAdminUnlocked={isAdminUnlocked} 
-            setActiveView={setActiveView} 
-            onOpenTerms={() => setShowTermsModal(true)} 
-          />
+          <Suspense fallback={<div className="flex-1 h-full flex items-center justify-center"><span className="text-[10px] uppercase tracking-widest text-[#7a7a7a]">A carregar...</span></div>}>
+            <Guestbook 
+              settings={siteSettings} 
+              isAdminUnlocked={isAdminUnlocked} 
+              setActiveView={setActiveView} 
+              onOpenTerms={() => setShowTermsModal(true)} 
+            />
+          </Suspense>
         ) : activeView === 'contacto' ? (
-          <Contact 
-            settings={siteSettings} 
-            setActiveView={setActiveView} 
-            onOpenTerms={() => setShowTermsModal(true)} 
-          />
+          <Suspense fallback={<div className="flex-1 h-full flex items-center justify-center"><span className="text-[10px] uppercase tracking-widest text-[#7a7a7a]">A carregar...</span></div>}>
+            <Contact 
+              settings={siteSettings} 
+              setActiveView={setActiveView} 
+              onOpenTerms={() => setShowTermsModal(true)} 
+            />
+          </Suspense>
         ) : activeView === 'links' ? (
-          <Links 
-            settings={siteSettings} 
-            isAdminUnlocked={isAdminUnlocked}
-            setActiveView={setActiveView} 
-            onOpenTerms={() => setShowTermsModal(true)} 
-          />
+          <Suspense fallback={<div className="flex-1 h-full flex items-center justify-center"><span className="text-[10px] uppercase tracking-widest text-[#7a7a7a]">A carregar...</span></div>}>
+            <Links 
+              settings={siteSettings} 
+              isAdminUnlocked={isAdminUnlocked}
+              setActiveView={setActiveView} 
+              onOpenTerms={() => setShowTermsModal(true)} 
+            />
+          </Suspense>
         ) : activeView === 'admin' ? (
           isAdminUnlocked ? (
-            <AdminPanel 
-              images={galleryImages} 
-              setImages={setGalleryImages} 
-              onLogout={() => {
-                setIsAdminUnlocked(false);
-                sessionStorage.removeItem('admin_unlocked');
-                setActiveView('inicio');
-              }}
-            />
+            <Suspense fallback={<div className="flex-1 h-full flex items-center justify-center"><span className="text-[10px] uppercase tracking-widest text-[#7a7a7a]">A carregar...</span></div>}>
+              <AdminPanel 
+                images={galleryImages} 
+                setImages={setGalleryImages} 
+                onLogout={() => {
+                  setIsAdminUnlocked(false);
+                  sessionStorage.removeItem('admin_unlocked');
+                  setActiveView('inicio');
+                }}
+              />
+            </Suspense>
           ) : (
             <AdminPasswordPrompt 
               correctPassword={siteSettings?.adminPassword || 'manuel2026'} 
@@ -766,54 +1005,148 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[150] bg-[#767676] flex items-center justify-center"
+            className="fixed inset-0 z-[150] flex items-center justify-center transition-colors duration-300"
+            style={{ backgroundColor: siteSettings?.lightboxBgColor || '#0a0a0a' }}
             onClick={closeLightbox}
           >
             {/* Top Right Controls */}
-            <div className="absolute top-6 right-6 z-[160] flex items-center gap-6">
-              <div className="flex items-center gap-4 text-white">
-                <button onClick={(e) => handleZoom(e, 'out')} className="hover:text-white/70 transition-colors">
-                  <ZoomOut size={18} strokeWidth={1.5} />
+            <div className="absolute top-6 right-6 z-[160] flex items-center gap-3 md:gap-4">
+              {siteSettings?.enableKeyboardShortcuts !== false && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowShortcutsModal(!showShortcutsModal);
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 ${
+                    showShortcutsModal 
+                      ? 'bg-white text-black font-bold shadow-lg' 
+                      : 'bg-black/40 text-white/90 hover:bg-black/60 border border-white/20'
+                  }`}
+                  title="Atalhos de Teclado & Gestos (?)"
+                >
+                  <Keyboard size={14} /> <span className="hidden sm:inline">Atalhos</span>
                 </button>
-                <span className="text-[10px] tracking-[0.2em] font-sans w-8 text-center">{zoomLevel}%</span>
-                <button onClick={(e) => handleZoom(e, 'in')} className="hover:text-white/70 transition-colors">
-                  <ZoomIn size={18} strokeWidth={1.5} />
+              )}
+
+              {siteSettings?.showExifData !== false && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowExifPanel(!showExifPanel);
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 ${
+                    showExifPanel 
+                      ? 'bg-white text-black font-bold shadow-lg' 
+                      : 'bg-black/40 text-white/90 hover:bg-black/60 border border-white/20'
+                  }`}
+                  title="Ver Dados EXIF (E)"
+                >
+                  <Camera size={14} /> EXIF
+                </button>
+              )}
+
+              <div className="flex items-center gap-3 text-white bg-black/40 border border-white/20 px-3 py-1 rounded-full">
+                <button onClick={(e) => handleZoom(e, 'out')} className="hover:text-white/70 transition-colors" title="Zoom Out (-)">
+                  <ZoomOut size={16} strokeWidth={1.5} />
+                </button>
+                <span className="text-[10px] tracking-wider font-sans w-8 text-center font-mono">{zoomLevel}%</span>
+                <button onClick={(e) => handleZoom(e, 'in')} className="hover:text-white/70 transition-colors" title="Zoom In (+)">
+                  <ZoomIn size={16} strokeWidth={1.5} />
                 </button>
               </div>
-              <button onClick={toggleFullScreen} className="text-white hover:text-white/70 transition-colors">
-                <Maximize size={18} strokeWidth={1.5} />
+
+              {siteSettings?.enablePhotoDownload && filteredGallery[selectedImageIndex] && (
+                <a 
+                  href={filteredGallery[selectedImageIndex].url}
+                  download={filteredGallery[selectedImageIndex].title || 'fotografia-highres'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 bg-black/40 text-white/90 hover:bg-white hover:text-black border border-white/20"
+                  title="Descarregar Foto High-Res"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Download size={14} /> Download
+                </a>
+              )}
+
+              <button onClick={toggleFullScreen} className="text-white bg-black/40 hover:bg-black/60 border border-white/20 p-2 rounded-full transition-colors" title="Ecrã Inteiro (F)">
+                <Maximize size={16} strokeWidth={1.5} />
               </button>
-              <button onClick={closeLightbox} className="text-white hover:text-white/70 transition-colors ml-2">
-                <X size={24} strokeWidth={1.5} />
+              <button onClick={closeLightbox} className="text-white bg-black/40 hover:bg-black/60 border border-white/20 p-2 rounded-full transition-colors ml-1" title="Fechar (Esc)">
+                <X size={18} strokeWidth={1.5} />
               </button>
             </div>
+
+            {/* Mobile Touch Swipe Hint Pill */}
+            <AnimatePresence>
+              {swipeHintVisible && siteSettings?.enableKeyboardShortcuts !== false && (
+                <motion.div
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="md:hidden absolute top-20 left-1/2 -translate-x-1/2 z-[160] bg-black/80 backdrop-blur-md text-white/90 px-4 py-2 rounded-full text-[10px] uppercase tracking-widest border border-white/20 shadow-xl flex items-center gap-2 pointer-events-none"
+                >
+                  <span>Deslize ← → para fotos, ↓ para fechar</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Navigation Arrows */}
             <button 
               onClick={prevImage}
-              className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 p-3 text-white/50 hover:text-white transition-colors z-[160]"
+              className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 p-3 text-white/60 hover:text-white bg-black/30 hover:bg-black/60 rounded-full border border-white/10 transition-colors z-[160]"
+              title="Foto Anterior (← / K)"
             >
-              <ChevronLeft size={36} strokeWidth={1} />
+              <ChevronLeft size={28} strokeWidth={1.5} />
             </button>
             <button 
               onClick={nextImage}
-              className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 p-3 text-white/50 hover:text-white transition-colors z-[160]"
+              className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 p-3 text-white/60 hover:text-white bg-black/30 hover:bg-black/60 rounded-full border border-white/10 transition-colors z-[160]"
+              title="Próxima Foto (→ / J)"
             >
-              <ChevronRight size={36} strokeWidth={1} />
+              <ChevronRight size={28} strokeWidth={1.5} />
             </button>
 
-            {/* Image */}
-            <div className="overflow-hidden max-h-screen max-w-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-              <motion.img
-                key={selectedImageIndex}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: zoomLevel / 100 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                src={filteredGallery[selectedImageIndex]?.url}
-                alt={filteredGallery[selectedImageIndex]?.alt}
-                className="max-h-screen max-w-full object-contain z-[150]"
-              />
+            {/* Image Container with Touch Swipe Gesture Support */}
+            <div 
+              className="overflow-hidden max-h-screen max-w-full flex items-center justify-center touch-pan-y relative select-none" 
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              {(() => {
+                const lightboxVariants = getLightboxVariants(siteSettings?.lightboxEffect, zoomLevel, siteSettings?.reduceAnimations);
+                return (
+                  <motion.div
+                    key={selectedImageIndex}
+                    initial={lightboxVariants.initial}
+                    animate={lightboxVariants.animate}
+                    exit={lightboxVariants.exit}
+                    transition={lightboxVariants.transition}
+                    style={{
+                      transform: touchStart ? `translate3d(${touchDelta.x}px, ${touchDelta.y}px, 0px)` : undefined,
+                      opacity: touchStart && Math.abs(touchDelta.y) > 30 ? Math.max(0.3, 1 - Math.abs(touchDelta.y) / 300) : 1,
+                      transition: touchStart ? 'none' : 'transform 0.25s ease-out, opacity 0.25s ease-out'
+                    }}
+                    className="relative z-[150] flex items-center justify-center"
+                  >
+                    <img
+                      src={filteredGallery[selectedImageIndex]?.url}
+                      alt={filteredGallery[selectedImageIndex]?.alt}
+                      decoding="async"
+                      fetchPriority="high"
+                      referrerPolicy="no-referrer"
+                      className="max-h-screen max-w-full object-contain pointer-events-none"
+                    />
+                    {siteSettings?.enableWatermark && (
+                      <div className={getWatermarkClasses(siteSettings?.watermarkPosition, true)}>
+                        {siteSettings?.watermarkText || '© Manuel Francisco'}
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })()}
             </div>
             
             {/* Bottom Left Title/Subtitle */}
@@ -821,6 +1154,173 @@ export default function App() {
               <h3 className="text-white font-sans font-medium text-lg tracking-widest mb-1">{filteredGallery[selectedImageIndex]?.title}</h3>
               <p className="text-white/80 font-sans text-[12px] tracking-widest uppercase">{filteredGallery[selectedImageIndex]?.subtitle}</p>
             </div>
+
+            {/* EXIF Overlay Panel */}
+            <AnimatePresence>
+              {showExifPanel && filteredGallery[selectedImageIndex] && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute bottom-8 right-8 z-[170] bg-black/85 backdrop-blur-md text-white p-5 rounded-lg border border-white/10 max-w-sm w-full shadow-2xl space-y-3"
+                >
+                  <div className="flex justify-between items-center pb-2 border-b border-white/10">
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-white/90 flex items-center gap-2">
+                      <Camera size={14} className="text-[#8e8a82]" /> Informação EXIF
+                    </span>
+                    <button
+                      onClick={() => setShowExifPanel(false)}
+                      className="text-white/60 hover:text-white transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+                    {(filteredGallery[selectedImageIndex].exif?.camera || filteredGallery[selectedImageIndex].camera) && (
+                      <div className="col-span-2">
+                        <p className="text-[9px] uppercase tracking-wider text-white/50">Câmara</p>
+                        <p className="font-medium text-white/90">{filteredGallery[selectedImageIndex].exif?.camera || filteredGallery[selectedImageIndex].camera}</p>
+                      </div>
+                    )}
+
+                    {(filteredGallery[selectedImageIndex].exif?.lens || filteredGallery[selectedImageIndex].lens) && (
+                      <div className="col-span-2">
+                        <p className="text-[9px] uppercase tracking-wider text-white/50">Lente</p>
+                        <p className="font-medium text-white/90">{filteredGallery[selectedImageIndex].exif?.lens || filteredGallery[selectedImageIndex].lens}</p>
+                      </div>
+                    )}
+
+                    {(filteredGallery[selectedImageIndex].exif?.aperture || filteredGallery[selectedImageIndex].aperture) && (
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/50">Abertura</p>
+                        <p className="font-medium text-white/90">{filteredGallery[selectedImageIndex].exif?.aperture || filteredGallery[selectedImageIndex].aperture}</p>
+                      </div>
+                    )}
+
+                    {(filteredGallery[selectedImageIndex].exif?.shutter || filteredGallery[selectedImageIndex].shutter) && (
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/50">Velocidade</p>
+                        <p className="font-medium text-white/90">{filteredGallery[selectedImageIndex].exif?.shutter || filteredGallery[selectedImageIndex].shutter}</p>
+                      </div>
+                    )}
+
+                    {(filteredGallery[selectedImageIndex].exif?.iso || filteredGallery[selectedImageIndex].iso) && (
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/50">ISO</p>
+                        <p className="font-medium text-white/90">{filteredGallery[selectedImageIndex].exif?.iso || filteredGallery[selectedImageIndex].iso}</p>
+                      </div>
+                    )}
+
+                    {(filteredGallery[selectedImageIndex].exif?.focalLength || filteredGallery[selectedImageIndex].focalLength) && (
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/50">Distância Focal</p>
+                        <p className="font-medium text-white/90">{filteredGallery[selectedImageIndex].exif?.focalLength || filteredGallery[selectedImageIndex].focalLength}</p>
+                      </div>
+                    )}
+
+                    {filteredGallery[selectedImageIndex].cameraSettings && (
+                      <div className="col-span-2 pt-2 border-t border-white/10">
+                        <p className="text-[9px] uppercase tracking-wider text-white/50">Definições</p>
+                        <p className="font-mono text-[11px] text-[#e0ded8]">{filteredGallery[selectedImageIndex].cameraSettings}</p>
+                      </div>
+                    )}
+
+                    {filteredGallery[selectedImageIndex].description && (
+                      <div className="col-span-2 pt-2 border-t border-white/10">
+                        <p className="text-[9px] uppercase tracking-wider text-white/50">Descrição</p>
+                        <p className="text-[11px] text-white/80 leading-relaxed">{filteredGallery[selectedImageIndex].description}</p>
+                      </div>
+                    )}
+
+                    {(!filteredGallery[selectedImageIndex].exif?.camera && !filteredGallery[selectedImageIndex].cameraSettings) && (
+                      <p className="col-span-2 text-white/50 text-[11px] italic">Sem dados EXIF disponíveis para esta imagem.</p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Keyboard Shortcuts & Gestos Modal */}
+            <AnimatePresence>
+              {showShortcutsModal && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute top-20 right-6 md:right-8 z-[180] bg-black/90 backdrop-blur-xl text-white p-6 rounded-xl border border-white/15 max-w-sm w-full shadow-2xl space-y-4"
+                >
+                  <div className="flex justify-between items-center pb-3 border-b border-white/15">
+                    <span className="text-[11px] uppercase tracking-widest font-bold text-white flex items-center gap-2">
+                      <Keyboard size={16} className="text-amber-400" /> Atalhos & Gestos
+                    </span>
+                    <button
+                      onClick={() => setShowShortcutsModal(false)}
+                      className="text-white/60 hover:text-white transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4 text-xs font-sans">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-white/50 mb-2 font-bold">Navegação no Teclado</p>
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">←</kbd>
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">→</kbd>
+                          <span className="text-white/80">Fotos</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">Esc</kbd>
+                          <span className="text-white/80">Fechar</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">E</kbd>
+                          <span className="text-white/80">EXIF</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">F</kbd>
+                          <span className="text-white/80">Ecrã Inteiro</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">+</kbd>
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">-</kbd>
+                          <span className="text-white/80">Zoom</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">?</kbd>
+                          <span className="text-white/80">Ajuda</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-white/10">
+                      <p className="text-[10px] uppercase tracking-wider text-white/50 mb-2 font-bold">Gestos em Dispositivos Móveis</p>
+                      <div className="space-y-1.5 text-[11px] text-white/80">
+                        <p className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Deslizar ← / → para mudar de foto
+                        </p>
+                        <p className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Deslizar ↓ para fechar visualizador
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-white/10">
+                      <p className="text-[10px] uppercase tracking-wider text-white/50 mb-2 font-bold">Atalhos Globais do Site</p>
+                      <p className="text-[10px] text-white/70 leading-relaxed">
+                        Pressione <kbd className="px-1.5 py-0.5 bg-white/15 rounded font-mono">G</kbd> para Galeria, <kbd className="px-1.5 py-0.5 bg-white/15 rounded font-mono">I</kbd> para Início, <kbd className="px-1.5 py-0.5 bg-white/15 rounded font-mono">B</kbd> para Biografia, <kbd className="px-1.5 py-0.5 bg-white/15 rounded font-mono">L</kbd> para Livro de Visitas, <kbd className="px-1.5 py-0.5 bg-white/15 rounded font-mono">C</kbd> para Contactos.
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
@@ -940,6 +1440,17 @@ export default function App() {
               </motion.p>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Zen Story Mode Presentation */}
+      <AnimatePresence>
+        {showZenMode && (
+          <Suspense fallback={<div className="fixed inset-0 z-[300] bg-black flex items-center justify-center"><span className="text-white/50 text-[10px] uppercase tracking-widest">A iniciar...</span></div>}>
+            <ZenStoryMode
+              images={filteredGallery.length > 0 ? filteredGallery : galleryImages}
+              onClose={() => setShowZenMode(false)}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
     </div>

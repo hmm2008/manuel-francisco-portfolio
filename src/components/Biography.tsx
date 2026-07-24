@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import Footer from './Footer';
+// @ts-ignore
+import fallbackPortrait from '../assets/images/photographer_portrait_1784841967018.jpg';
 
 interface BiographyProps {
   settings: any;
@@ -32,7 +34,7 @@ export default function Biography({ settings, setActiveView, onOpenTerms }: Biog
         >
             <div className="aspect-square overflow-hidden bg-[#dcd7cf] shadow-sm">
             <img 
-              src={settings?.profilePhoto || "/src/assets/images/photographer_portrait_1784841967018.jpg"} 
+              src={(settings?.profilePhoto && settings.profilePhoto !== '/src/assets/images/photographer_portrait_1784841967018.jpg') ? settings.profilePhoto : fallbackPortrait} 
               alt="Manuel Francisco" 
               className="w-full h-full object-cover"
             />
