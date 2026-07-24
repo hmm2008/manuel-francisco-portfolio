@@ -1,0 +1,6 @@
+{
+  "name": "Manuel Francisco Fotografia",
+  "description": "Portfólio fotográfico elegante e minimalista com tema escuro, focado na exibição de trabalho fotográfico.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

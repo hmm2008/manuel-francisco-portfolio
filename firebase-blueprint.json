@@ -1,0 +1,45 @@
+{
+  "collections": [
+    {
+      "name": "images",
+      "description": "Stores the portfolio images and metadata.",
+      "fields": [
+        { "name": "url", "type": "string", "description": "Download URL of the image from Firebase Storage" },
+        { "name": "title", "type": "string", "description": "Title of the image" },
+        { "name": "subtitle", "type": "string", "description": "Subtitle or location" },
+        { "name": "order", "type": "number", "description": "Order of the image in the gallery" },
+        { "name": "createdAt", "type": "timestamp", "description": "When the image was uploaded" }
+      ]
+    },
+    {
+      "name": "settings",
+      "description": "Stores the site customizations and typography configurations.",
+      "fields": [
+        { "name": "siteName", "type": "string", "description": "The title/name of the site" }
+      ]
+    },
+    {
+      "name": "signatures",
+      "description": "Stores guestbook signatures left by visitors.",
+      "fields": [
+        { "name": "name", "type": "string", "description": "Name of the visitor" },
+        { "name": "message", "type": "string", "description": "Message left by the visitor" },
+        { "name": "createdAt", "type": "timestamp", "description": "When the signature was posted" }
+      ]
+    }
+  ],
+  "securityRules": {
+    "images": {
+      "read": "true",
+      "write": "request.auth != null && request.auth.token.email.lower() == 'manuel.francisco3@gmail.com'"
+    },
+    "settings": {
+      "read": "true",
+      "write": "request.auth != null && request.auth.token.email.lower() == 'manuel.francisco3@gmail.com'"
+    },
+    "signatures": {
+      "read": "true",
+      "write": "request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100 && request.resource.data.message is string && request.resource.data.message.size() > 0 && request.resource.data.message.size() <= 1000 && request.resource.data.createdAt == request.time"
+    }
+  }
+}
