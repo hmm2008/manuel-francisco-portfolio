@@ -98,6 +98,63 @@ async function extractExifFromFile(file: File): Promise<{ exif: ExifData; camera
   }
 }
 
+async function compressImage(file: File, maxDimension: number, quality: number): Promise<File | Blob> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith('image/') || file.type === 'image/gif') {
+      resolve(file);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function AdminPanel({ images, setImages, onLogout }: { images: any[], setImages: any, onLogout?: () => void }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -369,8 +426,30 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
         };
         
         if (file) {
+          let fileToUpload: File | Blob = file;
+          const compressQual = (siteSettings?.compressQuality !== undefined) ? (siteSettings.compressQuality / 100) : 0.8;
+          let maxDim = 1800;
+          if (siteSettings?.importQuality === 'Original') {
+            maxDim = Infinity;
+          } else if (siteSettings?.importQuality === '1200 px') {
+            maxDim = 1200;
+          } else if (siteSettings?.importQuality === '800 px') {
+            maxDim = 800;
+          } else if (siteSettings?.importQuality) {
+            const match = siteSettings.importQuality.match(/\d+/);
+            if (match) maxDim = parseInt(match[0], 10);
+          }
+
+          if (maxDim !== Infinity || compressQual < 1.0) {
+            try {
+              fileToUpload = await compressImage(file, maxDim, compressQual);
+            } catch (err) {
+              console.warn("Failed to compress edit image:", err);
+            }
+          }
+
           const storageRef = ref(storage, `portfolio/${Date.now()}_${file.name}`);
-          const snapshot = await uploadBytes(storageRef, file);
+          const snapshot = await uploadBytes(storageRef, fileToUpload);
           const downloadURL = await getDownloadURL(snapshot.ref);
           updates.url = downloadURL;
           updates.storagePath = snapshot.ref.fullPath;
@@ -400,8 +479,30 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
           setPendingPhotos(prev => prev.map(p => p.id === pending.id ? { ...p, status: 'uploading' } : p));
           
           try {
+            let fileToUpload: File | Blob = pending.file;
+            const compressQual = (siteSettings?.compressQuality !== undefined) ? (siteSettings.compressQuality / 100) : 0.8;
+            let maxDim = 1800;
+            if (siteSettings?.importQuality === 'Original') {
+              maxDim = Infinity;
+            } else if (siteSettings?.importQuality === '1200 px') {
+              maxDim = 1200;
+            } else if (siteSettings?.importQuality === '800 px') {
+              maxDim = 800;
+            } else if (siteSettings?.importQuality) {
+              const match = siteSettings.importQuality.match(/\d+/);
+              if (match) maxDim = parseInt(match[0], 10);
+            }
+
+            if (maxDim !== Infinity || compressQual < 1.0) {
+              try {
+                fileToUpload = await compressImage(pending.file, maxDim, compressQual);
+              } catch (err) {
+                console.warn("Failed to compress batch image:", err);
+              }
+            }
+
             const storageRef = ref(storage, `portfolio/${Date.now()}_${pending.file.name}`);
-            const snapshot = await uploadBytes(storageRef, pending.file);
+            const snapshot = await uploadBytes(storageRef, fileToUpload);
             const downloadURL = await getDownloadURL(snapshot.ref);
 
             await addDoc(collection(db, 'images'), {
@@ -562,7 +663,12 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
 
       {/* Main Content */}
       {activeTab === 'gallery' ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div 
+          className="grid gap-4" 
+          style={{ 
+            gridTemplateColumns: `repeat(auto-fill, minmax(${siteSettings?.adminThumbSizePx || 200}px, 1fr))` 
+          }}
+        >
           {filteredImages.map(img => {
             return (
               <div 

@@ -67,10 +67,28 @@ export default function SettingsPanel({ onBackToGallery }: { onBackToGallery?: (
     lightboxEffect: 'Fade Standard (Dissolução Clássica)',
     defaultZoomLevel: 100,
     lightboxBgColor: '#0a0a0a',
-    thumbnailSize: 'Médio',
+    thumbnailSize: '160 px',
     importQuality: '1800 px',
-    lightboxQuality: 'Alta',
+    lightboxQuality: '1800 px',
     galleryGridCols: '4',
+    adminThumbSizePx: 200,
+    compressQuality: 80,
+
+    // Slideshow Typography & Position
+    slideshowTitleFont: 'Playfair Display — serif clássico editorial',
+    slideshowTitleSize: '48 px',
+    slideshowSubtitleFont: 'Plus Jakarta Sans — sans-serif limpo moderno',
+    slideshowSubtitleSize: '12 px',
+    slideshowTextPosition: 'canto inferior esq',
+    slideshowTextColor: '#ffffff',
+
+    // Lightbox Typography & Position
+    lightboxTitleFont: 'Plus Jakarta Sans — sans-serif limpo moderno',
+    lightboxTitleSize: '18 px',
+    lightboxSubtitleFont: 'Plus Jakarta Sans — sans-serif limpo moderno',
+    lightboxSubtitleSize: '12 px',
+    lightboxTextPosition: 'canto inferior esq',
+    lightboxTextColor: '#ffffff',
 
     // Novas Funcionalidades Sugeridas
     protectPhotos: false,
@@ -457,25 +475,27 @@ export default function SettingsPanel({ onBackToGallery }: { onBackToGallery?: (
 
               {/* Tamanho das Miniaturas */}
               <div className="space-y-3">
-                <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold block">TAMANHO DAS MINIATURAS</label>
-                <div className="grid grid-cols-3 gap-4">
+                <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold block">TAMANHO DAS MINIATURAS (GALERIA PRINCIPAL)</label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                   {[
-                    { label: 'Pequeno', desc: 'Miniaturas compactas (80px)' },
-                    { label: 'Médio', desc: 'Equilíbrio recomendado (140px)' },
-                    { label: 'Grande', desc: 'Miniaturas em destaque (220px)' }
+                    { label: '120 px', desc: 'Compacto' },
+                    { label: '160 px', desc: 'Equilibrado' },
+                    { label: '200 px', desc: 'Médio' },
+                    { label: '240 px', desc: 'Grande' },
+                    { label: '280 px', desc: 'Imponente' }
                   ].map(size => (
                     <button 
                       key={size.label}
                       type="button"
                       onClick={() => setSettings(prev => ({ ...prev, thumbnailSize: size.label }))}
-                      className={`p-4 border text-left transition-all ${
+                      className={`p-3 border text-center transition-all ${
                         settings.thumbnailSize === size.label 
                           ? 'bg-[#faf9f6] border-[#1a1a1a] ring-1 ring-[#1a1a1a]' 
                           : 'bg-white border-[#e2ddd5] hover:border-[#a09c94]'
                       }`}
                     >
                       <p className="text-xs font-bold text-[#1a1a1a] mb-1">{size.label}</p>
-                      <p className="text-[10px] text-[#8e8a82]">{size.desc}</p>
+                      <p className="text-[9px] text-[#8e8a82] uppercase tracking-wider">{size.desc}</p>
                     </button>
                   ))}
                 </div>
@@ -507,10 +527,53 @@ export default function SettingsPanel({ onBackToGallery }: { onBackToGallery?: (
                     className="w-full bg-[#faf9f6] border border-[#e2ddd5] px-4 py-3 text-xs focus:outline-none focus:border-[#1a1a1a]"
                   >
                     <option value="Original">Original (Resolução Máxima)</option>
-                    <option value="Alta">Alta (2400 px)</option>
-                    <option value="Média">Média (1400 px)</option>
-                    <option value="Baixa">Baixa (800 px)</option>
+                    <option value="2400 px">2400 px (Alta Definição)</option>
+                    <option value="1800 px">1800 px (Excelente Qualidade)</option>
+                    <option value="1400 px">1400 px (Equilibrado)</option>
+                    <option value="800 px">800 px (Carregamento Rápido)</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Configurações da Galeria Admin: Tamanho dos Thumbs em px e Compressão */}
+              <div className="border-t border-[#f0ece5] pt-6 space-y-6">
+                <span className="text-[10px] uppercase tracking-widest text-[#8e8a82] font-bold block">
+                  GALERIA DO PAINEL ADMIN & CARREGAMENTO
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Tamanho dos Thumbs em px */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold">TAMANHO DOS THUMBS (ADMIN)</label>
+                      <span className="text-[11px] font-mono text-[#8e8a82]">{settings.adminThumbSizePx || 200}px</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      name="adminThumbSizePx"
+                      min="100" max="400" step="10"
+                      value={settings.adminThumbSizePx || 200}
+                      onChange={(e) => setSettings(prev => ({ ...prev, adminThumbSizePx: parseInt(e.target.value, 10) }))}
+                      className="w-full h-1.5 bg-[#e5e0d8] rounded-lg appearance-none cursor-pointer accent-[#1a1a1a] mt-3"
+                    />
+                    <p className="text-[10px] text-[#8e8a82]">Ajuste o tamanho de visualização das miniaturas na galeria do painel admin.</p>
+                  </div>
+
+                  {/* Nível de Compressão (%) */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold">COMPRESSÃO NO CARREGAMENTO</label>
+                      <span className="text-[11px] font-mono text-[#8e8a82]">{settings.compressQuality || 80}%</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      name="compressQuality"
+                      min="10" max="100" step="5"
+                      value={settings.compressQuality || 80}
+                      onChange={(e) => setSettings(prev => ({ ...prev, compressQuality: parseInt(e.target.value, 10) }))}
+                      className="w-full h-1.5 bg-[#e5e0d8] rounded-lg appearance-none cursor-pointer accent-[#1a1a1a] mt-3"
+                    />
+                    <p className="text-[10px] text-[#8e8a82]">Uma qualidade de 80% reduz significativamente o tamanho da imagem com perda impercetível de qualidade visual.</p>
+                  </div>
                 </div>
               </div>
 
@@ -867,7 +930,6 @@ export default function SettingsPanel({ onBackToGallery }: { onBackToGallery?: (
                     <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1a1a1a]"></div>
                   </label>
                 </div>
-
                 {/* Switch Gostos & Reações Rápidas */}
                 <div className="flex items-center justify-between py-2 border-t border-[#f0ece5] pt-4">
                   <div>
@@ -884,6 +946,128 @@ export default function SettingsPanel({ onBackToGallery }: { onBackToGallery?: (
                     />
                     <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1a1a1a]"></div>
                   </label>
+                </div>
+
+                {/* Tipografia e Posição do Lightbox */}
+                <div className="border-t border-[#f0ece5] pt-6 space-y-6">
+                  <span className="text-[10px] uppercase tracking-widest text-[#8e8a82] font-bold block flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-[#8e8a82]" /> TIPOGRAFIA, COR E POSIÇÃO DA LEGENDA (FOTO AMPLIADA - LIGHTBOX)
+                  </span>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Fonte do Título e Fonte do Subtítulo */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold block">FONTE DO TÍTULO (LIGHTBOX)</label>
+                      <div className="relative">
+                        <select 
+                          name="lightboxTitleFont"
+                          value={settings.lightboxTitleFont || 'Plus Jakarta Sans — sans-serif limpo moderno'}
+                          onChange={handleChange}
+                          className="w-full appearance-none bg-[#faf9f6] border border-[#e2ddd5] px-4 py-3 text-xs focus:outline-none focus:border-[#1a1a1a]"
+                        >
+                          {FONT_OPTIONS.map(font => (
+                            <option key={font} value={font}>{font}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8e8a82] pointer-events-none" size={14} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold block">FONTE DO SUBTÍTULO (LIGHTBOX)</label>
+                      <div className="relative">
+                        <select 
+                          name="lightboxSubtitleFont"
+                          value={settings.lightboxSubtitleFont || 'Plus Jakarta Sans — sans-serif limpo moderno'}
+                          onChange={handleChange}
+                          className="w-full appearance-none bg-[#faf9f6] border border-[#e2ddd5] px-4 py-3 text-xs focus:outline-none focus:border-[#1a1a1a]"
+                        >
+                          {FONT_OPTIONS.map(font => (
+                            <option key={font} value={font}>{font}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8e8a82] pointer-events-none" size={14} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Tamanho do Título e Tamanho do Subtítulo */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold block">TAMANHO DO TÍTULO (LIGHTBOX)</label>
+                      <div className="relative">
+                        <select 
+                          name="lightboxTitleSize"
+                          value={settings.lightboxTitleSize || '18 px'}
+                          onChange={handleChange}
+                          className="w-full appearance-none bg-[#faf9f6] border border-[#e2ddd5] px-4 py-3 text-xs focus:outline-none focus:border-[#1a1a1a]"
+                        >
+                          {['14 px', '16 px', '18 px', '20 px', '24 px', '28 px', '32 px', '36 px', '40 px'].map(sz => (
+                            <option key={sz} value={sz}>{sz}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8e8a82] pointer-events-none" size={14} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold block">TAMANHO DO SUBTÍTULO (LIGHTBOX)</label>
+                      <div className="relative">
+                        <select 
+                          name="lightboxSubtitleSize"
+                          value={settings.lightboxSubtitleSize || '12 px'}
+                          onChange={handleChange}
+                          className="w-full appearance-none bg-[#faf9f6] border border-[#e2ddd5] px-4 py-3 text-xs focus:outline-none focus:border-[#1a1a1a]"
+                        >
+                          {['10 px', '11 px', '12 px', '13 px', '14 px', '16 px', '18 px', '20 px'].map(sz => (
+                            <option key={sz} value={sz}>{sz}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8e8a82] pointer-events-none" size={14} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Posição do Texto e Cor do Texto */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold block">ALINHAMENTO / POSIÇÃO (LIGHTBOX)</label>
+                      <div className="relative">
+                        <select 
+                          name="lightboxTextPosition"
+                          value={settings.lightboxTextPosition || 'canto inferior esq'}
+                          onChange={handleChange}
+                          className="w-full appearance-none bg-[#faf9f6] border border-[#e2ddd5] px-4 py-3 text-xs focus:outline-none focus:border-[#1a1a1a]"
+                        >
+                          <option value="canto inferior esq">Canto Inferior Esquerdo (Esquerda)</option>
+                          <option value="centrado em baixo">Centrado em Baixo (Centro)</option>
+                          <option value="canto inferior dto">Canto Inferior Direito (Direita)</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8e8a82] pointer-events-none" size={14} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold block">COR DA FONTE (LIGHTBOX)</label>
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="color" 
+                          name="lightboxTextColor"
+                          value={settings.lightboxTextColor || '#ffffff'}
+                          onChange={handleChange}
+                          className="w-10 h-10 border border-[#e2ddd5] rounded cursor-pointer bg-transparent p-0.5"
+                        />
+                        <input 
+                          type="text" 
+                          name="lightboxTextColor"
+                          value={settings.lightboxTextColor || '#ffffff'}
+                          onChange={handleChange}
+                          placeholder="#ffffff"
+                          className="flex-1 bg-[#faf9f6] border border-[#e2ddd5] px-4 py-2.5 text-xs font-mono uppercase focus:outline-none focus:border-[#1a1a1a]"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1029,6 +1213,128 @@ export default function SettingsPanel({ onBackToGallery }: { onBackToGallery?: (
                       <p className="text-[10px] text-[#8e8a82]">{fit.desc}</p>
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Tipografia e Posição das Legendas do Slideshow */}
+              <div className="border-t border-[#f0ece5] pt-6 space-y-6">
+                <span className="text-[10px] uppercase tracking-widest text-[#8e8a82] font-bold block flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-[#8e8a82]" /> TIPOGRAFIA, COR E POSIÇÃO DA LEGENDA (SLIDESHOW)
+                </span>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Fonte do Título e Fonte do Subtítulo */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold block">FONTE DO TÍTULO</label>
+                    <div className="relative">
+                      <select 
+                        name="slideshowTitleFont"
+                        value={settings.slideshowTitleFont || 'Playfair Display — serif clássico editorial'}
+                        onChange={handleChange}
+                        className="w-full appearance-none bg-[#faf9f6] border border-[#e2ddd5] px-4 py-3 text-xs focus:outline-none focus:border-[#1a1a1a]"
+                      >
+                        {FONT_OPTIONS.map(font => (
+                          <option key={font} value={font}>{font}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8e8a82] pointer-events-none" size={14} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold block">FONTE DO SUBTÍTULO</label>
+                    <div className="relative">
+                      <select 
+                        name="slideshowSubtitleFont"
+                        value={settings.slideshowSubtitleFont || 'Plus Jakarta Sans — sans-serif limpo moderno'}
+                        onChange={handleChange}
+                        className="w-full appearance-none bg-[#faf9f6] border border-[#e2ddd5] px-4 py-3 text-xs focus:outline-none focus:border-[#1a1a1a]"
+                      >
+                        {FONT_OPTIONS.map(font => (
+                          <option key={font} value={font}>{font}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8e8a82] pointer-events-none" size={14} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Tamanho do Título e Tamanho do Subtítulo */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold block">TAMANHO DO TÍTULO</label>
+                    <div className="relative">
+                      <select 
+                        name="slideshowTitleSize"
+                        value={settings.slideshowTitleSize || '48 px'}
+                        onChange={handleChange}
+                        className="w-full appearance-none bg-[#faf9f6] border border-[#e2ddd5] px-4 py-3 text-xs focus:outline-none focus:border-[#1a1a1a]"
+                      >
+                        {['24 px', '28 px', '32 px', '36 px', '40 px', '48 px', '54 px', '60 px', '72 px'].map(sz => (
+                          <option key={sz} value={sz}>{sz}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8e8a82] pointer-events-none" size={14} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold block">TAMANHO DO SUBTÍTULO</label>
+                    <div className="relative">
+                      <select 
+                        name="slideshowSubtitleSize"
+                        value={settings.slideshowSubtitleSize || '12 px'}
+                        onChange={handleChange}
+                        className="w-full appearance-none bg-[#faf9f6] border border-[#e2ddd5] px-4 py-3 text-xs focus:outline-none focus:border-[#1a1a1a]"
+                      >
+                        {['10 px', '11 px', '12 px', '13 px', '14 px', '16 px', '18 px', '20 px', '24 px'].map(sz => (
+                          <option key={sz} value={sz}>{sz}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8e8a82] pointer-events-none" size={14} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Posição do Texto e Cor do Texto */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold block">ALINHAMENTO / POSIÇÃO NO ECRÃ</label>
+                    <div className="relative">
+                      <select 
+                        name="slideshowTextPosition"
+                        value={settings.slideshowTextPosition || 'canto inferior esq'}
+                        onChange={handleChange}
+                        className="w-full appearance-none bg-[#faf9f6] border border-[#e2ddd5] px-4 py-3 text-xs focus:outline-none focus:border-[#1a1a1a]"
+                      >
+                        <option value="canto inferior esq">Canto Inferior Esquerdo (Esquerda)</option>
+                        <option value="centrado em baixo">Centrado em Baixo (Centro)</option>
+                        <option value="canto inferior dto">Canto Inferior Direito (Direita)</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8e8a82] pointer-events-none" size={14} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold block">COR DA FONTE</label>
+                    <div className="flex items-center gap-3">
+                      <input 
+                        type="color" 
+                        name="slideshowTextColor"
+                        value={settings.slideshowTextColor || '#ffffff'}
+                        onChange={handleChange}
+                        className="w-10 h-10 border border-[#e2ddd5] rounded cursor-pointer bg-transparent p-0.5"
+                      />
+                      <input 
+                        type="text" 
+                        name="slideshowTextColor"
+                        value={settings.slideshowTextColor || '#ffffff'}
+                        onChange={handleChange}
+                        placeholder="#ffffff"
+                        className="flex-1 bg-[#faf9f6] border border-[#e2ddd5] px-4 py-2.5 text-xs font-mono uppercase focus:outline-none focus:border-[#1a1a1a]"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -759,14 +759,29 @@ export default function App() {
                   );
                 })()}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10 pointer-events-none" />
-                
-                <div className="absolute bottom-8 md:bottom-16 left-6 md:left-16 z-20 text-white">
+                <div 
+                  className={(() => {
+                    const pos = siteSettings?.slideshowTextPosition;
+                    if (pos === 'centrado em baixo') {
+                      return 'absolute bottom-8 md:bottom-16 left-1/2 -translate-x-1/2 z-20 text-center w-[90%] max-w-2xl flex flex-col items-center';
+                    }
+                    if (pos === 'canto inferior dto') {
+                      return 'absolute bottom-8 md:bottom-16 right-6 md:right-16 z-20 text-right flex flex-col items-end';
+                    }
+                    return 'absolute bottom-8 md:bottom-16 left-6 md:left-16 z-20 text-left flex flex-col items-start';
+                  })()}
+                >
                   <motion.h2 
                     key={`title-${slideIndex}`}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2, duration: 0.8 }}
-                    className="font-sans font-medium text-4xl md:text-6xl mb-2 tracking-wide font-light"
+                    className="mb-2 tracking-wide font-light"
+                    style={{
+                      fontFamily: getFontFamily(siteSettings?.slideshowTitleFont),
+                      fontSize: (siteSettings?.slideshowTitleSize || '48px').replace(/\s+/g, ''),
+                      color: siteSettings?.slideshowTextColor || '#ffffff'
+                    }}
                   >
                     {galleryImages[slideIndex]?.title}
                   </motion.h2>
@@ -775,11 +790,23 @@ export default function App() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.4, duration: 0.8 }}
-                    className="font-sans text-[12px] tracking-widest uppercase mb-6 md:mb-8 opacity-80"
+                    className="tracking-widest uppercase mb-6 md:mb-8 opacity-80"
+                    style={{
+                      fontFamily: getFontFamily(siteSettings?.slideshowSubtitleFont),
+                      fontSize: (siteSettings?.slideshowSubtitleSize || '12px').replace(/\s+/g, ''),
+                      color: siteSettings?.slideshowTextColor || '#ffffff'
+                    }}
                   >
                     {galleryImages[slideIndex]?.subtitle}
                   </motion.p>
-                  <div className="flex items-center gap-4">
+                  <div 
+                    className={(() => {
+                      const pos = siteSettings?.slideshowTextPosition;
+                      if (pos === 'centrado em baixo') return 'flex items-center justify-center gap-4';
+                      if (pos === 'canto inferior dto') return 'flex items-center justify-end gap-4';
+                      return 'flex items-center justify-start gap-4';
+                    })()}
+                  >
                     <button 
                       onClick={() => setActiveView('galeria')}
                       className="flex items-center gap-3 py-2 text-[12px] md:text-xs font-sans tracking-[0.2em] uppercase hover:text-white/70 transition-colors border-b border-white/30 hover:border-white pb-1 w-fit font-semibold"
@@ -802,7 +829,15 @@ export default function App() {
                 
                 {/* Slideshow Indicators */}
                 {galleryImages.length > 1 && (
-                  <div className="absolute bottom-8 md:bottom-16 right-6 md:right-16 z-20 flex gap-2">
+                  <div 
+                    className={(() => {
+                      const pos = siteSettings?.slideshowTextPosition;
+                      if (pos === 'canto inferior dto') {
+                        return 'absolute bottom-8 md:bottom-16 left-6 md:left-16 z-20 flex gap-2';
+                      }
+                      return 'absolute bottom-8 md:bottom-16 right-6 md:right-16 z-20 flex gap-2';
+                    })()}
+                  >
                     {galleryImages.map((_, i) => (
                       <button 
                         key={i} 
@@ -895,6 +930,7 @@ export default function App() {
                     enablePhotoComparison={siteSettings?.enablePhotoComparison}
                     enableMonochromeToggle={siteSettings?.enableMonochromeToggle}
                     enablePhotoLikes={siteSettings?.enablePhotoLikes}
+                    thumbnailSize={siteSettings?.thumbnailSize}
                   />
                 </>
               ) : (
@@ -1149,10 +1185,43 @@ export default function App() {
               })()}
             </div>
             
-            {/* Bottom Left Title/Subtitle */}
-            <div className="absolute bottom-8 left-8 z-[160] text-left">
-              <h3 className="text-white font-sans font-medium text-lg tracking-widest mb-1">{filteredGallery[selectedImageIndex]?.title}</h3>
-              <p className="text-white/80 font-sans text-[12px] tracking-widest uppercase">{filteredGallery[selectedImageIndex]?.subtitle}</p>
+            {/* Lightbox Caption with custom tipografia, cor e posição */}
+            <div 
+              className={(() => {
+                const pos = siteSettings?.lightboxTextPosition;
+                if (pos === 'centrado em baixo') {
+                  return 'absolute bottom-8 left-1/2 -translate-x-1/2 z-[160] text-center w-[90%] max-w-2xl';
+                }
+                if (pos === 'canto inferior dto') {
+                  return 'absolute bottom-8 right-8 z-[160] text-right';
+                }
+                return 'absolute bottom-8 left-8 z-[160] text-left';
+              })()}
+            >
+              {filteredGallery[selectedImageIndex]?.title && (
+                <h3 
+                  className="mb-1 tracking-widest font-medium"
+                  style={{
+                    fontFamily: getFontFamily(siteSettings?.lightboxTitleFont),
+                    fontSize: (siteSettings?.lightboxTitleSize || '18px').replace(/\s+/g, ''),
+                    color: siteSettings?.lightboxTextColor || '#ffffff'
+                  }}
+                >
+                  {filteredGallery[selectedImageIndex]?.title}
+                </h3>
+              )}
+              {filteredGallery[selectedImageIndex]?.subtitle && (
+                <p 
+                  className="tracking-widest uppercase opacity-80"
+                  style={{
+                    fontFamily: getFontFamily(siteSettings?.lightboxSubtitleFont),
+                    fontSize: (siteSettings?.lightboxSubtitleSize || '12px').replace(/\s+/g, ''),
+                    color: siteSettings?.lightboxTextColor || '#ffffff'
+                  }}
+                >
+                  {filteredGallery[selectedImageIndex]?.subtitle}
+                </p>
+              )}
             </div>
 
             {/* EXIF Overlay Panel */}

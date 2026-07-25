@@ -33,6 +33,7 @@ interface GalleryGridProps {
   enablePhotoComparison?: boolean;
   enableMonochromeToggle?: boolean;
   enablePhotoLikes?: boolean;
+  thumbnailSize?: string;
 }
 
 export default function GalleryGrid({ 
@@ -47,7 +48,8 @@ export default function GalleryGrid({
   enableGallerySearch = true,
   enablePhotoComparison = true,
   enableMonochromeToggle = true,
-  enablePhotoLikes = true
+  enablePhotoLikes = true,
+  thumbnailSize = '160 px'
 }: GalleryGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -225,19 +227,31 @@ export default function GalleryGrid({
 
   const gap = 16;
 
+  // Extract pixel value from thumbnailSize prop (e.g. "160 px" -> 160)
+  const targetSize = useMemo(() => {
+    if (thumbnailSize) {
+      const parsed = parseInt(thumbnailSize, 10);
+      if (!isNaN(parsed)) return parsed;
+    }
+    return 160;
+  }, [thumbnailSize]);
+
   // Calculate dynamic grid size on desktop
   const { cols, itemSize, rows, itemsPerPage } = useMemo(() => {
     if (dimensions.width === 0 || dimensions.height === 0) {
       return { cols: 4, itemSize: 220, rows: 2, itemsPerPage: 8 };
     }
     
-    let finalCols = 4;
-    if (dimensions.width < 640) finalCols = 1;
-    else if (dimensions.width < 900) finalCols = 2;
-    else if (dimensions.width < 1280) finalCols = 3;
+    // Calculate final cols based on target size fitting in dimensions.width
+    let finalCols = Math.max(1, Math.floor((dimensions.width + gap) / (targetSize + gap)));
+    
+    // Guard rails to prevent too many/few columns on key breakpoints
+    if (dimensions.width < 500 && finalCols > 2) finalCols = 2;
+    if (dimensions.width < 350 && finalCols > 1) finalCols = 1;
 
-    const minItemSize = 150;
-    const maxItemSize = 320;
+    // We allow itemSize to vary around targetSize slightly to fill width cleanly
+    const minItemSize = Math.max(80, targetSize - 40);
+    const maxItemSize = Math.min(500, targetSize + 60);
 
     const totalGapsWidth = (finalCols - 1) * gap;
     let widthBasedItemSize = Math.floor((dimensions.width - totalGapsWidth) / finalCols);
@@ -271,7 +285,7 @@ export default function GalleryGrid({
       rows,
       itemsPerPage: finalCols * rows
     };
-  }, [dimensions, gap]);
+  }, [dimensions, gap, targetSize]);
 
   const totalPages = Math.ceil(processedImages.length / itemsPerPage);
   const validPage = Math.min(Math.max(0, currentPage), Math.max(0, totalPages - 1));
@@ -407,7 +421,12 @@ export default function GalleryGrid({
           </div>
         ) : isMobile ? (
           /* MOBILE SCROLLING GRID */
-          <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-4 gap-3 min-[480px]:gap-4 w-full overflow-y-auto max-h-full pb-4">
+          <div 
+            className="grid gap-3 w-full overflow-y-auto max-h-full pb-4"
+            style={{
+              gridTemplateColumns: `repeat(auto-fill, minmax(${Math.min(180, targetSize)}px, 1fr))`
+            }}
+          >
             {processedImages.map((image, index) => {
               const isFav = favorites.includes(String(image.id));
               const isComp = comparisonIds.includes(image.id);

@@ -1,5 +1,6 @@
 export const SLIDESHOW_EFFECT_OPTIONS = [
   'Fade (Suave Dissolução)',
+  'Fade Ultra Suave (Transição Lenta)',
   'Ken Burns (Zoom Contínuo Lento)',
   'Slide Horizontal (Deslizar Clássico)',
   'Scale & Blur (Ampliação com Desfocagem)',
@@ -9,6 +10,7 @@ export const SLIDESHOW_EFFECT_OPTIONS = [
 
 export const LIGHTBOX_EFFECT_OPTIONS = [
   'Fade Standard (Dissolução Clássica)',
+  'Fade Ultra Suave (Dissolução Delicada)',
   'Ken Burns Zoom (Zoom In/Out Dramático)',
   'Slide Cross (Deslize Elegante Lateral)',
   'Scale Bounce (Escala com Elasticidade)',
@@ -25,6 +27,15 @@ export function getSlideshowVariants(effectName?: string, slideshowZoom: number 
       animate: { opacity: 1, scale: baseScale },
       exit: { opacity: 0 },
       transition: { duration: 0.3 }
+    };
+  }
+
+  if (effectName?.includes('Fade Ultra Suave')) {
+    return {
+      initial: { opacity: 0, scale: baseScale },
+      animate: { opacity: 1, scale: baseScale },
+      exit: { opacity: 0, scale: baseScale },
+      transition: { duration: 2.5, ease: "easeInOut" }
     };
   }
 
@@ -91,6 +102,15 @@ export function getLightboxVariants(effectName?: string, zoomLevel: number = 100
       animate: { opacity: 1, scale: scaleTarget },
       exit: { opacity: 0 },
       transition: { duration: 0.2 }
+    };
+  }
+
+  if (effectName?.includes('Fade Ultra Suave')) {
+    return {
+      initial: { opacity: 0 },
+      animate: { opacity: 1, scale: scaleTarget },
+      exit: { opacity: 0 },
+      transition: { duration: 0.6, ease: "easeInOut" }
     };
   }
 
