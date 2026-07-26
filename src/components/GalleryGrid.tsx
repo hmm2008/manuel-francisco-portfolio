@@ -25,6 +25,7 @@ interface GalleryGridProps {
   onImageClick: (filteredIndex: number) => void;
   protectPhotos?: boolean;
   showCaptions?: string;
+  captionPosition?: string;
   enableWatermark?: boolean;
   watermarkText?: string;
   watermarkPosition?: string;
@@ -41,6 +42,7 @@ export default function GalleryGrid({
   onImageClick, 
   protectPhotos, 
   showCaptions,
+  captionPosition,
   enableWatermark,
   watermarkText = '© Manuel Francisco',
   watermarkPosition = 'bottom-left',
@@ -203,7 +205,9 @@ export default function GalleryGrid({
       timeoutId = window.setTimeout(() => {
         for (const entry of entries) {
           const { width, height } = entry.contentRect;
-          setDimensions({ width, height });
+          if (width > 0 && height > 0) {
+            setDimensions({ width, height });
+          }
         }
       }, 50);
     };
@@ -212,10 +216,33 @@ export default function GalleryGrid({
     resizeObserver.observe(containerRef.current);
     
     const rect = containerRef.current.getBoundingClientRect();
-    setDimensions({ width: rect.width, height: rect.height });
+    if (rect.width > 0 && rect.height > 0) {
+      setDimensions({ width: rect.width, height: rect.height });
+    }
+
+    // Schedule additional measurements to guarantee dimensions are updated after transition animations finish
+    const timer1 = setTimeout(() => {
+      if (containerRef.current) {
+        const r = containerRef.current.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          setDimensions({ width: r.width, height: r.height });
+        }
+      }
+    }, 150);
+
+    const timer2 = setTimeout(() => {
+      if (containerRef.current) {
+        const r = containerRef.current.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          setDimensions({ width: r.width, height: r.height });
+        }
+      }
+    }, 450);
 
     return () => {
       clearTimeout(timeoutId);
+      clearTimeout(timer1);
+      clearTimeout(timer2);
       resizeObserver.disconnect();
     };
   }, [isMobile]);
@@ -238,54 +265,45 @@ export default function GalleryGrid({
 
   // Calculate dynamic grid size on desktop
   const { cols, itemSize, rows, itemsPerPage } = useMemo(() => {
-    if (dimensions.width === 0 || dimensions.height === 0) {
-      return { cols: 4, itemSize: 220, rows: 2, itemsPerPage: 8 };
+    const width = dimensions.width || (containerRef.current?.clientWidth ?? 800);
+
+    if (width <= 0) {
+      return { cols: 4, itemSize: 180, rows: 2, itemsPerPage: 8 };
     }
     
-    // Calculate final cols based on target size fitting in dimensions.width
-    let finalCols = Math.max(1, Math.floor((dimensions.width + gap) / (targetSize + gap)));
+    // Calculate final cols based on target size fitting in width
+    let finalCols = Math.max(1, Math.floor((width + gap) / (targetSize + gap)));
     
     // Guard rails to prevent too many/few columns on key breakpoints
-    if (dimensions.width < 500 && finalCols > 2) finalCols = 2;
-    if (dimensions.width < 350 && finalCols > 1) finalCols = 1;
+    if (width < 500 && finalCols > 2) finalCols = 2;
+    if (width < 350 && finalCols > 1) finalCols = 1;
 
     // We allow itemSize to vary around targetSize slightly to fill width cleanly
     const minItemSize = Math.max(80, targetSize - 40);
     const maxItemSize = Math.min(500, targetSize + 60);
 
     const totalGapsWidth = (finalCols - 1) * gap;
-    let widthBasedItemSize = Math.floor((dimensions.width - totalGapsWidth) / finalCols);
+    let widthBasedItemSize = Math.floor((width - totalGapsWidth) / finalCols);
     let finalItemSize = Math.max(minItemSize, Math.min(maxItemSize, widthBasedItemSize));
 
-    if (finalItemSize > dimensions.height) {
-      finalItemSize = Math.max(minItemSize, dimensions.height);
-    }
-    
-    let calculatedRows = Math.floor((dimensions.height + gap) / (finalItemSize + gap));
-    let rows = Math.max(1, calculatedRows);
-
-    if (rows === 1 && dimensions.height >= (minItemSize * 2 + gap)) {
-      const sizeForTwoRows = Math.floor((dimensions.height - gap) / 2);
-      if (sizeForTwoRows >= minItemSize) {
-        finalItemSize = Math.min(finalItemSize, sizeForTwoRows);
-        rows = 2;
-      }
+    // Determine rows deterministically based on window height to avoid layout jump
+    const viewHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
+    let rows = 2;
+    if (viewHeight < 550) {
+      rows = 1;
+    } else if (viewHeight > 1050 && finalItemSize < 220) {
+      rows = 3;
     }
 
-    while (rows > 1 && (rows * finalItemSize + (rows - 1) * gap) > dimensions.height) {
-      rows--;
-    }
-    while (finalCols > 1 && (finalCols * finalItemSize + (finalCols - 1) * gap) > dimensions.width) {
-      finalCols--;
-    }
+    const totalItems = Math.max(1, finalCols * rows);
 
     return {
       cols: finalCols,
       itemSize: finalItemSize,
       rows,
-      itemsPerPage: finalCols * rows
+      itemsPerPage: totalItems
     };
-  }, [dimensions, gap, targetSize]);
+  }, [dimensions.width, gap, targetSize]);
 
   const totalPages = Math.ceil(processedImages.length / itemsPerPage);
   const validPage = Math.min(Math.max(0, currentPage), Math.max(0, totalPages - 1));
@@ -310,7 +328,7 @@ export default function GalleryGrid({
   }, [comparisonIds, images]);
 
   return (
-    <div id="gallery-grid-wrapper" className="flex-1 w-full min-h-0 flex flex-col justify-between overflow-hidden relative">
+    <div id="gallery-grid-wrapper" className="w-full flex flex-col relative">
       
       {/* --- Top Utility Bar (Search, Sort, Favorites, Comparison) --- */}
       {(enableGallerySearch || enableFavorites || enablePhotoComparison) && (
@@ -405,7 +423,7 @@ export default function GalleryGrid({
       {/* --- Main Gallery Container --- */}
       <div 
         ref={containerRef} 
-        className="flex-1 w-full min-h-0 flex items-center justify-center overflow-hidden"
+        className="w-full min-h-[200px] flex items-center justify-center relative my-3"
       >
         {processedImages.length === 0 ? (
           <div className="text-center py-12 text-[#7a7a7a]/60 text-xs tracking-widest font-sans uppercase flex flex-col items-center gap-2">
@@ -510,19 +528,16 @@ export default function GalleryGrid({
                   </div>
 
                   {showCaptions !== 'Oculto' && (
-                    <div className={`absolute bottom-0 left-0 right-0 bg-black/65 text-white text-[10px] py-2 px-2 truncate transition-opacity text-center font-sans tracking-widest uppercase ${
+                    <div className={`${getWatermarkClasses(captionPosition || 'bottom-center', false)} flex flex-col transition-opacity ${
                       showCaptions === 'Sempre' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                     }`}>
-                      {image.title}
+                      <span className="font-bold">{image.title}</span>
+                      {image.subtitle && <span className="text-[0.8em] opacity-80 mt-0.5">{image.subtitle}</span>}
                     </div>
                   )}
                 </motion.div>
               );
             })}
-          </div>
-        ) : dimensions.width === 0 ? (
-          <div className="flex items-center justify-center h-20 text-[#7a7a7a]/40 text-[10px] tracking-widest font-sans uppercase">
-            A carregar galeria...
           </div>
         ) : (
           /* DESKTOP PAGINATED GRID */
@@ -534,8 +549,7 @@ export default function GalleryGrid({
               gap: `${gap}px`,
               justifyContent: 'center',
               alignContent: 'center',
-              width: '100%',
-              height: '100%'
+              width: '100%'
             }}
           >
             <AnimatePresence mode="popLayout">
@@ -627,10 +641,11 @@ export default function GalleryGrid({
                     </div>
 
                     {showCaptions !== 'Oculto' && (
-                      <div className={`absolute bottom-0 left-0 right-0 bg-black/75 text-white text-[12px] py-2 px-3 truncate transition-opacity text-center font-sans tracking-widest uppercase ${
+                      <div className={`${getWatermarkClasses(captionPosition || 'bottom-center', false)} flex flex-col transition-opacity ${
                         showCaptions === 'Sempre' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                       }`}>
-                        {image.title}
+                        <span className="font-bold">{image.title}</span>
+                        {image.subtitle && <span className="text-[0.8em] opacity-80 mt-0.5">{image.subtitle}</span>}
                       </div>
                     )}
                   </motion.div>
@@ -643,27 +658,27 @@ export default function GalleryGrid({
 
       {/* --- Desktop Pagination --- */}
       {!isMobile && totalPages > 1 && (
-        <div className="w-full border-t border-[#4a4a4a]/10 pt-4 mt-6 flex items-center justify-between text-[10px] tracking-[0.2em] font-sans font-semibold uppercase text-[#7a7a7a]">
+        <div className="w-full border-t border-[#4a4a4a]/15 pt-4 mt-6 mb-2 flex items-center justify-between text-[11px] tracking-[0.18em] font-sans font-semibold uppercase text-[#4a4a4a] flex-shrink-0 bg-white/30 backdrop-blur-xs px-4 py-2.5 rounded-lg border border-[#4a4a4a]/10">
           <button
             onClick={handlePrevPage}
             disabled={validPage === 0}
-            className="flex items-center gap-2 hover:text-[#1a1a1a] transition-colors disabled:opacity-20 disabled:pointer-events-none"
+            className="flex items-center gap-2 px-3 py-1.5 rounded hover:bg-[#4a4a4a]/10 hover:text-[#1a1a1a] transition-all disabled:opacity-25 disabled:pointer-events-none cursor-pointer"
           >
-            <ChevronLeft size={14} strokeWidth={1.5} />
+            <ChevronLeft size={16} strokeWidth={1.75} />
             <span>Página Anterior</span>
           </button>
           
-          <span className="text-[9px] tracking-[0.15em] text-[#7a7a7a]/60">
+          <span className="text-[10px] tracking-[0.2em] text-[#7a7a7a] font-mono px-3 py-1 bg-white/60 rounded-full border border-[#4a4a4a]/10">
             {validPage + 1} / {totalPages}
           </span>
 
           <button
             onClick={handleNextPage}
             disabled={validPage === totalPages - 1}
-            className="flex items-center gap-2 hover:text-[#1a1a1a] transition-colors disabled:opacity-20 disabled:pointer-events-none"
+            className="flex items-center gap-2 px-3 py-1.5 rounded hover:bg-[#4a4a4a]/10 hover:text-[#1a1a1a] transition-all disabled:opacity-25 disabled:pointer-events-none cursor-pointer"
           >
             <span>Página Seguinte</span>
-            <ChevronRight size={14} strokeWidth={1.5} />
+            <ChevronRight size={16} strokeWidth={1.75} />
           </button>
         </div>
       )}

@@ -13,7 +13,7 @@ import AdminPasswordPrompt from './components/AdminPasswordPrompt';
 import GalleryGrid from './components/GalleryGrid';
 import { getFontFamily } from './utils/fontUtils';
 import { getSlideshowVariants, getLightboxVariants } from './utils/transitionUtils';
-import { getWatermarkClasses } from './utils/watermarkUtils';
+import { getWatermarkClasses, getPositionClasses } from './utils/watermarkUtils';
 
 const AdminPanel = lazy(() => import('./AdminPanel'));
 const Biography = lazy(() => import('./components/Biography'));
@@ -131,6 +131,9 @@ export default function App() {
     enableGallerySearch: true,
     enableFavorites: true,
     enablePhotoComparison: true,
+    sidebarButtonSpacing: 16,
+    messageSpacing: 16,
+    slideshowTopMargin: 0,
   });
 
   const predefinedCategories = ['Paisagem', 'Retrato', 'Rua', 'Arquitetura', 'Natureza', 'Abstrato', 'Documentário', 'Animais'];
@@ -158,6 +161,19 @@ export default function App() {
         ...doc.data(),
         alt: doc.data().title || 'Fotografia',
       }));
+
+      // Sort by custom position order if present, fallback to createdAt desc
+      fetchedImages.sort((a, b) => {
+        const orderA = a.order !== undefined && a.order !== null ? Number(a.order) : Infinity;
+        const orderB = b.order !== undefined && b.order !== null ? Number(b.order) : Infinity;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+        const timeA = a.createdAt?.seconds || 0;
+        const timeB = b.createdAt?.seconds || 0;
+        return timeB - timeA;
+      });
+
       setGalleryImages(fetchedImages);
       setIsInitialLoading(false);
       
@@ -217,27 +233,70 @@ export default function App() {
     }
   }, [selectedImageIndex, filteredGallery]);
 
-  // Global right-click & drag protection when protectPhotos is enabled
+  const [showRightClickModal, setShowRightClickModal] = useState(false);
+
+  // Auto-hide right click modal when mouse button is released
   useEffect(() => {
-    if (siteSettings?.protectPhotos) {
-      const handleContextMenu = (e: MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        return false;
-      };
-      const handleDragStart = (e: DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        return false;
-      };
-      window.addEventListener('contextmenu', handleContextMenu, true);
-      window.addEventListener('dragstart', handleDragStart, true);
-      return () => {
-        window.removeEventListener('contextmenu', handleContextMenu, true);
-        window.removeEventListener('dragstart', handleDragStart, true);
-      };
-    }
-  }, [siteSettings?.protectPhotos]);
+    if (!showRightClickModal) return;
+    const handleMouseUp = () => {
+      setShowRightClickModal(false);
+    };
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('pointerup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('pointerup', handleMouseUp);
+    };
+  }, [showRightClickModal]);
+
+  // Global right-click & drag protection and right-click copyright message
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (
+        target.tagName === 'IMG' || 
+        target.closest('img') || 
+        target.closest('.group') || 
+        target.closest('figure') ||
+        target.closest('[class*="slideshow"]') ||
+        target.closest('[class*="lightbox"]') ||
+        target.closest('div[class*="gallery"]')
+      )) {
+        if (siteSettings?.protectPhotos || siteSettings?.enableRightClickMessage !== false) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (siteSettings?.enableRightClickMessage !== false) {
+            setShowRightClickModal(true);
+          }
+          return false;
+        }
+      }
+    };
+    const handleDragStart = (e: DragEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (
+        target.tagName === 'IMG' || 
+        target.closest('img') || 
+        target.closest('.group') || 
+        target.closest('figure') ||
+        target.closest('[class*="slideshow"]') ||
+        target.closest('[class*="lightbox"]') ||
+        target.closest('div[class*="gallery"]')
+      )) {
+        if (siteSettings?.protectPhotos) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      }
+    };
+    window.addEventListener('contextmenu', handleContextMenu, true);
+    window.addEventListener('dragstart', handleDragStart, true);
+    return () => {
+      window.removeEventListener('contextmenu', handleContextMenu, true);
+      window.removeEventListener('dragstart', handleDragStart, true);
+    };
+  }, [siteSettings?.protectPhotos, siteSettings?.enableRightClickMessage]);
   
   const [cookiesAccepted, setCookiesAccepted] = useState<boolean>(() => {
     return localStorage.getItem('cookiesAccepted') === 'true';
@@ -338,6 +397,55 @@ export default function App() {
     setTouchDelta({ x: 0, y: 0 });
   };
 
+  // SEO and Head Configuration
+  useEffect(() => {
+    if (!siteSettings) return;
+
+    // Update Title
+    if (siteSettings.seoTitle) {
+      document.title = siteSettings.seoTitle;
+    } else if (siteSettings.siteName) {
+      document.title = siteSettings.siteName.replace('\n', ' ');
+    }
+
+    // Update Meta Description
+    let metaDesc = document.querySelector('meta[name="description"]');
+    if (!metaDesc) {
+      metaDesc = document.createElement('meta');
+      metaDesc.setAttribute('name', 'description');
+      document.head.appendChild(metaDesc);
+    }
+    if (siteSettings.seoDescription) {
+      metaDesc.setAttribute('content', siteSettings.seoDescription);
+    }
+
+    // Update Meta Keywords
+    let metaKeywords = document.querySelector('meta[name="keywords"]');
+    if (!metaKeywords) {
+      metaKeywords = document.createElement('meta');
+      metaKeywords.setAttribute('name', 'keywords');
+      document.head.appendChild(metaKeywords);
+    }
+    if (siteSettings.seoKeywords) {
+      metaKeywords.setAttribute('content', siteSettings.seoKeywords);
+    }
+
+    // Apply Custom CSS
+    if (siteSettings.customCss) {
+      let styleTag = document.getElementById('user-custom-css');
+      if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = 'user-custom-css';
+        document.head.appendChild(styleTag);
+      }
+      styleTag.textContent = siteSettings.customCss;
+    } else {
+      const styleTag = document.getElementById('user-custom-css');
+      if (styleTag) styleTag.remove();
+    }
+
+  }, [siteSettings]);
+
   // Comprehensive Keyboard Shortcuts Event Listener
   useEffect(() => {
     if (siteSettings?.enableKeyboardShortcuts === false) return;
@@ -437,7 +545,7 @@ export default function App() {
       
       {/* Cookie Consent Modal */}
       <AnimatePresence>
-        {!cookiesAccepted && (
+        {!cookiesAccepted && siteSettings?.enableCookieConsent !== false && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -486,6 +594,33 @@ export default function App() {
                 Sem aceitar cookies não é possível aceder ao site
               </p>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Maintenance Mode Overlay */}
+      <AnimatePresence>
+        {siteSettings?.maintenanceMode && !isAdminUnlocked && activeView !== 'admin' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6 bg-[#fafafa]"
+          >
+            <div className="text-center space-y-6 max-w-lg">
+              <h1 className="font-serif text-3xl md:text-5xl text-[#1a1a1a]">
+                Em Manutenção
+              </h1>
+              <p className="text-[#8e8a82] font-sans text-sm md:text-base leading-relaxed">
+                Este espaço encontra-se temporariamente indisponível para atualização de conteúdos. Por favor, volte mais tarde.
+              </p>
+              <button 
+                onClick={() => setActiveView('admin')}
+                className="mt-8 px-6 py-3 border border-[#e2ddd5] text-[#8e8a82] text-[10px] tracking-widest uppercase hover:text-[#1a1a1a] hover:border-[#1a1a1a] transition-all font-semibold"
+              >
+                Acesso Reservado
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -693,7 +828,7 @@ export default function App() {
           <div 
             className="px-10 text-xs md:text-sm font-sans leading-relaxed mb-8 whitespace-pre-line"
             style={{ 
-              marginTop: `${siteSettings?.messageSpacing || 0}px`,
+              marginTop: `${siteSettings?.messageSpacing !== undefined ? siteSettings.messageSpacing : 16}px`,
               fontSize: `${siteSettings?.messageFontSize || 13}px`,
               color: siteSettings?.messageColor || '#4a4a4a',
               textAlign: siteSettings?.messageAlignment || 'left',
@@ -710,7 +845,11 @@ export default function App() {
                 <button
                   key={item.id}
                   onClick={() => setActiveView(item.id as View)}
-                  style={menuStyle}
+                  style={{
+                    ...menuStyle,
+                    paddingTop: siteSettings?.sidebarButtonSpacing !== undefined ? `${siteSettings.sidebarButtonSpacing}px` : undefined,
+                    paddingBottom: siteSettings?.sidebarButtonSpacing !== undefined ? `${siteSettings.sidebarButtonSpacing}px` : undefined,
+                  }}
                   className={navItemClass(isActive)}
                 >
                   {isActive && (
@@ -733,83 +872,168 @@ export default function App() {
       <main className="flex-1 h-full relative overflow-hidden bg-[#f0f0f0]">
         {activeView === 'inicio' ? (
           <div 
-            className="relative w-full h-full transition-colors duration-500"
-            style={{ backgroundColor: siteSettings?.slideshowBgColor || '#1a1a1a' }}
+            className="w-full h-full flex items-center justify-center relative overflow-hidden transition-all duration-300"
+            style={{ 
+              padding: `${siteSettings?.slideshowTopMargin !== undefined ? siteSettings.slideshowTopMargin : 0}px` 
+            }}
           >
+            <div 
+              className={`relative w-full h-full max-w-full max-h-full flex transition-colors duration-500 overflow-hidden ${
+                siteSettings?.slideshowControlsPosition === 'top' ? 'flex-col-reverse' : 'flex-col'
+              }`}
+              style={{ 
+                backgroundColor: siteSettings?.slideshowBgColor || '#1a1a1a',
+                borderRadius: siteSettings?.slideshowTopMargin ? '8px' : '0px'
+              }}
+            >
             {galleryImages.length > 0 ? (
               <>
+                <div className="relative flex-1 overflow-hidden grid place-items-center">
                 {(() => {
                   const slideshowVariants = getSlideshowVariants(siteSettings?.slideshowEffect, Number(siteSettings?.slideshowZoom) || 105, siteSettings?.reduceAnimations);
+                  const photoPadding = siteSettings?.slideshowPhotoPadding !== undefined ? siteSettings.slideshowPhotoPadding : 16;
                   return (
                     <AnimatePresence mode="popLayout">
-                      <motion.img
+                      <motion.div
                         key={slideIndex}
-                        src={galleryImages[slideIndex]?.url}
-                        alt={galleryImages[slideIndex]?.alt}
-                        decoding="async"
-                        fetchPriority="high"
-                        referrerPolicy="no-referrer"
                         initial={slideshowVariants.initial}
                         animate={slideshowVariants.animate}
                         exit={slideshowVariants.exit}
                         transition={slideshowVariants.transition}
-                        className={`absolute inset-0 w-full h-full ${siteSettings?.slideshowFit === 'Preencher' ? 'object-cover' : 'object-contain'}`}
-                      />
+                        className="[grid-area:1/1] relative flex w-full h-full items-center justify-center"
+                        style={{ padding: `${photoPadding}px` }}
+                      >
+                        {(() => {
+                          const currentSlide = galleryImages[slideIndex];
+                          const titleText = currentSlide?.title || currentSlide?.caption || (currentSlide?.alt !== 'Fotografia' ? currentSlide?.alt : '');
+                          const subtitleText = currentSlide?.subtitle || currentSlide?.description || '';
+                          const textPos = siteSettings?.slideshowTextPosition || 'bottom-left';
+                          const alignClasses = 
+                            textPos.includes('right') || textPos.includes('dto') || textPos.includes('direito') ? 'items-end text-right' :
+                            textPos.includes('center') || textPos.includes('centro') || textPos.includes('centrado') ? 'items-center text-center' :
+                            'items-start text-left';
+
+                          return (
+                            <div className="relative w-full h-full flex items-center justify-center rounded-sm">
+                              <div className={`relative inline-flex items-center justify-center rounded-sm max-w-full max-h-full overflow-hidden ${
+                                siteSettings?.slideshowFit === 'Preencher' ? 'w-full h-full' : 'w-auto h-auto'
+                              }`}>
+                                <img
+                                  src={currentSlide?.url}
+                                  alt={currentSlide?.alt || titleText || 'Fotografia'}
+                                  decoding="async"
+                                  fetchPriority="high"
+                                  referrerPolicy="no-referrer"
+                                  className={`block ${
+                                    siteSettings?.slideshowFit === 'Preencher' 
+                                      ? 'w-full h-full object-cover object-center' 
+                                      : 'max-w-full max-h-full object-contain object-center'
+                                  }`}
+                                  style={siteSettings?.slideshowFit === 'Preencher' ? {} : { height: 'auto', width: 'auto', maxHeight: 'calc(100vh - 140px)', maxWidth: '100%' }}
+                                />
+
+                                {siteSettings?.enableWatermark && siteSettings?.showWatermarkInSlideshow !== false && (
+                                  <div className={`${getWatermarkClasses(siteSettings?.slideshowWatermarkPosition || siteSettings?.watermarkPosition, true)} z-40`}>
+                                    {siteSettings?.watermarkText || '© Manuel Francisco'}
+                                  </div>
+                                )}
+
+                                {siteSettings?.showSlideshowCaptions !== false && (titleText || subtitleText) && (
+                                  <div className={`absolute z-50 pointer-events-none select-none flex flex-col p-4 md:p-6 ${getPositionClasses(textPos, true)} ${alignClasses}`}>
+                                    {titleText && (
+                                      <motion.h2 
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.2, duration: 0.8 }}
+                                        className="mb-1 sm:mb-2 tracking-wide font-light drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
+                                        style={{
+                                          fontFamily: getFontFamily(siteSettings?.slideshowTitleFont),
+                                          fontSize: (siteSettings?.slideshowTitleSize || '48px').replace(/\s+/g, ''),
+                                          color: siteSettings?.slideshowTextColor || '#ffffff'
+                                        }}
+                                      >
+                                        {titleText}
+                                      </motion.h2>
+                                    )}
+                                    {subtitleText && (
+                                      <motion.p 
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        transition={{ delay: 0.4, duration: 0.8 }}
+                                        className="tracking-widest uppercase opacity-95 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
+                                        style={{
+                                          fontFamily: getFontFamily(siteSettings?.slideshowSubtitleFont),
+                                          fontSize: (siteSettings?.slideshowSubtitleSize || '12px').replace(/\s+/g, ''),
+                                          color: siteSettings?.slideshowTextColor || '#ffffff'
+                                        }}
+                                      >
+                                        {subtitleText}
+                                      </motion.p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </motion.div>
                     </AnimatePresence>
                   );
                 })()}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10 pointer-events-none" />
+                </div>
+                
+                {/* Controls Area (Outside Photo) */}
                 <div 
-                  className={(() => {
-                    const pos = siteSettings?.slideshowTextPosition;
-                    if (pos === 'centrado em baixo') {
-                      return 'absolute bottom-8 md:bottom-16 left-1/2 -translate-x-1/2 z-20 text-center w-[90%] max-w-2xl flex flex-col items-center';
-                    }
-                    if (pos === 'canto inferior dto') {
-                      return 'absolute bottom-8 md:bottom-16 right-6 md:right-16 z-20 text-right flex flex-col items-end';
-                    }
-                    return 'absolute bottom-8 md:bottom-16 left-6 md:left-16 z-20 text-left flex flex-col items-start';
-                  })()}
+                  className={`shrink-0 p-4 sm:p-6 lg:px-8 lg:py-6 flex flex-col gap-3 z-20 ${
+                    siteSettings?.slideshowControlsAlign === 'left' ? 'items-start text-left' :
+                    siteSettings?.slideshowControlsAlign === 'right' ? 'items-end text-right' :
+                    'items-center text-center'
+                  }`}
+                  style={{ backgroundColor: siteSettings?.slideshowBgColor || '#1a1a1a' }}
                 >
-                  <motion.h2 
-                    key={`title-${slideIndex}`}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2, duration: 0.8 }}
-                    className="mb-2 tracking-wide font-light"
-                    style={{
-                      fontFamily: getFontFamily(siteSettings?.slideshowTitleFont),
-                      fontSize: (siteSettings?.slideshowTitleSize || '48px').replace(/\s+/g, ''),
-                      color: siteSettings?.slideshowTextColor || '#ffffff'
-                    }}
-                  >
-                    {galleryImages[slideIndex]?.title}
-                  </motion.h2>
-                  <motion.p 
-                    key={`subtitle-${slideIndex}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.4, duration: 0.8 }}
-                    className="tracking-widest uppercase mb-6 md:mb-8 opacity-80"
-                    style={{
-                      fontFamily: getFontFamily(siteSettings?.slideshowSubtitleFont),
-                      fontSize: (siteSettings?.slideshowSubtitleSize || '12px').replace(/\s+/g, ''),
-                      color: siteSettings?.slideshowTextColor || '#ffffff'
-                    }}
-                  >
-                    {galleryImages[slideIndex]?.subtitle}
-                  </motion.p>
                   <div 
-                    className={(() => {
-                      const pos = siteSettings?.slideshowTextPosition;
-                      if (pos === 'centrado em baixo') return 'flex items-center justify-center gap-4';
-                      if (pos === 'canto inferior dto') return 'flex items-center justify-end gap-4';
-                      return 'flex items-center justify-start gap-4';
-                    })()}
+                    className="tracking-[0.2em] uppercase mb-1"
+                    style={{
+                      fontFamily: getFontFamily(siteSettings?.slideshowControlsFont),
+                      fontSize: (siteSettings?.slideshowControlsSize || '11px').replace(/\s+/g, ''),
+                      color: siteSettings?.slideshowControlsColor || '#ffffff',
+                      opacity: 0.6
+                    }}
                   >
+                    {slideIndex + 1} <span className="mx-1 opacity-50">/</span> {galleryImages.length}
+                  </div>
+                  
+                  {galleryImages.length > 1 && (
+                    <div className="flex gap-2 mb-2">
+                      {galleryImages.map((_, i) => (
+                        <button 
+                          key={i} 
+                          onClick={() => setSlideIndex(i)}
+                          className={`h-[2px] transition-all duration-500 ${i === slideIndex ? 'w-8' : 'w-4 hover:opacity-80'}`} 
+                          style={{
+                            backgroundColor: siteSettings?.slideshowControlsColor || '#ffffff',
+                            opacity: i === slideIndex ? 1 : 0.3
+                          }}
+                          aria-label={`Ir para a foto ${i + 1}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  
+                  <div className={`flex items-center gap-4 ${
+                    siteSettings?.slideshowControlsAlign === 'left' ? 'justify-start' :
+                    siteSettings?.slideshowControlsAlign === 'right' ? 'justify-end' :
+                    'justify-center'
+                  } w-full`}>
                     <button 
                       onClick={() => setActiveView('galeria')}
-                      className="flex items-center gap-3 py-2 text-[12px] md:text-xs font-sans tracking-[0.2em] uppercase hover:text-white/70 transition-colors border-b border-white/30 hover:border-white pb-1 w-fit font-semibold"
+                      className="flex items-center gap-3 py-2 tracking-[0.2em] uppercase hover:opacity-70 transition-all border-b pb-1 w-fit font-semibold"
+                      style={{
+                        fontFamily: getFontFamily(siteSettings?.slideshowControlsFont),
+                        fontSize: (siteSettings?.slideshowControlsSize || '11px').replace(/\s+/g, ''),
+                        color: siteSettings?.slideshowControlsColor || '#ffffff',
+                        borderColor: `${siteSettings?.slideshowControlsColor || '#ffffff'}4d`
+                      }}
                     >
                       <span>VER GALERIA</span>
                       <ArrowRight className="w-3 h-3" strokeWidth={1.5} />
@@ -818,36 +1042,21 @@ export default function App() {
                     {siteSettings?.enableZenMode !== false && (
                       <button 
                         onClick={() => setShowZenMode(true)}
-                        className="flex items-center gap-2 px-4 py-1.5 bg-black/40 hover:bg-black/70 border border-white/30 hover:border-white/60 text-[11px] md:text-xs font-sans tracking-[0.2em] uppercase text-amber-200 transition-all rounded-full backdrop-blur-md"
+                        className="flex items-center gap-2 px-4 py-1.5 hover:opacity-80 transition-all rounded-full border backdrop-blur-md"
+                        style={{
+                          backgroundColor: siteSettings?.zenModeButtonBgColor || 'rgba(0, 0, 0, 0.4)',
+                          color: siteSettings?.zenModeButtonColor || '#fde68a',
+                          borderColor: `${siteSettings?.zenModeButtonColor || '#fde68a'}4d`,
+                          fontFamily: getFontFamily(siteSettings?.slideshowControlsFont),
+                          fontSize: (siteSettings?.slideshowControlsSize || '11px').replace(/\s+/g, ''),
+                        }}
                       >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                        <Sparkles className="w-3.5 h-3.5 animate-pulse" style={{ color: siteSettings?.zenModeButtonColor || '#fde68a' }} />
                         <span>MODO ZEN</span>
                       </button>
                     )}
                   </div>
                 </div>
-                
-                {/* Slideshow Indicators */}
-                {galleryImages.length > 1 && (
-                  <div 
-                    className={(() => {
-                      const pos = siteSettings?.slideshowTextPosition;
-                      if (pos === 'canto inferior dto') {
-                        return 'absolute bottom-8 md:bottom-16 left-6 md:left-16 z-20 flex gap-2';
-                      }
-                      return 'absolute bottom-8 md:bottom-16 right-6 md:right-16 z-20 flex gap-2';
-                    })()}
-                  >
-                    {galleryImages.map((_, i) => (
-                      <button 
-                        key={i} 
-                        onClick={() => setSlideIndex(i)}
-                        className={`h-[2px] transition-all duration-500 ${i === slideIndex ? 'w-8 bg-white' : 'w-4 bg-white/30 hover:bg-white/60'}`} 
-                        aria-label={`Ir para a foto ${i + 1}`}
-                      />
-                    ))}
-                  </div>
-                )}
               </>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-center p-8 bg-[#1a1a1a]">
@@ -871,90 +1080,94 @@ export default function App() {
               </div>
             )}
           </div>
+        </div>
         ) : activeView === 'galeria' ? (
-          <div className={`w-full h-full p-6 md:p-10 flex flex-col justify-between ${isMobileLandscape ? 'overflow-y-auto' : 'md:overflow-hidden overflow-y-auto'}`}>
-            <div className={`flex flex-col w-full flex-shrink-0 ${isMobileLandscape ? '' : 'md:flex-1 md:min-h-0'}`}>
-              <div className={`text-center w-full max-w-5xl mx-auto flex-shrink-0 ${isMobileLandscape ? 'mb-3' : 'mb-6'}`}>
-                {!isMobileLandscape && (
-                  <div className="border-y border-[#4a4a4a]/10 py-4 mb-4">
-                    <h1 className="font-sans text-lg md:text-xl text-[#4a4a4a] tracking-widest uppercase font-semibold">
-                      Manuel Francisco Fotografia
-                    </h1>
-                  </div>
-                )}
-                <h2 className={`font-sans font-medium text-[#4a4a4a] tracking-wide mb-1 ${isMobileLandscape ? 'text-lg' : 'text-xl md:text-2xl'}`}>Galeria</h2>
-                <p className="text-[#7a7a7a] tracking-widest text-[10px] sm:text-[12px] uppercase font-sans">{filteredGallery.length} FOTOGRAFIAS</p>
-              </div>
-              
-              {galleryImages.length > 0 ? (
-                <>
-                  <div className={`flex flex-wrap items-center justify-center gap-1.5 flex-shrink-0 ${isMobileLandscape ? 'mb-3' : 'mb-6'}`}>
-                    <button 
-                      onClick={() => setSelectedCategory('TODAS')}
-                      className={`px-3 py-1.5 border transition-colors text-[9px] tracking-[0.1em] uppercase ${selectedCategory === 'TODAS' ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'}`}
-                    >
-                      TODAS
-                    </button>
-                    {allCategories.map(cat => (
+          <div className="w-full h-full p-4 sm:p-6 lg:p-8 overflow-y-auto">
+            <div className="w-full max-w-5xl mx-auto flex flex-col min-h-full justify-between">
+              <div className="flex flex-col w-full">
+                <div className={`text-center w-full max-w-5xl mx-auto flex-shrink-0 ${isMobileLandscape ? 'mb-2' : 'mb-4'}`}>
+                  {!isMobileLandscape && (
+                    <div className="border-y border-[#4a4a4a]/10 py-2.5 mb-3">
+                      <h1 className="font-sans text-base md:text-lg text-[#4a4a4a] tracking-widest uppercase font-semibold">
+                        Manuel Francisco Fotografia
+                      </h1>
+                    </div>
+                  )}
+                  <h2 className={`font-sans font-medium text-[#4a4a4a] tracking-wide mb-1 ${isMobileLandscape ? 'text-base' : 'text-lg md:text-xl'}`}>Galeria</h2>
+                  <p className="text-[#7a7a7a] tracking-widest text-[10px] sm:text-[11px] uppercase font-sans">{filteredGallery.length} FOTOGRAFIAS</p>
+                </div>
+                
+                {galleryImages.length > 0 ? (
+                  <>
+                    <div className={`flex flex-wrap items-center justify-center gap-1.5 flex-shrink-0 ${isMobileLandscape ? 'mb-2' : 'mb-4'}`}>
                       <button 
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`px-3 py-1.5 border transition-colors text-[9px] tracking-[0.1em] uppercase ${selectedCategory === cat ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'}`}
+                        onClick={() => setSelectedCategory('TODAS')}
+                        className={`px-3 py-1.5 border transition-colors text-[9px] tracking-[0.1em] uppercase ${selectedCategory === 'TODAS' ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'}`}
                       >
-                        {cat}
+                        TODAS
                       </button>
-                    ))}
+                      {allCategories.map(cat => (
+                        <button 
+                          key={cat}
+                          onClick={() => setSelectedCategory(cat)}
+                          className={`px-3 py-1.5 border transition-colors text-[9px] tracking-[0.1em] uppercase ${selectedCategory === cat ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'}`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
 
-                    {siteSettings?.enableZenMode !== false && (
+                      {siteSettings?.enableZenMode !== false && (
+                        <button 
+                          onClick={() => setShowZenMode(true)}
+                          className="ml-2 px-3 py-1.5 bg-[#1a1a1a] hover:bg-[#333] text-amber-200 border border-amber-300/30 hover:border-amber-300/70 transition-all text-[9px] tracking-[0.1em] uppercase flex items-center gap-1.5 font-bold rounded-full shadow-sm"
+                          title="Apresentação Zen Fullscreen"
+                        >
+                          <Sparkles size={12} className="text-amber-300 animate-pulse" />
+                          <span>Modo Zen</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <GalleryGrid 
+                      images={filteredGallery} 
+                      onImageClick={openLightbox} 
+                      protectPhotos={siteSettings?.protectPhotos}
+                      showCaptions={siteSettings?.showCaptions}
+                      captionPosition={siteSettings?.captionPosition}
+                      enableWatermark={siteSettings?.enableWatermark}
+                      watermarkText={siteSettings?.watermarkText}
+                      watermarkPosition={siteSettings?.watermarkPosition}
+                      enableFavorites={siteSettings?.enableFavorites}
+                      enableGallerySearch={siteSettings?.enableGallerySearch}
+                      enablePhotoComparison={siteSettings?.enablePhotoComparison}
+                      enableMonochromeToggle={siteSettings?.enableMonochromeToggle}
+                      enablePhotoLikes={siteSettings?.enablePhotoLikes}
+                      thumbnailSize={siteSettings?.thumbnailSize}
+                    />
+                  </>
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
+                    <p className="text-[#7a7a7a] text-[10px] md:text-xs font-sans tracking-[0.2em] uppercase mb-4">A galeria está vazia de momento.</p>
+                    {isAdminUnlocked && (
                       <button 
-                        onClick={() => setShowZenMode(true)}
-                        className="ml-2 px-3 py-1.5 bg-[#1a1a1a] hover:bg-[#333] text-amber-200 border border-amber-300/30 hover:border-amber-300/70 transition-all text-[9px] tracking-[0.1em] uppercase flex items-center gap-1.5 font-bold rounded-full shadow-sm"
-                        title="Apresentação Zen Fullscreen"
+                        onClick={() => setActiveView('admin')}
+                        className="px-6 py-3 border border-[#4a4a4a]/20 hover:border-[#4a4a4a]/50 text-[#4a4a4a] text-[10px] font-sans tracking-widest uppercase transition-colors font-semibold"
                       >
-                        <Sparkles size={12} className="text-amber-300 animate-pulse" />
-                        <span>Modo Zen</span>
+                        Adicionar Fotografias
                       </button>
                     )}
                   </div>
-
-                  <GalleryGrid 
-                    images={filteredGallery} 
-                    onImageClick={openLightbox} 
-                    protectPhotos={siteSettings?.protectPhotos}
-                    showCaptions={siteSettings?.showCaptions}
-                    enableWatermark={siteSettings?.enableWatermark}
-                    watermarkText={siteSettings?.watermarkText}
-                    watermarkPosition={siteSettings?.watermarkPosition}
-                    enableFavorites={siteSettings?.enableFavorites}
-                    enableGallerySearch={siteSettings?.enableGallerySearch}
-                    enablePhotoComparison={siteSettings?.enablePhotoComparison}
-                    enableMonochromeToggle={siteSettings?.enableMonochromeToggle}
-                    enablePhotoLikes={siteSettings?.enablePhotoLikes}
-                    thumbnailSize={siteSettings?.thumbnailSize}
-                  />
-                </>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
-                  <p className="text-[#7a7a7a] text-[10px] md:text-xs font-sans tracking-[0.2em] uppercase mb-4">A galeria está vazia de momento.</p>
-                  {isAdminUnlocked && (
-                    <button 
-                      onClick={() => setActiveView('admin')}
-                      className="px-6 py-3 border border-[#4a4a4a]/20 hover:border-[#4a4a4a]/50 text-[#4a4a4a] text-[10px] font-sans tracking-widest uppercase transition-colors font-semibold"
-                    >
-                      Adicionar Fotografias
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            <div className="flex-shrink-0 mt-auto pt-4 md:pt-0 w-full max-w-5xl mx-auto">
-              <Footer 
-                activeView={activeView} 
-                setActiveView={setActiveView} 
-                settings={siteSettings} 
-                onOpenTerms={() => setShowTermsModal(true)} 
-              />
+                )}
+              </div>
+              
+              <div className="w-full pt-4 mt-auto flex-shrink-0">
+                <Footer 
+                  activeView={activeView} 
+                  setActiveView={setActiveView} 
+                  settings={siteSettings} 
+                  onOpenTerms={() => setShowTermsModal(true)} 
+                />
+              </div>
             </div>
           </div>
         ) : activeView === 'biografia' ? (
@@ -1165,7 +1378,7 @@ export default function App() {
                       opacity: touchStart && Math.abs(touchDelta.y) > 30 ? Math.max(0.3, 1 - Math.abs(touchDelta.y) / 300) : 1,
                       transition: touchStart ? 'none' : 'transform 0.25s ease-out, opacity 0.25s ease-out'
                     }}
-                    className="relative z-[150] flex items-center justify-center"
+                    className="relative z-[150] flex items-center justify-center max-w-full max-h-screen"
                   >
                     <img
                       src={filteredGallery[selectedImageIndex]?.url}
@@ -1173,57 +1386,50 @@ export default function App() {
                       decoding="async"
                       fetchPriority="high"
                       referrerPolicy="no-referrer"
-                      className="max-h-screen max-w-full object-contain pointer-events-none"
+                      className="max-h-screen max-w-full block"
                     />
                     {siteSettings?.enableWatermark && (
                       <div className={getWatermarkClasses(siteSettings?.watermarkPosition, true)}>
                         {siteSettings?.watermarkText || '© Manuel Francisco'}
                       </div>
                     )}
+                    
+                    {/* Lightbox Caption inserida na foto */}
+                    <div className={`absolute pointer-events-none select-none flex flex-col ${getPositionClasses(siteSettings?.lightboxTextPosition, true)} ${
+                      siteSettings?.lightboxTextPosition?.includes('right') ? 'items-end text-right' :
+                      siteSettings?.lightboxTextPosition?.includes('center') || siteSettings?.lightboxTextPosition === 'centrado em baixo' ? 'items-center text-center' :
+                      'items-start text-left'
+                    }`}>
+                      {filteredGallery[selectedImageIndex]?.title && (
+                        <h3 
+                          className="tracking-widest font-medium drop-shadow-md"
+                          style={{
+                            fontFamily: getFontFamily(siteSettings?.lightboxTitleFont),
+                            fontSize: (siteSettings?.lightboxTitleSize || '18px').replace(/\s+/g, ''),
+                            color: siteSettings?.lightboxTextColor || '#ffffff'
+                          }}
+                        >
+                          {filteredGallery[selectedImageIndex]?.title}
+                        </h3>
+                      )}
+                      {filteredGallery[selectedImageIndex]?.subtitle && (
+                        <p 
+                          className="tracking-widest uppercase opacity-90 drop-shadow-md mt-1"
+                          style={{
+                            fontFamily: getFontFamily(siteSettings?.lightboxSubtitleFont),
+                            fontSize: (siteSettings?.lightboxSubtitleSize || '12px').replace(/\s+/g, ''),
+                            color: siteSettings?.lightboxTextColor || '#ffffff'
+                          }}
+                        >
+                          {filteredGallery[selectedImageIndex]?.subtitle}
+                        </p>
+                      )}
+                    </div>
                   </motion.div>
                 );
               })()}
             </div>
             
-            {/* Lightbox Caption with custom tipografia, cor e posição */}
-            <div 
-              className={(() => {
-                const pos = siteSettings?.lightboxTextPosition;
-                if (pos === 'centrado em baixo') {
-                  return 'absolute bottom-8 left-1/2 -translate-x-1/2 z-[160] text-center w-[90%] max-w-2xl';
-                }
-                if (pos === 'canto inferior dto') {
-                  return 'absolute bottom-8 right-8 z-[160] text-right';
-                }
-                return 'absolute bottom-8 left-8 z-[160] text-left';
-              })()}
-            >
-              {filteredGallery[selectedImageIndex]?.title && (
-                <h3 
-                  className="mb-1 tracking-widest font-medium"
-                  style={{
-                    fontFamily: getFontFamily(siteSettings?.lightboxTitleFont),
-                    fontSize: (siteSettings?.lightboxTitleSize || '18px').replace(/\s+/g, ''),
-                    color: siteSettings?.lightboxTextColor || '#ffffff'
-                  }}
-                >
-                  {filteredGallery[selectedImageIndex]?.title}
-                </h3>
-              )}
-              {filteredGallery[selectedImageIndex]?.subtitle && (
-                <p 
-                  className="tracking-widest uppercase opacity-80"
-                  style={{
-                    fontFamily: getFontFamily(siteSettings?.lightboxSubtitleFont),
-                    fontSize: (siteSettings?.lightboxSubtitleSize || '12px').replace(/\s+/g, ''),
-                    color: siteSettings?.lightboxTextColor || '#ffffff'
-                  }}
-                >
-                  {filteredGallery[selectedImageIndex]?.subtitle}
-                </p>
-              )}
-            </div>
-
             {/* EXIF Overlay Panel */}
             <AnimatePresence>
               {showExifPanel && filteredGallery[selectedImageIndex] && (
@@ -1520,6 +1726,35 @@ export default function App() {
               onClose={() => setShowZenMode(false)}
             />
           </Suspense>
+        )}
+      </AnimatePresence>
+
+      {/* Right Click Copyright Overlay */}
+      <AnimatePresence>
+        {showRightClickModal && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[400] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 pointer-events-none"
+          >
+            <div
+              className="max-w-xs w-full px-5 py-3 rounded shadow-2xl border border-white/20 text-center flex flex-col items-center gap-1.5 pointer-events-auto"
+              style={{
+                backgroundColor: siteSettings?.rightClickBgColor || 'rgba(0, 0, 0, 0.85)',
+                fontFamily: getFontFamily(siteSettings?.rightClickFont || 'Plus Jakarta Sans — sans-serif limpo moderno'),
+                color: siteSettings?.rightClickColor || '#ffffff',
+              }}
+            >
+              <h4 className="font-bold tracking-wide" style={{ fontSize: siteSettings?.rightClickSize || '13px' }}>
+                {siteSettings?.rightClickTitle || 'Copyright © 2026'}
+              </h4>
+              <p className="opacity-90 text-[11px] font-sans tracking-wide">
+                {siteSettings?.rightClickSubtitle || 'manuelfrancisco. Todos os direitos reservados'}
+              </p>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

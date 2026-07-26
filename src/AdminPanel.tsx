@@ -2,9 +2,14 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ExifReader from 'exifreader';
 import { auth, db, storage, googleProvider } from './firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot, setDoc, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { Upload, Trash2, LogOut, LogIn, Loader2, Tags, Check, Plus, X, Edit2, AlertCircle, Settings as SettingsIcon, LayoutDashboard, Camera, Info } from 'lucide-react';
+import { 
+  Upload, Trash2, LogOut, LogIn, Loader2, Tags, Check, Plus, X, Edit2, AlertCircle, 
+  Settings as SettingsIcon, LayoutDashboard, Camera, Info, ArrowLeft, ArrowRight, 
+  ArrowUp, ArrowDown, GripVertical, CheckSquare, Square, Layers, Move, RefreshCw, 
+  Save, CheckCircle2, SlidersHorizontal, ArrowUpDown, ChevronLeft, ChevronRight 
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import SettingsPanel from './components/SettingsPanel';
 
@@ -98,7 +103,7 @@ async function extractExifFromFile(file: File): Promise<{ exif: ExifData; camera
   }
 }
 
-async function compressImage(file: File, maxDimension: number, quality: number): Promise<File | Blob> {
+async function compressImage(file: File, maxDimension: number, quality: number, enableSharpen?: boolean, sharpenAmount?: number): Promise<File | Blob> {
   return new Promise((resolve) => {
     if (!file.type.startsWith('image/') || file.type === 'image/gif') {
       resolve(file);
@@ -130,6 +135,39 @@ async function compressImage(file: File, maxDimension: number, quality: number):
         }
 
         ctx.drawImage(img, 0, 0, width, height);
+
+        if (enableSharpen && sharpenAmount && sharpenAmount > 0) {
+          try {
+            const strength = (sharpenAmount / 100) * 0.8;
+            const imgData = ctx.getImageData(0, 0, width, height);
+            const data = imgData.data;
+            const src = new Uint8ClampedArray(data);
+            const w = width;
+            const h = height;
+
+            const c = 1 + 4 * strength;
+            const s = -strength;
+
+            for (let y = 1; y < h - 1; y++) {
+              for (let x = 1; x < w - 1; x++) {
+                const idx = (y * w + x) * 4;
+                for (let channel = 0; channel < 3; channel++) {
+                  const i = idx + channel;
+                  const prevRow = ((y - 1) * w + x) * 4 + channel;
+                  const nextRow = ((y + 1) * w + x) * 4 + channel;
+                  const left = (y * w + (x - 1)) * 4 + channel;
+                  const right = (y * w + (x + 1)) * 4 + channel;
+
+                  const val = src[i] * c + (src[prevRow] + src[nextRow] + src[left] + src[right]) * s;
+                  data[i] = Math.min(255, Math.max(0, val));
+                }
+              }
+            }
+            ctx.putImageData(imgData, 0, 0);
+          } catch (err) {
+            console.warn("Failed to apply sharpen filter:", err);
+          }
+        }
 
         canvas.toBlob(
           (blob) => {
@@ -165,6 +203,39 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showDeleteCategoryConfirm, setShowDeleteCategoryConfirm] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('TODAS');
+  
+  // Selection & Bulk Operations State
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState<boolean>(false);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState<boolean>(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState<boolean>(false);
+
+  // Bulk Edit State
+  const [showBulkEditModal, setShowBulkEditModal] = useState<boolean>(false);
+  const [isBulkEditing, setIsBulkEditing] = useState<boolean>(false);
+  const [bulkCategory, setBulkCategory] = useState<string>('');
+  const [bulkSubtitle, setBulkSubtitle] = useState<string>('');
+  const [bulkCameraSettings, setBulkCameraSettings] = useState<string>('');
+  const [bulkDescription, setBulkDescription] = useState<string>('');
+
+  // Pointer-based Drag & Drop state
+  const [pointerDrag, setPointerDrag] = useState<{
+    activeId: string;
+    overId: string | null;
+    cursorX: number;
+    cursorY: number;
+    isDragging: boolean;
+    item: any;
+  } | null>(null);
+
+  const startPosRef = useRef<{ x: number; y: number; id: string; item: any } | null>(null);
+
+  // Reordering & Position UI State
+  const [isReorderMode, setIsReorderMode] = useState<boolean>(false);
+  const [savingOrder, setSavingOrder] = useState<boolean>(false);
+  const [orderNotice, setOrderNotice] = useState<string | null>(null);
+  const [movingPhotoModalImg, setMovingPhotoModalImg] = useState<any | null>(null);
+  const [targetPositionInput, setTargetPositionInput] = useState<string>('1');
   
   // Form State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -342,9 +413,256 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
   };
 
   const filteredImages = useMemo(() => {
-    if (selectedCategory === 'TODAS') return images;
-    return images.filter(img => img.category === selectedCategory);
+    let list = selectedCategory === 'TODAS' ? [...images] : images.filter(img => img.category === selectedCategory);
+    return list.sort((a, b) => {
+      const orderA = a.order !== undefined && a.order !== null ? Number(a.order) : Infinity;
+      const orderB = b.order !== undefined && b.order !== null ? Number(b.order) : Infinity;
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      const timeA = a.createdAt?.seconds || 0;
+      const timeB = b.createdAt?.seconds || 0;
+      return timeB - timeA;
+    });
   }, [images, selectedCategory]);
+
+  // Reordering & Position Swapping Helper Functions
+  const saveImagePositions = async (reorderedList: any[]) => {
+    setSavingOrder(true);
+    try {
+      const batch = writeBatch(db);
+      reorderedList.forEach((img, idx) => {
+        const docRef = doc(db, 'images', String(img.id));
+        batch.update(docRef, { order: idx });
+      });
+      await batch.commit();
+      setOrderNotice('Ordem das fotografias guardada com sucesso!');
+      setTimeout(() => setOrderNotice(null), 3500);
+    } catch (err) {
+      console.error("Error saving photo positions:", err);
+      alert("Erro ao guardar a ordem das fotografias.");
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+  const handleMovePhoto = async (id: string, direction: 'left' | 'right' | 'first' | 'last') => {
+    const list = [...filteredImages];
+    const currentIndex = list.findIndex(i => i.id === id);
+    if (currentIndex === -1) return;
+
+    let targetIndex = currentIndex;
+    if (direction === 'left') targetIndex = Math.max(0, currentIndex - 1);
+    if (direction === 'right') targetIndex = Math.min(list.length - 1, currentIndex + 1);
+    if (direction === 'first') targetIndex = 0;
+    if (direction === 'last') targetIndex = list.length - 1;
+
+    if (targetIndex === currentIndex) return;
+
+    const [movedItem] = list.splice(currentIndex, 1);
+    list.splice(targetIndex, 0, movedItem);
+
+    await saveImagePositions(list);
+  };
+
+  const handleMoveToPosition = async (id: string, newPosition1Based: number) => {
+    const list = [...filteredImages];
+    const currentIndex = list.findIndex(i => i.id === id);
+    if (currentIndex === -1) return;
+
+    const targetIndex = Math.max(0, Math.min(list.length - 1, newPosition1Based - 1));
+    if (targetIndex === currentIndex) return;
+
+    const [movedItem] = list.splice(currentIndex, 1);
+    list.splice(targetIndex, 0, movedItem);
+
+    await saveImagePositions(list);
+    setMovingPhotoModalImg(null);
+  };
+
+  const handleDragDropReorder = async (draggedId: string, targetId: string) => {
+    if (draggedId === targetId) return;
+    const list = [...filteredImages];
+    const fromIndex = list.findIndex(i => i.id === draggedId);
+    const toIndex = list.findIndex(i => i.id === targetId);
+
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    const [movedItem] = list.splice(fromIndex, 1);
+    list.splice(toIndex, 0, movedItem);
+
+    setPointerDrag(null);
+    startPosRef.current = null;
+
+    await saveImagePositions(list);
+  };
+
+  // Global Pointer Event Listeners for smooth drag-and-drop
+  useEffect(() => {
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!startPosRef.current) return;
+
+      const dx = e.clientX - startPosRef.current.x;
+      const dy = e.clientY - startPosRef.current.y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > 4) {
+        // Find photo card element directly under cursor
+        const element = document.elementFromPoint(e.clientX, e.clientY);
+        const card = element?.closest('[data-photo-id]') as HTMLElement | null;
+        const overId = card?.dataset.photoId || null;
+
+        setPointerDrag({
+          activeId: startPosRef.current.id,
+          overId: overId !== startPosRef.current.id ? overId : null,
+          cursorX: e.clientX,
+          cursorY: e.clientY,
+          isDragging: true,
+          item: startPosRef.current.item
+        });
+      }
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      if (startPosRef.current && pointerDrag?.isDragging) {
+        const activeId = startPosRef.current.id;
+        const element = document.elementFromPoint(e.clientX, e.clientY);
+        const card = element?.closest('[data-photo-id]') as HTMLElement | null;
+        const targetId = card?.dataset.photoId || null;
+
+        if (targetId && targetId !== activeId) {
+          handleDragDropReorder(activeId, targetId);
+        }
+      }
+
+      startPosRef.current = null;
+      setPointerDrag(null);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+    };
+  }, [filteredImages, pointerDrag?.isDragging]);
+
+  const handleAutoSortOrder = async (sortBy: 'recent' | 'oldest' | 'title-asc' | 'title-desc') => {
+    const list = [...filteredImages];
+    list.sort((a, b) => {
+      if (sortBy === 'title-asc') return (a.title || '').localeCompare(b.title || '');
+      if (sortBy === 'title-desc') return (b.title || '').localeCompare(a.title || '');
+      if (sortBy === 'oldest') {
+        const timeA = a.createdAt?.seconds || 0;
+        const timeB = b.createdAt?.seconds || 0;
+        return timeA - timeB;
+      }
+      // recent
+      const timeA = a.createdAt?.seconds || 0;
+      const timeB = b.createdAt?.seconds || 0;
+      return timeB - timeA;
+    });
+
+    await saveImagePositions(list);
+  };
+
+  // Selection & Bulk Delete Functions
+  const toggleSelectPhoto = (id: string) => {
+    setSelectedPhotoIds(prev => {
+      const next = prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id];
+      if (next.length > 0) {
+        setIsSelectionMode(true);
+      } else {
+        setIsSelectionMode(false);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedPhotoIds.length === filteredImages.length && filteredImages.length > 0) {
+      setSelectedPhotoIds([]);
+      setIsSelectionMode(false);
+    } else {
+      setSelectedPhotoIds(filteredImages.map(img => img.id));
+      setIsSelectionMode(true);
+    }
+  };
+
+  const executeBulkDelete = async () => {
+    if (selectedPhotoIds.length === 0) return;
+    setIsBulkDeleting(true);
+
+    try {
+      const deletedCount = selectedPhotoIds.length;
+      for (const id of selectedPhotoIds) {
+        const img = images.find(i => i.id === id);
+        await deleteDoc(doc(db, 'images', id));
+        if (img && img.storagePath) {
+          try {
+            const fileRef = ref(storage, img.storagePath);
+            await deleteObject(fileRef);
+          } catch (storageErr) {
+            console.warn("Error deleting storage object for", id, storageErr);
+          }
+        }
+      }
+      setSelectedPhotoIds([]);
+      setIsSelectionMode(false);
+      setShowBulkDeleteModal(false);
+      setOrderNotice(`${deletedCount} fotografias eliminadas com sucesso!`);
+      setTimeout(() => setOrderNotice(null), 3500);
+    } catch (err) {
+      console.error("Bulk delete failed:", err);
+      alert("Ocorreu um erro ao eliminar algumas fotografias.");
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const openBulkEditModal = () => {
+    setBulkCategory('');
+    setBulkSubtitle('');
+    setBulkCameraSettings('');
+    setBulkDescription('');
+    setShowBulkEditModal(true);
+  };
+
+  const handleBulkEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedPhotoIds.length === 0) return;
+    setIsBulkEditing(true);
+
+    try {
+      let updatedCount = 0;
+      for (const id of selectedPhotoIds) {
+        const imgRef = doc(db, 'images', id);
+        const updates: any = {};
+        if (bulkCategory) updates.category = bulkCategory;
+        if (bulkSubtitle) updates.subtitle = bulkSubtitle;
+        if (bulkCameraSettings) updates.cameraSettings = bulkCameraSettings;
+        if (bulkDescription) updates.description = bulkDescription;
+
+        if (Object.keys(updates).length > 0) {
+          await updateDoc(imgRef, updates);
+          updatedCount++;
+        }
+      }
+      setShowBulkEditModal(false);
+      setSelectedPhotoIds([]);
+      setIsSelectionMode(false);
+      setOrderNotice(`${updatedCount} fotografias atualizadas com sucesso!`);
+      setTimeout(() => setOrderNotice(null), 3500);
+    } catch (err) {
+      console.error("Bulk edit failed:", err);
+      alert("Ocorreu um erro ao atualizar as fotografias.");
+    } finally {
+      setIsBulkEditing(false);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -440,9 +758,9 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
             if (match) maxDim = parseInt(match[0], 10);
           }
 
-          if (maxDim !== Infinity || compressQual < 1.0) {
+          if (maxDim !== Infinity || compressQual < 1.0 || siteSettings?.enableSharpen) {
             try {
-              fileToUpload = await compressImage(file, maxDim, compressQual);
+              fileToUpload = await compressImage(file, maxDim, compressQual, siteSettings?.enableSharpen, siteSettings?.sharpenAmount);
             } catch (err) {
               console.warn("Failed to compress edit image:", err);
             }
@@ -493,9 +811,9 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
               if (match) maxDim = parseInt(match[0], 10);
             }
 
-            if (maxDim !== Infinity || compressQual < 1.0) {
+            if (maxDim !== Infinity || compressQual < 1.0 || siteSettings?.enableSharpen) {
               try {
-                fileToUpload = await compressImage(pending.file, maxDim, compressQual);
+                fileToUpload = await compressImage(pending.file, maxDim, compressQual, siteSettings?.enableSharpen, siteSettings?.sharpenAmount);
               } catch (err) {
                 console.warn("Failed to compress batch image:", err);
               }
@@ -632,31 +950,212 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
         </div>
 
         {activeTab === 'gallery' && (
-          <div className="flex flex-col xl:flex-row xl:justify-between xl:items-center gap-6">
-            <div className="flex flex-wrap items-center gap-2">
-              <button 
-                onClick={() => setSelectedCategory('TODAS')}
-                className={`px-4 py-2 border transition-colors text-[10px] tracking-[0.1em] uppercase ${selectedCategory === 'TODAS' ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'}`}
-              >
-                TODAS
-              </button>
-              {allCategories.map(cat => (
+          <div className="space-y-4">
+            {/* Top Controls Bar */}
+            <div className="flex flex-col xl:flex-row xl:justify-between xl:items-center gap-4">
+              {/* Categories list */}
+              <div className="flex flex-wrap items-center gap-2">
                 <button 
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-2 border transition-colors text-[10px] tracking-[0.1em] uppercase ${selectedCategory === cat ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'}`}
+                  onClick={() => {
+                    setSelectedCategory('TODAS');
+                    setSelectedPhotoIds([]);
+                    setIsSelectionMode(false);
+                  }}
+                  className={`px-4 py-2 border transition-colors text-[10px] tracking-[0.1em] uppercase font-medium ${selectedCategory === 'TODAS' ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'}`}
                 >
-                  {cat}
+                  TODAS ({images.length})
                 </button>
-              ))}
+                {allCategories.map(cat => {
+                  const count = images.filter(i => i.category === cat).length;
+                  return (
+                    <button 
+                      key={cat}
+                      onClick={() => {
+                        setSelectedCategory(cat);
+                        setSelectedPhotoIds([]);
+                        setIsSelectionMode(false);
+                      }}
+                      className={`px-4 py-2 border transition-colors text-[10px] tracking-[0.1em] uppercase font-medium ${selectedCategory === cat ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'}`}
+                    >
+                      {cat} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+              
+              {/* Mode Toggles & Add Photo Button */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Toggle Multi-Select Mode */}
+                <button 
+                  onClick={() => {
+                    if (isSelectionMode) {
+                      setIsSelectionMode(false);
+                      setSelectedPhotoIds([]);
+                    } else {
+                      setIsSelectionMode(true);
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-2 border text-[10px] tracking-widest uppercase transition-all font-semibold ${
+                    isSelectionMode
+                      ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                      : 'border-[#4a4a4a]/20 text-[#4a4a4a] hover:bg-[#4a4a4a]/5 bg-white'
+                  }`}
+                  title="Selecionar várias fotografias para apagar em lote"
+                >
+                  <CheckSquare size={14} />
+                  <span>Seleção Múltipla {selectedPhotoIds.length > 0 && `(${selectedPhotoIds.length})`}</span>
+                </button>
+
+                {/* Toggle Reorder Mode */}
+                <button 
+                  onClick={() => setIsReorderMode(!isReorderMode)}
+                  className={`flex items-center gap-1.5 px-3 py-2 border text-[10px] tracking-widest uppercase transition-all font-semibold ${
+                    isReorderMode
+                      ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] shadow-sm'
+                      : 'border-[#4a4a4a]/20 text-[#4a4a4a] hover:bg-[#4a4a4a]/5 bg-white'
+                  }`}
+                  title="Alterar a ordem e posição das fotografias na galeria"
+                >
+                  <ArrowUpDown size={14} />
+                  <span>Reordenar Posições</span>
+                </button>
+
+                {/* Add Photo Button */}
+                <button 
+                  onClick={openNewPhotoModal}
+                  className="flex-shrink-0 flex items-center gap-2 px-4 py-2 border border-[#4a4a4a]/20 text-[#4a4a4a] hover:bg-[#4a4a4a]/5 transition-colors text-[10px] tracking-widest uppercase font-semibold bg-white"
+                >
+                  <Plus size={14} /> Nova Fotografia
+                </button>
+              </div>
             </div>
-            
-            <button 
-              onClick={openNewPhotoModal}
-              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 border border-[#4a4a4a]/10 text-[#4a4a4a] hover:bg-[#4a4a4a]/5 transition-colors text-[10px] tracking-widest uppercase bg-transparent"
-            >
-              <Plus size={14} /> Nova Fotografia
-            </button>
+
+            {/* Bulk Selection Bar (Shows when selection mode is active) */}
+            <AnimatePresence>
+              {isSelectionMode && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="bg-[#1a1a1a] text-white p-3.5 px-5 rounded-sm flex flex-wrap items-center justify-between gap-4 shadow-lg border border-white/10"
+                >
+                  <div className="flex items-center gap-3">
+                    <CheckSquare size={18} className="text-red-400" />
+                    <span className="text-xs font-mono uppercase tracking-widest font-bold">
+                      {selectedPhotoIds.length} de {filteredImages.length} fotografias selecionadas
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button 
+                      onClick={handleSelectAll}
+                      className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-[10px] uppercase tracking-widest transition-colors font-semibold border border-white/20"
+                    >
+                      {selectedPhotoIds.length === filteredImages.length && filteredImages.length > 0 ? 'Desselecionar Todas' : 'Selecionar Todas'}
+                    </button>
+                    {selectedPhotoIds.length > 0 && (
+                      <button 
+                        onClick={() => {
+                          setSelectedPhotoIds([]);
+                          setIsSelectionMode(false);
+                        }}
+                        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-[10px] uppercase tracking-widest transition-colors border border-white/20"
+                      >
+                        Limpar Seleção
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => {
+                        if (selectedPhotoIds.length === 1) {
+                          const imgToEdit = images.find(i => i.id === selectedPhotoIds[0]);
+                          if (imgToEdit) openEditPhotoModal(imgToEdit);
+                        } else if (selectedPhotoIds.length > 1) {
+                          openBulkEditModal();
+                        }
+                      }}
+                      disabled={selectedPhotoIds.length === 0}
+                      className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white text-[10px] uppercase tracking-widest transition-all font-bold flex items-center gap-1.5 shadow-md"
+                      title={selectedPhotoIds.length === 1 ? "Editar detalhes da fotografia selecionada" : "Editar detalhes em lote das fotografias selecionadas"}
+                    >
+                      <Edit2 size={14} /> Editar {selectedPhotoIds.length > 0 ? `(${selectedPhotoIds.length})` : ''}
+                    </button>
+                    <button 
+                      onClick={() => setShowBulkDeleteModal(true)}
+                      disabled={selectedPhotoIds.length === 0}
+                      className="px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-[10px] uppercase tracking-widest transition-all font-bold flex items-center gap-1.5 shadow-md"
+                    >
+                      <Trash2 size={14} /> Eliminar {selectedPhotoIds.length > 0 ? `(${selectedPhotoIds.length})` : ''}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Reorder Mode Helper Bar */}
+            <AnimatePresence>
+              {isReorderMode && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="bg-[#faf9f6] border border-[#e2ddd5] p-3.5 px-5 rounded-sm flex flex-wrap items-center justify-between gap-4 shadow-sm"
+                >
+                  <div className="flex items-center gap-2 text-xs text-[#4a4a4a]">
+                    <Move size={16} className="text-[#8e8a82]" />
+                    <span>Arraste as fotografias ou utilize os botões ◄ / ► em cada miniatura para alterar a ordem no site.</span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] uppercase font-bold text-[#8e8a82] tracking-wider mr-1">Predefinições:</span>
+                    <button 
+                      onClick={() => handleAutoSortOrder('recent')}
+                      className="px-2.5 py-1 text-[9px] uppercase tracking-wider border border-[#d8d3c9] hover:bg-[#efece6] text-[#4a4a4a] font-semibold bg-white transition-colors"
+                      title="Ordenar por data mais recente"
+                    >
+                      Mais Recente
+                    </button>
+                    <button 
+                      onClick={() => handleAutoSortOrder('oldest')}
+                      className="px-2.5 py-1 text-[9px] uppercase tracking-wider border border-[#d8d3c9] hover:bg-[#efece6] text-[#4a4a4a] font-semibold bg-white transition-colors"
+                      title="Ordenar por data mais antiga"
+                    >
+                      Mais Antiga
+                    </button>
+                    <button 
+                      onClick={() => handleAutoSortOrder('title-asc')}
+                      className="px-2.5 py-1 text-[9px] uppercase tracking-wider border border-[#d8d3c9] hover:bg-[#efece6] text-[#4a4a4a] font-semibold bg-white transition-colors"
+                      title="Ordenar por título de A a Z"
+                    >
+                      A-Z
+                    </button>
+                    {savingOrder && (
+                      <span className="text-xs font-mono text-amber-800 animate-pulse flex items-center gap-1.5 ml-2 font-bold">
+                        <Loader2 size={13} className="animate-spin" /> Guardar ordem...
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Temporary Success Notice Banner */}
+            <AnimatePresence>
+              {orderNotice && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -5 }}
+                  className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 px-4 text-xs font-medium flex items-center justify-between rounded-sm"
+                >
+                  <span className="flex items-center gap-2 font-sans">
+                    <CheckCircle2 size={16} className="text-emerald-600" /> {orderNotice}
+                  </span>
+                  <button onClick={() => setOrderNotice(null)} className="text-emerald-700 hover:text-emerald-900">
+                    <X size={14} />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </div>
@@ -664,41 +1163,194 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
       {/* Main Content */}
       {activeTab === 'gallery' ? (
         <div 
-          className="grid gap-4" 
+          className="grid gap-4 mt-6" 
           style={{ 
             gridTemplateColumns: `repeat(auto-fill, minmax(${siteSettings?.adminThumbSizePx || 200}px, 1fr))` 
           }}
         >
-          {filteredImages.map(img => {
+          {filteredImages.map((img, index) => {
+            const isSelected = selectedPhotoIds.includes(img.id);
+            const isBeingDragged = pointerDrag?.isDragging && pointerDrag?.activeId === img.id;
+            const isDragTarget = pointerDrag?.isDragging && pointerDrag?.overId === img.id;
+
             return (
               <div 
                 key={img.id} 
-                className="relative group aspect-[4/3] bg-[#dcd7cf] overflow-hidden"
+                data-photo-id={img.id}
+                onPointerDown={(e) => {
+                  if ((e.target as HTMLElement).closest('button, input, a, label')) {
+                    return;
+                  }
+                  if (e.button !== 0) return;
+
+                  startPosRef.current = {
+                    x: e.clientX,
+                    y: e.clientY,
+                    id: img.id,
+                    item: img
+                  };
+                }}
+                className={`relative group aspect-[4/3] bg-[#dcd7cf] overflow-hidden rounded-sm transition-all duration-150 border cursor-grab active:cursor-grabbing select-none ${
+                  isSelected 
+                    ? 'ring-2 ring-red-600 border-red-600 shadow-lg scale-[0.99]' 
+                    : isDragTarget 
+                      ? 'ring-4 ring-amber-500 border-amber-500 scale-[1.03] shadow-2xl z-30'
+                      : isBeingDragged
+                        ? 'opacity-25 border-2 border-dashed border-[#1a1a1a] scale-95'
+                        : 'border-[#1a1a1a]/10 hover:border-[#1a1a1a]/30'
+                }`}
               >
-                <img src={img.url} alt={img.title} className="w-full h-full object-contain" />
+                {/* Photo Thumbnail Image */}
+                <img 
+                  src={img.url} 
+                  alt={img.title} 
+                  draggable={false} 
+                  className="w-full h-full object-contain pointer-events-none select-none" 
+                />
                 
-                {/* Overlay with Actions */}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-4">
-                  <div className="flex justify-end gap-2">
-                    <button 
-                      onClick={() => openEditPhotoModal(img)}
-                      className="p-2 bg-white/20 hover:bg-white/40 backdrop-blur-sm transition-colors rounded-sm text-white"
-                      title="Editar"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button 
-                      onClick={() => setShowDeleteConfirm(img.id)}
-                      className="p-2 bg-red-500/80 hover:bg-red-600 backdrop-blur-sm transition-colors rounded-sm text-white"
-                      title="Apagar"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                {/* Position Badge Top-Left */}
+                <div className="absolute top-2 left-2 z-20 flex items-center gap-1.5 pointer-events-none">
+                  <span className="bg-black/70 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-sm backdrop-blur-md shadow-md border border-white/10">
+                    #{index + 1}
+                  </span>
+                  {isReorderMode && (
+                    <span className="bg-amber-500 text-black p-1 rounded-sm shadow-md flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider">
+                      <GripVertical size={12} /> Arrastar
+                    </span>
+                  )}
+                </div>
+
+                {/* Multi-Select Checkbox Top-Right */}
+                <div className="absolute top-2 right-2 z-20 pointer-events-auto" onMouseDown={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    draggable={false}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSelectPhoto(img.id);
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onDragStart={(e) => e.stopPropagation()}
+                    className={`p-1.5 rounded-sm transition-all shadow-md backdrop-blur-md ${
+                      isSelected 
+                        ? 'bg-red-600 text-white' 
+                        : 'bg-black/50 text-white/80 hover:bg-black/80 hover:text-white border border-white/20'
+                    }`}
+                    title={isSelected ? "Desselecionar fotografia" : "Selecionar fotografia"}
+                  >
+                    {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
+                  </button>
+                </div>
+
+                {/* Overlay on Drag Target */}
+                {isDragTarget && (
+                  <div className="absolute inset-0 bg-amber-500/90 backdrop-blur-xs z-40 flex flex-col items-center justify-center text-black font-sans p-2 text-center shadow-2xl border-2 border-amber-300 animate-pulse pointer-events-none">
+                    <ArrowUpDown size={28} className="mb-1 text-black" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Mover para a Posição #{index + 1}</span>
+                    <span className="text-[10px] opacity-80 font-mono mt-0.5">Largar o botão do rato aqui</span>
                   </div>
-                  <div>
-                    <p className="text-white font-sans text-[10px] tracking-widest uppercase truncate">{img.title}</p>
+                )}
+
+                {/* Overlay on Dragging Source */}
+                {isBeingDragged && (
+                  <div className="absolute inset-0 bg-black/70 backdrop-blur-xs z-40 flex flex-col items-center justify-center text-white p-2 text-center border-2 border-dashed border-white pointer-events-none">
+                    <Move size={24} className="mb-1 animate-bounce text-amber-400" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">A Arrastar...</span>
+                  </div>
+                )}
+
+                {/* Overlay with Actions */}
+                <div className={`absolute inset-0 bg-black/50 transition-opacity flex flex-col justify-between p-3 z-10 pointer-events-none ${
+                  isReorderMode || isSelectionMode ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                }`}>
+                  <div className="flex justify-between items-center w-full pt-6 pointer-events-auto" onMouseDown={(e) => e.stopPropagation()}>
+                    {/* Position Move Buttons Left / Right */}
+                    <div className="flex items-center gap-1 bg-black/60 backdrop-blur-sm p-1 rounded-sm border border-white/10" onMouseDown={(e) => e.stopPropagation()}>
+                      <button 
+                        type="button"
+                        draggable={false}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMovePhoto(img.id, 'left');
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onDragStart={(e) => e.stopPropagation()}
+                        disabled={index === 0}
+                        className="p-1 hover:bg-white/20 disabled:opacity-30 transition-colors text-white rounded-xs"
+                        title="Mover para a esquerda / cima"
+                      >
+                        <ArrowLeft size={14} />
+                      </button>
+                      <button 
+                        type="button"
+                        draggable={false}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMovingPhotoModalImg(img);
+                          setTargetPositionInput(String(index + 1));
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onDragStart={(e) => e.stopPropagation()}
+                        className="px-1.5 py-0.5 hover:bg-white/20 text-amber-200 text-[9px] font-mono font-bold tracking-wider"
+                        title="Ir para posição específica"
+                      >
+                        #{index + 1}
+                      </button>
+                      <button 
+                        type="button"
+                        draggable={false}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMovePhoto(img.id, 'right');
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onDragStart={(e) => e.stopPropagation()}
+                        disabled={index === filteredImages.length - 1}
+                        className="p-1 hover:bg-white/20 disabled:opacity-30 transition-colors text-white rounded-xs"
+                        title="Mover para a direita / baixo"
+                      >
+                        <ArrowRight size={14} />
+                      </button>
+                    </div>
+
+                    {/* Edit and Single Delete Buttons */}
+                    <div className="flex items-center gap-1" onMouseDown={(e) => e.stopPropagation()}>
+                      <button 
+                        type="button"
+                        draggable={false}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditPhotoModal(img);
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onDragStart={(e) => e.stopPropagation()}
+                        className="p-1.5 bg-white/20 hover:bg-white/40 backdrop-blur-sm transition-colors rounded-sm text-white"
+                        title="Editar Detalhes"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button 
+                        type="button"
+                        draggable={false}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDeleteConfirm(img.id);
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onDragStart={(e) => e.stopPropagation()}
+                        className="p-1.5 bg-red-500/80 hover:bg-red-600 backdrop-blur-sm transition-colors rounded-sm text-white"
+                        title="Eliminar Fotografia"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Title & Category Info at bottom */}
+                  <div className="bg-black/60 backdrop-blur-sm p-2 rounded-sm border border-white/10 pointer-events-none">
+                    <p className="text-white font-sans text-[10px] tracking-widest uppercase truncate font-semibold">{img.title || 'Sem Título'}</p>
                     {img.category && (
-                      <p className="text-white/70 font-sans text-[8px] tracking-widest uppercase mt-1 truncate">{img.category}</p>
+                      <p className="text-white/70 font-sans text-[8px] tracking-widest uppercase mt-0.5 truncate">{img.category}</p>
                     )}
                   </div>
                 </div>
@@ -1330,6 +1982,292 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Bulk Edit Modal */}
+      <AnimatePresence>
+        {showBulkEditModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#f5f2ed] p-8 w-full max-w-lg relative shadow-2xl rounded-sm max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center border-b border-[#1a1a1a]/10 pb-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center">
+                    <Edit2 className="text-amber-700" size={18} />
+                  </div>
+                  <div className="text-left">
+                    <h4 className="font-sans text-lg text-[#1a1a1a] font-semibold">
+                      Editar {selectedPhotoIds.length} Fotografias Selecionadas
+                    </h4>
+                    <p className="text-[10px] text-[#8e8a82] uppercase tracking-wider">Edição em Lote</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowBulkEditModal(false)}
+                  className="text-[#8e8a82] hover:text-[#1a1a1a]"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <p className="text-xs text-[#8e8a82] mb-4 leading-relaxed text-left">
+                Preencha apenas os campos que pretende atualizar em todas as {selectedPhotoIds.length} fotografias selecionadas. Os campos deixados em branco não serão alterados.
+              </p>
+
+              {/* Grid of selected thumbnails preview */}
+              <div className="w-full max-h-28 overflow-y-auto grid grid-cols-5 gap-2 p-2 bg-white/80 border border-[#e2ddd5] mb-6 rounded-sm">
+                {selectedPhotoIds.map(id => {
+                  const img = images.find(i => i.id === id);
+                  if (!img) return null;
+                  return (
+                    <div key={id} className="aspect-square bg-[#dcd7cf] overflow-hidden rounded-xs border border-[#1a1a1a]/10 relative">
+                      <img src={img.url} alt={img.title} className="w-full h-full object-cover" />
+                    </div>
+                  );
+                })}
+              </div>
+
+              <form onSubmit={handleBulkEditSubmit} className="space-y-4 text-left">
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] mb-1.5 font-semibold">
+                    NOVA CATEGORIA
+                  </label>
+                  <select 
+                    value={bulkCategory}
+                    onChange={e => setBulkCategory(e.target.value)}
+                    className="w-full bg-white border border-[#1a1a1a]/10 px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#1a1a1a]/30 transition-colors"
+                  >
+                    <option value="">-- Manter categoria atual --</option>
+                    {currentCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] mb-1.5 font-semibold">
+                    NOVO LOCAL / SUBTÍTULO
+                  </label>
+                  <input 
+                    type="text"
+                    value={bulkSubtitle}
+                    onChange={e => setBulkSubtitle(e.target.value)}
+                    placeholder="Deixe em branco para manter original"
+                    className="w-full bg-white border border-[#1a1a1a]/10 px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#1a1a1a]/30 transition-colors placeholder:text-[#8e8a82]/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] mb-1.5 font-semibold">
+                    NOVAS DEFINIÇÕES DE CÂMARA
+                  </label>
+                  <input 
+                    type="text"
+                    value={bulkCameraSettings}
+                    onChange={e => setBulkCameraSettings(e.target.value)}
+                    placeholder="Ex: ISO 100 • f/4 • 1/500s"
+                    className="w-full bg-white border border-[#1a1a1a]/10 px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#1a1a1a]/30 transition-colors placeholder:text-[#8e8a82]/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] mb-1.5 font-semibold">
+                    NOVA DESCRIÇÃO
+                  </label>
+                  <textarea 
+                    value={bulkDescription}
+                    onChange={e => setBulkDescription(e.target.value)}
+                    placeholder="Deixe em branco para manter original"
+                    className="w-full bg-white border border-[#1a1a1a]/10 px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#1a1a1a]/30 transition-colors placeholder:text-[#8e8a82]/50 min-h-[70px] resize-y"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-[#1a1a1a]/10">
+                  <button 
+                    type="button"
+                    onClick={() => setShowBulkEditModal(false)}
+                    disabled={isBulkEditing}
+                    className="flex-1 py-3 border border-[#1a1a1a]/10 bg-white text-[#8e8a82] hover:text-[#1a1a1a] transition-colors uppercase tracking-widest text-[10px] font-semibold"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={isBulkEditing}
+                    className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white transition-colors uppercase tracking-widest text-[10px] font-bold flex items-center justify-center gap-2 shadow-md"
+                  >
+                    {isBulkEditing ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" /> A guardar...
+                      </>
+                    ) : (
+                      `Guardar em ${selectedPhotoIds.length} Fotos`
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bulk Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showBulkDeleteModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[75] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#f5f2ed] p-8 w-full max-w-md relative shadow-2xl flex flex-col items-center text-center rounded-sm"
+            >
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
+                <AlertCircle className="text-red-600" size={24} />
+              </div>
+              <h4 className="font-sans text-xl text-[#1a1a1a] mb-2 font-semibold">
+                Eliminar {selectedPhotoIds.length} Fotografias?
+              </h4>
+              <p className="text-xs text-[#8e8a82] mb-6 leading-relaxed">
+                Esta ação é irreversível. As {selectedPhotoIds.length} fotografias selecionadas serão permanentemente removidas do portfólio e do servidor de ficheiros.
+              </p>
+
+              {/* Grid of selected thumbnails preview */}
+              <div className="w-full max-h-40 overflow-y-auto grid grid-cols-4 gap-2 p-2 bg-white/60 border border-[#e2ddd5] mb-6 rounded-sm">
+                {selectedPhotoIds.map(id => {
+                  const img = images.find(i => i.id === id);
+                  if (!img) return null;
+                  return (
+                    <div key={id} className="aspect-square bg-[#dcd7cf] overflow-hidden rounded-xs border border-[#1a1a1a]/10">
+                      <img src={img.url} alt={img.title} className="w-full h-full object-cover" />
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <div className="flex gap-3 w-full">
+                <button 
+                  type="button"
+                  onClick={() => setShowBulkDeleteModal(false)}
+                  disabled={isBulkDeleting}
+                  className="flex-1 py-3 border border-[#1a1a1a]/10 bg-white text-[#8e8a82] hover:text-[#1a1a1a] transition-colors uppercase tracking-widest text-[10px] font-semibold"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="button"
+                  onClick={executeBulkDelete}
+                  disabled={isBulkDeleting}
+                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white transition-colors uppercase tracking-widest text-[10px] font-semibold flex items-center justify-center gap-2"
+                >
+                  {isBulkDeleting ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" /> A eliminar...
+                    </>
+                  ) : (
+                    `Eliminar (${selectedPhotoIds.length})`
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Jump to Position Modal */}
+      <AnimatePresence>
+        {movingPhotoModalImg && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[75] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#f5f2ed] p-6 w-full max-w-sm relative shadow-2xl space-y-4 rounded-sm"
+            >
+              <div className="flex justify-between items-center border-b border-[#1a1a1a]/10 pb-3">
+                <h4 className="font-sans text-lg text-[#1a1a1a] font-semibold">Alterar Posição da Foto</h4>
+                <button onClick={() => setMovingPhotoModalImg(null)} className="text-[#8e8a82] hover:text-[#1a1a1a]">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3 bg-white p-3 border border-[#e2ddd5] rounded-sm">
+                <img src={movingPhotoModalImg.url} alt={movingPhotoModalImg.title} className="w-14 h-14 object-cover rounded-xs" />
+                <div className="truncate">
+                  <p className="text-xs font-bold text-[#1a1a1a] truncate">{movingPhotoModalImg.title || 'Sem título'}</p>
+                  <p className="text-[10px] text-[#8e8a82] uppercase tracking-wider">
+                    Posição Atual: #{filteredImages.findIndex(i => i.id === movingPhotoModalImg.id) + 1} de {filteredImages.length}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-bold text-[#1a1a1a] tracking-wider block">
+                  NOVA POSIÇÃO (1 a {filteredImages.length})
+                </label>
+                <input 
+                  type="number"
+                  min="1"
+                  max={filteredImages.length}
+                  value={targetPositionInput}
+                  onChange={(e) => setTargetPositionInput(e.target.value)}
+                  className="w-full bg-white border border-[#e2ddd5] px-4 py-2.5 text-sm font-mono text-center focus:outline-none focus:border-[#1a1a1a]"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button 
+                  type="button"
+                  onClick={() => setMovingPhotoModalImg(null)}
+                  className="flex-1 py-2.5 border border-[#1a1a1a]/10 bg-white text-[#8e8a82] uppercase text-[10px] tracking-widest font-semibold"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => handleMoveToPosition(movingPhotoModalImg.id, Number(targetPositionInput))}
+                  className="flex-1 py-2.5 bg-[#1a1a1a] hover:bg-[#333] text-white uppercase text-[10px] tracking-widest font-semibold"
+                >
+                  Mover Foto
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Drag Preview Element */}
+      {pointerDrag?.isDragging && pointerDrag.item && (
+        <div 
+          className="fixed pointer-events-none z-[9999] w-48 aspect-[4/3] bg-[#1a1a1a] p-1.5 shadow-2xl rounded-md border-2 border-amber-400 opacity-90 transition-none flex flex-col justify-between"
+          style={{
+            left: `${pointerDrag.cursorX - 96}px`,
+            top: `${pointerDrag.cursorY - 64}px`,
+          }}
+        >
+          <img src={pointerDrag.item.url} alt="" className="w-full h-full object-cover rounded-xs" />
+          <div className="absolute inset-x-0 bottom-0 bg-black/85 text-amber-300 text-[9px] font-mono p-1 text-center font-bold uppercase truncate border-t border-amber-400/50">
+            A Mover: {pointerDrag.item.title || 'Fotografia'}
+          </div>
+        </div>
+      )}
 
     </div>
   );
