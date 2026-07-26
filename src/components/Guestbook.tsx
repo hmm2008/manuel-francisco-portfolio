@@ -134,10 +134,16 @@ export default function Guestbook({ settings, isAdminUnlocked, setActiveView, on
   };
 
   return (
-    <div className="w-full h-full overflow-y-auto p-6 md:p-10 flex flex-col justify-between">
+    <div 
+      className="w-full h-full overflow-y-auto px-6 pb-6 md:px-10 md:pb-10 flex flex-col justify-between"
+      style={{ paddingTop: settings?.mainTitleTopMargin !== undefined ? `${settings.mainTitleTopMargin}px` : '40px' }}
+    >
       <div className="w-full max-w-5xl mx-auto flex-shrink-0">
         {/* Same header as Gallery */}
-        <div className="text-center mb-6 w-full flex-shrink-0">
+        <div 
+          className="text-center w-full flex-shrink-0"
+          style={{ marginBottom: settings?.mainTitleBottomMargin !== undefined ? `${settings.mainTitleBottomMargin}px` : '24px' }}
+        >
           <div className="border-y border-[#4a4a4a]/10 py-4 mb-4">
             <h1 className="font-sans text-lg md:text-xl text-[#4a4a4a] tracking-widest uppercase font-semibold">
               {settings?.siteName || 'Manuel Francisco Fotografia'}

@@ -804,7 +804,10 @@ export default function App() {
                 </div>
 
                 {/* Overlay Footer */}
-                <div className="px-6 pb-8 pt-4 text-center text-[#7a7a7a]/60 text-[9px] tracking-[0.05em] font-sans border-t border-[#4a4a4a]/5">
+                <div 
+                  className="px-6 pt-4 text-center text-[#7a7a7a]/60 text-[9px] tracking-[0.05em] font-sans border-t border-[#4a4a4a]/5"
+                  style={{ paddingBottom: siteSettings?.footerBottomSpacing !== undefined ? `${siteSettings.footerBottomSpacing}px` : '32px' }}
+                >
                   <p className="mb-1">{siteSettings.footerText || `© ${new Date().getFullYear()} — Todos os direitos reservados.`}</p>
                   <p className="text-[8px] opacity-80 leading-relaxed max-w-xs mx-auto">O conteúdo e as imagens não podem ser reproduzidos de qualquer forma sem o consentimento do autor.</p>
                 </div>
@@ -817,7 +820,11 @@ export default function App() {
       {/* Desktop Sidebar */}
       <aside className={`w-[340px] flex-shrink-0 h-full bg-[#fafafa] border-r border-[#4a4a4a]/10 flex-col justify-between overflow-y-auto z-30 ${isMobileLandscape ? 'hidden' : 'hidden md:flex'}`}>
         <div>
-          <div className="pt-12 pb-8 px-10 text-center" style={{ 
+          <div className="text-center" style={{ 
+            paddingTop: `${siteSettings?.sidebarTitleTopMargin !== undefined ? siteSettings.sidebarTitleTopMargin : 48}px`,
+            paddingBottom: `${siteSettings?.sidebarTitleBottomMargin !== undefined ? siteSettings.sidebarTitleBottomMargin : 32}px`,
+            paddingLeft: `${siteSettings?.sidebarTitleLeftMargin !== undefined ? siteSettings.sidebarTitleLeftMargin : 40}px`,
+            paddingRight: `${siteSettings?.sidebarTitleRightMargin !== undefined ? siteSettings.sidebarTitleRightMargin : 40}px`,
             color: siteSettings?.siteNameColor || '#4a4a4a',
             fontSize: `${siteSettings?.siteNameFontSize || 16}px`,
             fontFamily: getFontFamily(siteSettings?.siteNameFont)
@@ -862,7 +869,10 @@ export default function App() {
             })}
           </nav>
         </div>
-        <div className="px-10 pb-8 pt-8 text-center text-[#7a7a7a]/60 text-[10px] tracking-[0.05em] font-sans">
+        <div 
+          className="px-10 pt-8 text-center text-[#7a7a7a]/60 text-[10px] tracking-[0.05em] font-sans"
+          style={{ paddingBottom: siteSettings?.sidebarFooterBottomMargin !== undefined ? `${siteSettings.sidebarFooterBottomMargin}px` : '32px' }}
+        >
           <p className="mb-1">{siteSettings.footerText || `© ${new Date().getFullYear()} — Todos os direitos reservados.`}</p>
           <p>O conteúdo e as imagens não podem ser reproduzidos de qualquer forma sem o consentimento do autor.</p>
         </div>
@@ -1082,10 +1092,16 @@ export default function App() {
           </div>
         </div>
         ) : activeView === 'galeria' ? (
-          <div className="w-full h-full p-4 sm:p-6 lg:p-8 overflow-y-auto">
+          <div 
+            className="w-full h-full px-4 pb-4 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8 overflow-y-auto"
+            style={{ paddingTop: siteSettings?.mainTitleTopMargin !== undefined ? `${siteSettings.mainTitleTopMargin}px` : '32px' }}
+          >
             <div className="w-full max-w-5xl mx-auto flex flex-col min-h-full justify-between">
               <div className="flex flex-col w-full">
-                <div className={`text-center w-full max-w-5xl mx-auto flex-shrink-0 ${isMobileLandscape ? 'mb-2' : 'mb-4'}`}>
+                <div 
+                  className="text-center w-full max-w-5xl mx-auto flex-shrink-0"
+                  style={{ marginBottom: siteSettings?.mainTitleBottomMargin !== undefined ? `${siteSettings.mainTitleBottomMargin}px` : (isMobileLandscape ? '8px' : '16px') }}
+                >
                   {!isMobileLandscape && (
                     <div className="border-y border-[#4a4a4a]/10 py-2.5 mb-3">
                       <h1 className="font-sans text-base md:text-lg text-[#4a4a4a] tracking-widest uppercase font-semibold">

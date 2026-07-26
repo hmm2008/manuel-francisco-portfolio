@@ -34,6 +34,13 @@ export default function SettingsPanel({ onBackToGallery }: { onBackToGallery?: (
     siteNameFont: 'Inter — sans-serif moderno',
     siteNameFontSize: 16,
     siteNameColor: '#1a1a1a',
+    sidebarTitleTopMargin: 48,
+    sidebarTitleBottomMargin: 32,
+    sidebarTitleLeftMargin: 40,
+    sidebarTitleRightMargin: 40,
+    sidebarFooterBottomMargin: 32,
+    mainTitleTopMargin: 32,
+    mainTitleBottomMargin: 16,
     mobileTitle: 'Manuel Francisco Fotografia',
     welcomeMessage: 'Bem vindo a este espaço.\nQuero que descubra comigo o gosto pela fotografia.\nNão tenho um tema favorito, apenas o gosto de registar aquilo que considero que é belo.\nNão hesite em deixar os seus comentários.',
     messageSpacing: 16,
@@ -383,6 +390,130 @@ export default function SettingsPanel({ onBackToGallery }: { onBackToGallery?: (
                       />
                       <span className="text-xs font-mono text-[#1a1a1a]">{settings.siteNameColor}</span>
                     </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[#e8e4dc]">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold">DISTÂNCIA DO TOPO (SIDEBAR)</label>
+                      <span className="text-[11px] font-mono text-[#8e8a82]">{settings.sidebarTitleTopMargin !== undefined ? settings.sidebarTitleTopMargin : 48}px</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      name="sidebarTitleTopMargin"
+                      min="0" max="150" step="2"
+                      value={settings.sidebarTitleTopMargin !== undefined ? settings.sidebarTitleTopMargin : 48}
+                      onChange={(e) => setSettings(prev => ({ ...prev, sidebarTitleTopMargin: parseInt(e.target.value, 10) }))}
+                      className="w-full h-1.5 bg-[#e5e0d8] rounded-lg appearance-none cursor-pointer accent-[#1a1a1a] mt-3"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold">ESPAÇAMENTO INFERIOR (SIDEBAR)</label>
+                      <span className="text-[11px] font-mono text-[#8e8a82]">{settings.sidebarTitleBottomMargin !== undefined ? settings.sidebarTitleBottomMargin : 32}px</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      name="sidebarTitleBottomMargin"
+                      min="0" max="100" step="2"
+                      value={settings.sidebarTitleBottomMargin !== undefined ? settings.sidebarTitleBottomMargin : 32}
+                      onChange={(e) => setSettings(prev => ({ ...prev, sidebarTitleBottomMargin: parseInt(e.target.value, 10) }))}
+                      className="w-full h-1.5 bg-[#e5e0d8] rounded-lg appearance-none cursor-pointer accent-[#1a1a1a] mt-3"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold">DISTÂNCIA À ESQUERDA</label>
+                      <span className="text-[11px] font-mono text-[#8e8a82]">{settings.sidebarTitleLeftMargin !== undefined ? settings.sidebarTitleLeftMargin : 40}px</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      name="sidebarTitleLeftMargin"
+                      min="0" max="100" step="2"
+                      value={settings.sidebarTitleLeftMargin !== undefined ? settings.sidebarTitleLeftMargin : 40}
+                      onChange={(e) => setSettings(prev => ({ ...prev, sidebarTitleLeftMargin: parseInt(e.target.value, 10) }))}
+                      className="w-full h-1.5 bg-[#e5e0d8] rounded-lg appearance-none cursor-pointer accent-[#1a1a1a] mt-3"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold">DISTÂNCIA À DIREITA</label>
+                      <span className="text-[11px] font-mono text-[#8e8a82]">{settings.sidebarTitleRightMargin !== undefined ? settings.sidebarTitleRightMargin : 40}px</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      name="sidebarTitleRightMargin"
+                      min="0" max="100" step="2"
+                      value={settings.sidebarTitleRightMargin !== undefined ? settings.sidebarTitleRightMargin : 40}
+                      onChange={(e) => setSettings(prev => ({ ...prev, sidebarTitleRightMargin: parseInt(e.target.value, 10) }))}
+                      className="w-full h-1.5 bg-[#e5e0d8] rounded-lg appearance-none cursor-pointer accent-[#1a1a1a] mt-3"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold">DISTÂNCIA DIREITOS RESERVADOS (FUNDO)</label>
+                      <span className="text-[11px] font-mono text-[#8e8a82]">{settings.sidebarFooterBottomMargin !== undefined ? settings.sidebarFooterBottomMargin : 32}px</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      name="sidebarFooterBottomMargin"
+                      min="0" max="100" step="2"
+                      value={settings.sidebarFooterBottomMargin !== undefined ? settings.sidebarFooterBottomMargin : 32}
+                      onChange={(e) => setSettings(prev => ({ ...prev, sidebarFooterBottomMargin: parseInt(e.target.value, 10) }))}
+                      className="w-full h-1.5 bg-[#e5e0d8] rounded-lg appearance-none cursor-pointer accent-[#1a1a1a] mt-3"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-[#e8e4dc]">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold">DISTÂNCIA DO TOPO (PÁGINAS PRINCIPAIS)</label>
+                      <span className="text-[11px] font-mono text-[#8e8a82]">{settings.mainTitleTopMargin !== undefined ? settings.mainTitleTopMargin : 32}px</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      name="mainTitleTopMargin"
+                      min="0" max="150" step="2"
+                      value={settings.mainTitleTopMargin !== undefined ? settings.mainTitleTopMargin : 32}
+                      onChange={(e) => setSettings(prev => ({ ...prev, mainTitleTopMargin: parseInt(e.target.value, 10) }))}
+                      className="w-full h-1.5 bg-[#e5e0d8] rounded-lg appearance-none cursor-pointer accent-[#1a1a1a] mt-3"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold">ESPAÇAMENTO INFERIOR (PÁGINAS PRINCIPAIS)</label>
+                      <span className="text-[11px] font-mono text-[#8e8a82]">{settings.mainTitleBottomMargin !== undefined ? settings.mainTitleBottomMargin : 16}px</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      name="mainTitleBottomMargin"
+                      min="0" max="100" step="2"
+                      value={settings.mainTitleBottomMargin !== undefined ? settings.mainTitleBottomMargin : 16}
+                      onChange={(e) => setSettings(prev => ({ ...prev, mainTitleBottomMargin: parseInt(e.target.value, 10) }))}
+                      className="w-full h-1.5 bg-[#e5e0d8] rounded-lg appearance-none cursor-pointer accent-[#1a1a1a] mt-3"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold">DISTÂNCIA DO RODAPÉ (PÁGINAS PRINCIPAIS)</label>
+                      <span className="text-[11px] font-mono text-[#8e8a82] font-semibold">{settings.footerBottomSpacing !== undefined ? settings.footerBottomSpacing : 24}px</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      name="footerBottomSpacing"
+                      min="0" max="120" step="2"
+                      value={settings.footerBottomSpacing !== undefined ? settings.footerBottomSpacing : 24}
+                      onChange={(e) => setSettings(prev => ({ ...prev, footerBottomSpacing: parseInt(e.target.value, 10) }))}
+                      className="w-full h-1.5 bg-[#e5e0d8] rounded-lg appearance-none cursor-pointer accent-[#1a1a1a] mt-3"
+                    />
                   </div>
                 </div>
               </div>
@@ -2114,23 +2245,6 @@ export default function SettingsPanel({ onBackToGallery }: { onBackToGallery?: (
                     className="w-full h-1.5 bg-[#e5e0d8] rounded-lg appearance-none cursor-pointer accent-[#1a1a1a] mt-3"
                   />
                   <p className="text-[11px] text-[#8e8a82]">Adiciona uma margem/espaçamento interno à fotografia para garantir que nunca fica colada ao bordo superior do fundo.</p>
-                </div>
-
-                {/* Espaçamento do rodapé a contar do fim da página */}
-                <div className="col-span-1 md:col-span-2 pt-6 border-t border-[#f0ece5] space-y-2">
-                  <div className="flex justify-between">
-                    <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold">ESPAÇAMENTO DO RODAPÉ (DO FIM DA PÁGINA)</label>
-                    <span className="text-[11px] font-mono text-[#8e8a82] font-semibold">{settings.footerBottomSpacing !== undefined ? settings.footerBottomSpacing : 24}px</span>
-                  </div>
-                  <input 
-                    type="range" 
-                    name="footerBottomSpacing"
-                    min="0" max="120" step="2"
-                    value={settings.footerBottomSpacing !== undefined ? settings.footerBottomSpacing : 24}
-                    onChange={(e) => setSettings(prev => ({ ...prev, footerBottomSpacing: parseInt(e.target.value, 10) }))}
-                    className="w-full h-1.5 bg-[#e5e0d8] rounded-lg appearance-none cursor-pointer accent-[#1a1a1a] mt-3"
-                  />
-                  <p className="text-[11px] text-[#8e8a82]">Ajuste a distância (espaçamento inferior) entre o rodapé e a margem final inferior da página.</p>
                 </div>
               </div>
             </div>

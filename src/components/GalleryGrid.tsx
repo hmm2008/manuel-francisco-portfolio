@@ -467,14 +467,14 @@ export default function GalleryGrid({
                     onImageClick(originalIdx >= 0 ? originalIdx : index);
                   }}
                 >
-                  <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-105 flex items-center justify-center p-1.5">
+                  <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-105 flex items-center justify-center p-0">
                     <img
                       src={image.url}
                       alt={image.alt}
                       loading={index < 6 ? "eager" : "lazy"}
                       decoding="async"
                       style={{ filter: isMonochrome ? 'grayscale(100%) contrast(108%)' : 'none' }}
-                      className={`w-full h-full object-contain ${
+                      className={`w-full h-full object-cover ${
                         protectPhotos ? 'pointer-events-none select-none' : ''
                       }`}
                       onContextMenu={(e) => { if (protectPhotos) e.preventDefault(); }}
@@ -578,14 +578,14 @@ export default function GalleryGrid({
                     }}
                     title={`${image.title}${image.subtitle ? ` - ${image.subtitle}` : ''}`}
                   >
-                    <div className="absolute inset-0 transition-transform duration-500 ease-out group-hover:scale-105 flex items-center justify-center p-2">
+                    <div className="absolute inset-0 transition-transform duration-500 ease-out group-hover:scale-105 flex items-center justify-center p-0">
                       <img
                         src={image.url}
                         alt={image.alt}
                         loading={index < itemsPerPage ? "eager" : "lazy"}
                         decoding="async"
                         style={{ filter: isMonochrome ? 'grayscale(100%) contrast(108%)' : 'none' }}
-                        className={`w-full h-full object-contain ${
+                        className={`w-full h-full object-cover ${
                           protectPhotos ? 'pointer-events-none select-none' : ''
                         }`}
                         onContextMenu={(e) => { if (protectPhotos) e.preventDefault(); }}
