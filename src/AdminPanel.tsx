@@ -104,7 +104,14 @@ async function extractExifFromFile(file: File): Promise<{ exif: ExifData; camera
   }
 }
 
-async function compressImage(file: File, maxDimension: number, quality: number, enableSharpen?: boolean, sharpenAmount?: number): Promise<File | Blob> {
+async function compressImage(
+  file: File, 
+  maxDimension: number, 
+  quality: number, 
+  enableSharpen?: boolean, 
+  sharpenAmount?: number,
+  outputFormat: string = 'image/jpeg'
+): Promise<File | Blob> {
   return new Promise((resolve) => {
     if (!file.type.startsWith('image/') || file.type === 'image/gif') {
       resolve(file);
@@ -116,7 +123,7 @@ async function compressImage(file: File, maxDimension: number, quality: number, 
       img.onload = () => {
         let width = img.width;
         let height = img.height;
-        if (width > maxDimension || height > maxDimension) {
+        if (maxDimension > 0 && maxDimension !== Infinity && (width > maxDimension || height > maxDimension)) {
           if (width > height) {
             height = Math.round((height * maxDimension) / width);
             width = maxDimension;
@@ -170,11 +177,20 @@ async function compressImage(file: File, maxDimension: number, quality: number, 
           }
         }
 
+        let ext = '.jpg';
+        if (outputFormat === 'image/webp') ext = '.webp';
+        else if (outputFormat === 'image/avif') ext = '.avif';
+        else if (outputFormat === 'image/png') ext = '.png';
+
+        const lastDot = file.name.lastIndexOf('.');
+        const baseName = lastDot !== -1 ? file.name.substring(0, lastDot) : file.name;
+        const targetFileName = `${baseName}${ext}`;
+
         canvas.toBlob(
           (blob) => {
             if (blob) {
-              const compressedFile = new File([blob], file.name, {
-                type: 'image/jpeg',
+              const compressedFile = new File([blob], targetFileName, {
+                type: blob.type || outputFormat,
                 lastModified: Date.now()
               });
               resolve(compressedFile);
@@ -182,7 +198,7 @@ async function compressImage(file: File, maxDimension: number, quality: number, 
               resolve(file);
             }
           },
-          'image/jpeg',
+          outputFormat,
           quality
         );
       };
@@ -247,6 +263,13 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Per-Dialog Image Processing & Optimization Settings
+  const [importMaxDim, setImportMaxDim] = useState<string>('1800 px');
+  const [importQuality, setImportQuality] = useState<number>(80);
+  const [importEnableSharpen, setImportEnableSharpen] = useState<boolean>(false);
+  const [importSharpenAmount, setImportSharpenAmount] = useState<number>(30);
+  const [importFormat, setImportFormat] = useState<string>('image/webp');
 
   // Batch Upload States
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
@@ -336,6 +359,129 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
     if (!active) return;
     setPendingPhotos(prev => prev.map(p => ({ ...p, cameraSettings: active.cameraSettings })));
   };
+
+  const renderImageProcessingSettings = () => (
+    <div className="pt-4 mt-4 border-t border-[#1a1a1a]/10 space-y-4 bg-[#fcfbf9] border border-[#e8e4dc] p-4 rounded-sm">
+      <div className="flex items-center gap-2 pb-2 border-b border-[#1a1a1a]/10">
+        <SlidersHorizontal size={14} className="text-[#8e8a82]" />
+        <span className="text-[10px] uppercase tracking-widest font-bold text-[#1a1a1a]">
+          Definições de Processamento & Importação (Pré-Upload)
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Formato de Ficheiro */}
+        <div>
+          <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] mb-1 font-semibold">
+            FORMATO DO FICHEIRO
+          </label>
+          <select 
+            value={importFormat} 
+            onChange={e => setImportFormat(e.target.value)}
+            className="w-full bg-white border border-[#1a1a1a]/10 px-3 py-2 text-xs focus:outline-none focus:border-[#1a1a1a]/30 transition-colors font-medium text-[#1a1a1a]"
+          >
+            <option value="image/webp">WEBP — Altíssima compressão com excelente qualidade (Recomendado)</option>
+            <option value="image/avif">AVIF — Formato de nova geração (Menor tamanho)</option>
+            <option value="image/jpeg">JPEG — Compatibilidade clássica universal</option>
+            <option value="image/png">PNG — Ficheiro original sem perdas</option>
+          </select>
+          <p className="text-[9px] text-[#8e8a82] mt-1">
+            Formatos modernos como WebP e AVIF reduzem o tamanho em até 60% mantendo elevada fidelidade.
+          </p>
+        </div>
+
+        {/* Tamanho em px */}
+        <div>
+          <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] mb-1 font-semibold">
+            TAMANHO EM PX A IMPORTAR
+          </label>
+          <select 
+            value={importMaxDim} 
+            onChange={e => setImportMaxDim(e.target.value)}
+            className="w-full bg-white border border-[#1a1a1a]/10 px-3 py-2 text-xs focus:outline-none focus:border-[#1a1a1a]/30 transition-colors font-medium text-[#1a1a1a]"
+          >
+            <option value="3840 px">3840 px (Ultra HD / 4K)</option>
+            <option value="2560 px">2560 px (2K Quad HD)</option>
+            <option value="1920 px">1920 px (Full HD)</option>
+            <option value="1800 px">1800 px (Padrão Recomendado)</option>
+            <option value="1200 px">1200 px (Compacto)</option>
+            <option value="800 px">800 px (Miniatura)</option>
+            <option value="Original">Original (Manter dimensões sem redimensionar)</option>
+          </select>
+          <p className="text-[9px] text-[#8e8a82] mt-1">
+            Redimensiona a dimensão máxima mantendo a proporção da imagem.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+        {/* Qualidade de Compressão em % */}
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] font-semibold">
+              QUALIDADE DE COMPRESSÃO (%)
+            </label>
+            <span className="text-[11px] font-mono font-bold text-[#1a1a1a]">{importQuality}%</span>
+          </div>
+          <input 
+            type="range"
+            min={20}
+            max={100}
+            step={5}
+            value={importQuality}
+            onChange={e => setImportQuality(Number(e.target.value))}
+            className="w-full accent-[#1a1a1a]"
+          />
+          <div className="flex justify-between text-[8px] text-[#8e8a82] mt-0.5">
+            <span>20% (Mais leve)</span>
+            <span>80% (Equilibrado)</span>
+            <span>100% (Qualidade Máxima)</span>
+          </div>
+        </div>
+
+        {/* Filtro de Nitidez */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] font-semibold">
+              FILTRO DE NITIDEZ (SHARPEN)
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input 
+                type="checkbox"
+                checked={importEnableSharpen}
+                onChange={e => setImportEnableSharpen(e.target.checked)}
+                className="w-3.5 h-3.5 accent-[#1a1a1a]"
+              />
+              <span className="text-[10px] uppercase font-bold text-[#1a1a1a]">
+                {importEnableSharpen ? 'Ativado' : 'Desativado'}
+              </span>
+            </label>
+          </div>
+          {importEnableSharpen ? (
+            <div className="space-y-1">
+              <div className="flex justify-between text-[9px] text-[#8e8a82]">
+                <span>Intensidade de Nitidez:</span>
+                <span className="font-mono font-bold text-[#1a1a1a]">{importSharpenAmount}%</span>
+              </div>
+              <input 
+                type="range"
+                min={10}
+                max={100}
+                step={5}
+                value={importSharpenAmount}
+                onChange={e => setImportSharpenAmount(Number(e.target.value))}
+                className="w-full accent-[#1a1a1a]"
+              />
+            </div>
+          ) : (
+            <p className="text-[9px] text-[#8e8a82] italic mt-2">
+              Ative para realçar detalhes e nitidez ao redimensionar a fotografia.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
   const selectedPendingPhoto = useMemo(() => {
     return pendingPhotos.find(p => p.id === selectedPendingId) || null;
@@ -702,6 +848,14 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
     setCameraSettings('');
     setDescription('');
     setFile(null);
+
+    // Initialize per-dialog settings with site defaults
+    setImportMaxDim(siteSettings?.importQuality || '1800 px');
+    setImportQuality(siteSettings?.compressQuality ?? 80);
+    setImportEnableSharpen(siteSettings?.enableSharpen ?? false);
+    setImportSharpenAmount(siteSettings?.sharpenAmount ?? 30);
+    setImportFormat('image/webp');
+
     // Revoke old object URLs to avoid memory leaks
     pendingPhotos.forEach(p => URL.revokeObjectURL(p.previewUrl));
     setPendingPhotos([]);
@@ -717,6 +871,13 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
     setCameraSettings(img.cameraSettings || '');
     setDescription(img.description || '');
     setFile(null);
+
+    setImportMaxDim(siteSettings?.importQuality || '1800 px');
+    setImportQuality(siteSettings?.compressQuality ?? 80);
+    setImportEnableSharpen(siteSettings?.enableSharpen ?? false);
+    setImportSharpenAmount(siteSettings?.sharpenAmount ?? 30);
+    setImportFormat('image/webp');
+
     pendingPhotos.forEach(p => URL.revokeObjectURL(p.previewUrl));
     setPendingPhotos([]);
     setSelectedPendingId(null);
@@ -733,6 +894,15 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
 
     setUploading(true);
     try {
+      const compressQual = importQuality / 100;
+      let maxDim = 1800;
+      if (importMaxDim === 'Original' || importMaxDim === 'Sem limite') {
+        maxDim = Infinity;
+      } else if (importMaxDim) {
+        const match = String(importMaxDim).match(/\d+/);
+        if (match) maxDim = parseInt(match[0], 10);
+      }
+
       if (editingId) {
         // Edit mode (single photo)
         const imgRef = doc(db, 'images', editingId);
@@ -746,28 +916,22 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
         
         if (file) {
           let fileToUpload: File | Blob = file;
-          const compressQual = (siteSettings?.compressQuality !== undefined) ? (siteSettings.compressQuality / 100) : 0.8;
-          let maxDim = 1800;
-          if (siteSettings?.importQuality === 'Original') {
-            maxDim = Infinity;
-          } else if (siteSettings?.importQuality === '1200 px') {
-            maxDim = 1200;
-          } else if (siteSettings?.importQuality === '800 px') {
-            maxDim = 800;
-          } else if (siteSettings?.importQuality) {
-            const match = siteSettings.importQuality.match(/\d+/);
-            if (match) maxDim = parseInt(match[0], 10);
+
+          try {
+            fileToUpload = await compressImage(
+              file, 
+              maxDim, 
+              compressQual, 
+              importEnableSharpen, 
+              importSharpenAmount,
+              importFormat
+            );
+          } catch (err) {
+            console.warn("Failed to compress edit image:", err);
           }
 
-          if (maxDim !== Infinity || compressQual < 1.0 || siteSettings?.enableSharpen) {
-            try {
-              fileToUpload = await compressImage(file, maxDim, compressQual, siteSettings?.enableSharpen, siteSettings?.sharpenAmount);
-            } catch (err) {
-              console.warn("Failed to compress edit image:", err);
-            }
-          }
-
-          const storageRef = ref(storage, `portfolio/${Date.now()}_${file.name}`);
+          const fileNameToUse = (fileToUpload as File).name || file.name;
+          const storageRef = ref(storage, `portfolio/${Date.now()}_${fileNameToUse}`);
           const snapshot = await uploadBytes(storageRef, fileToUpload);
           const downloadURL = await getDownloadURL(snapshot.ref);
           updates.url = downloadURL;
@@ -799,28 +963,22 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
           
           try {
             let fileToUpload: File | Blob = pending.file;
-            const compressQual = (siteSettings?.compressQuality !== undefined) ? (siteSettings.compressQuality / 100) : 0.8;
-            let maxDim = 1800;
-            if (siteSettings?.importQuality === 'Original') {
-              maxDim = Infinity;
-            } else if (siteSettings?.importQuality === '1200 px') {
-              maxDim = 1200;
-            } else if (siteSettings?.importQuality === '800 px') {
-              maxDim = 800;
-            } else if (siteSettings?.importQuality) {
-              const match = siteSettings.importQuality.match(/\d+/);
-              if (match) maxDim = parseInt(match[0], 10);
+
+            try {
+              fileToUpload = await compressImage(
+                pending.file, 
+                maxDim, 
+                compressQual, 
+                importEnableSharpen, 
+                importSharpenAmount,
+                importFormat
+              );
+            } catch (err) {
+              console.warn("Failed to compress batch image:", err);
             }
 
-            if (maxDim !== Infinity || compressQual < 1.0 || siteSettings?.enableSharpen) {
-              try {
-                fileToUpload = await compressImage(pending.file, maxDim, compressQual, siteSettings?.enableSharpen, siteSettings?.sharpenAmount);
-              } catch (err) {
-                console.warn("Failed to compress batch image:", err);
-              }
-            }
-
-            const storageRef = ref(storage, `portfolio/${Date.now()}_${pending.file.name}`);
+            const fileNameToUse = (fileToUpload as File).name || pending.file.name;
+            const storageRef = ref(storage, `portfolio/${Date.now()}_${fileNameToUse}`);
             const snapshot = await uploadBytes(storageRef, fileToUpload);
             const downloadURL = await getDownloadURL(snapshot.ref);
 
@@ -1543,6 +1701,9 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                       />
                     </div>
 
+                    {/* Image processing & optimization settings (below description) */}
+                    {renderImageProcessingSettings()}
+
                     <div className="flex gap-4 pt-4 border-t border-[#1a1a1a]/10">
                       <button 
                         type="button"
@@ -1594,6 +1755,9 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                           </div>
                         </div>
                       </div>
+
+                      {/* Default processing settings before importing */}
+                      {renderImageProcessingSettings()}
 
                       <div className="flex gap-4 pt-4 border-t border-[#1a1a1a]/10">
                         <button 
@@ -1878,6 +2042,9 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                                 placeholder="Descrição opcional..."
                               />
                             </div>
+
+                            {/* Image processing & optimization settings */}
+                            {renderImageProcessingSettings()}
                           </div>
                         ) : (
                           <div className="h-full flex flex-col items-center justify-center text-center p-8 border border-dashed border-[#1a1a1a]/10 bg-white/50 rounded-sm">

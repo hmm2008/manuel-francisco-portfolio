@@ -1145,10 +1145,10 @@ export default function App() {
             className="w-full h-full px-4 pb-4 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8 overflow-y-auto"
             style={{ paddingTop: siteSettings?.mainTitleTopMargin !== undefined ? `${siteSettings.mainTitleTopMargin}px` : '32px' }}
           >
-            <div className="w-full max-w-5xl mx-auto flex flex-col min-h-full justify-between">
+            <div className="w-full mx-auto flex flex-col min-h-full justify-between">
               <div className="flex flex-col w-full">
                 <div 
-                  className="text-center w-full max-w-5xl mx-auto flex-shrink-0"
+                  className="text-center w-full mx-auto flex-shrink-0"
                   style={{ marginBottom: siteSettings?.mainTitleBottomMargin !== undefined ? `${siteSettings.mainTitleBottomMargin}px` : (isMobileLandscape ? '8px' : '16px') }}
                 >
                   {!isMobileLandscape && (

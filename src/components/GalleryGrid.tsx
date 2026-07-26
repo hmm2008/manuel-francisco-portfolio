@@ -789,7 +789,7 @@ function GalleryGrid({
           <div 
             style={{
               display: 'grid',
-              gridTemplateColumns: `repeat(${cols}, ${itemSize}px)`,
+              gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${rows}, ${itemSize}px)`,
               gap: `${gap}px`,
               justifyContent: 'center',
