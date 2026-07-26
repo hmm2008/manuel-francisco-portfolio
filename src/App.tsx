@@ -284,7 +284,7 @@ export default function App() {
 
   const renderGalleryControls = () => {
     return (
-      <div className="w-full flex items-center justify-center md:justify-start gap-1.5 mb-5 pb-3 flex-shrink-0">
+      <div className="w-full flex flex-wrap items-center justify-center md:justify-start gap-1.5 mb-5 pb-3 flex-shrink-0">
         <button 
           onClick={() => setSelectedCategory('TODAS')}
           className={`px-3 py-1.5 border transition-colors text-[9px] tracking-[0.1em] uppercase font-bold rounded-sm ${

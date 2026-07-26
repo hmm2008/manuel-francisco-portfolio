@@ -715,7 +715,7 @@ function GalleryGrid({
             style={{
               display: 'grid',
               gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-              gridTemplateRows: `repeat(${Math.max(1, Math.ceil(pageImages.length / cols))}, ${itemSize}px)`,
+              gridTemplateRows: `repeat(${Math.min(rows, Math.max(1, Math.ceil(processedImages.length / cols)))}, ${itemSize}px)`,
               gap: `${gap}px`,
               justifyContent: 'center',
               alignContent: 'center',
