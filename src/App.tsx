@@ -1159,7 +1159,7 @@ export default function App() {
                 <div className="relative flex-1 overflow-hidden grid place-items-center">
                 {(() => {
                   const slideshowVariants = getSlideshowVariants(siteSettings?.slideshowEffect, Number(siteSettings?.slideshowZoom) || 105, siteSettings?.reduceAnimations);
-                  const photoPadding = siteSettings?.slideshowPhotoPadding !== undefined ? siteSettings.slideshowPhotoPadding : 16;
+                  const photoPadding = isMobileLandscape ? 6 : (siteSettings?.slideshowPhotoPadding !== undefined ? siteSettings.slideshowPhotoPadding : 16);
                   return (
                     <AnimatePresence mode="popLayout">
                       <motion.div
@@ -1180,11 +1180,12 @@ export default function App() {
                             textPos.includes('right') || textPos.includes('dto') || textPos.includes('direito') ? 'items-end text-right' :
                             textPos.includes('center') || textPos.includes('centro') || textPos.includes('centrado') ? 'items-center text-center' :
                             'items-start text-left';
+                          const effectiveFit = isMobileLandscape ? 'Ajustar' : (siteSettings?.slideshowFit || 'Ajustar');
 
                           return (
                             <div className="relative w-full h-full flex items-center justify-center rounded-sm">
                               <div className={`relative inline-flex items-center justify-center rounded-sm max-w-full max-h-full overflow-hidden ${
-                                siteSettings?.slideshowFit === 'Preencher' ? 'w-full h-full' : 'w-auto h-auto'
+                                effectiveFit === 'Preencher' ? 'w-full h-full' : 'w-auto h-auto'
                               }`}>
                                 <img
                                   src={currentSlide?.url}
@@ -1193,11 +1194,11 @@ export default function App() {
                                   fetchPriority="high"
                                   referrerPolicy="no-referrer"
                                   className={`block ${
-                                    siteSettings?.slideshowFit === 'Preencher' 
+                                    effectiveFit === 'Preencher' 
                                       ? 'w-full h-full object-cover object-center' 
                                       : 'max-w-full max-h-full object-contain object-center'
                                   }`}
-                                  style={siteSettings?.slideshowFit === 'Preencher' ? {} : { height: 'auto', width: 'auto', maxHeight: isMobileLandscape ? '100%' : 'calc(100vh - 140px)', maxWidth: '100%' }}
+                                  style={effectiveFit === 'Preencher' ? {} : { height: 'auto', width: 'auto', maxHeight: '100%', maxWidth: '100%' }}
                                 />
 
                                 {siteSettings?.enableWatermark && siteSettings?.showWatermarkInSlideshow !== false && (
