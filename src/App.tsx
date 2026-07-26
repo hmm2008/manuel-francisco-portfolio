@@ -1715,18 +1715,6 @@ export default function App() {
             <div className="absolute top-6 right-6 z-[160] flex items-center gap-3 md:gap-4">
               {!hideLightboxControls ? (
                 <>
-                  {/* Botão para esconder botões (posicionado antes de Atalhos) */}
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setHideLightboxControls(true);
-                    }}
-                    className="px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 bg-black/40 text-white/90 hover:bg-white hover:text-black border border-white/20"
-                    title="Esconder Todos os Botões (H)"
-                  >
-                    <EyeOff size={14} /> <span className="hidden sm:inline">Esconder</span>
-                  </button>
-
                   {siteSettings?.enableKeyboardShortcuts !== false && (
                     <button 
                       onClick={(e) => {
@@ -1831,9 +1819,21 @@ export default function App() {
                   <button onClick={toggleFullScreen} className="text-white bg-black/40 hover:bg-black/60 border border-white/20 p-2 rounded-full transition-colors" title="Ecrã Inteiro (F)">
                     <Maximize size={16} strokeWidth={1.5} />
                   </button>
+
+                  {/* Botão para esconder botões (posicionado ao lado do botão fechar) */}
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setHideLightboxControls(true);
+                    }}
+                    className="px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 bg-black/40 text-white/90 hover:bg-white hover:text-black border border-white/20"
+                    title="Esconder Todos os Botões (H)"
+                  >
+                    <EyeOff size={14} /> <span className="hidden sm:inline">Esconder</span>
+                  </button>
                 </>
               ) : (
-                /* Quando os botões estão escondidos, exibe um botão posicionado ao lado do botão fechar para os mostrar novamente */
+                /* Quando os botões estão escondidos, exibe o botão Mostrar ao lado do botão fechar */
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1842,7 +1842,7 @@ export default function App() {
                   className="px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 bg-black/60 hover:bg-black/80 text-white border border-white/30 shadow-lg"
                   title="Mostrar Todos os Botões (H)"
                 >
-                  <Eye size={14} /> <span className="hidden sm:inline">Mostrar Botões</span>
+                  <Eye size={14} /> <span className="hidden sm:inline">Mostrar</span>
                 </button>
               )}
 
