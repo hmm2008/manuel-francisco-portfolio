@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronLeft, ChevronRight, Cookie, ShieldCheck, Home, Image as ImageIcon, User, BookOpen, Mail, Link as LinkIcon, Settings, ArrowRight, ZoomIn, ZoomOut, Maximize, Menu, Camera, Info, Keyboard, HelpCircle, Sparkles, Play, Pause, Share2, CheckCircle2, Download, Tv, Instagram, Facebook, Twitter, Heart } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Cookie, ShieldCheck, Home, Image as ImageIcon, User, BookOpen, Mail, Link as LinkIcon, Settings, ArrowRight, ZoomIn, ZoomOut, Maximize, Menu, Camera, Info, Keyboard, HelpCircle, Sparkles, Play, Pause, Share2, CheckCircle2, Download, Tv, Instagram, Facebook, Twitter, Heart, Eye, EyeOff } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import Footer from './components/Footer';
@@ -14,7 +14,7 @@ import GalleryGrid from './components/GalleryGrid';
 import { getFontFamily, getTextStyleProps } from './utils/fontUtils';
 import { getSlideshowVariants, getLightboxVariants } from './utils/transitionUtils';
 import { getWatermarkClasses, getPositionClasses, getCaptionOffsetStyle } from './utils/watermarkUtils';
-import { preloadImage, preloadImagesBatch } from './utils/imagePreloader';
+import { preloadImage, preloadImageAsync, preloadImagesBatch } from './utils/imagePreloader';
 
 const AdminPanel = lazy(() => import('./AdminPanel'));
 const Biography = lazy(() => import('./components/Biography'));
@@ -107,6 +107,7 @@ export default function App() {
     return sessionStorage.getItem('admin_unlocked') === 'true';
   });
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const [hideLightboxControls, setHideLightboxControls] = useState<boolean>(false);
   const [showExifPanel, setShowExifPanel] = useState<boolean>(false);
   const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
   const [showZenMode, setShowZenMode] = useState<boolean>(false);
@@ -228,6 +229,8 @@ export default function App() {
       sidebarButtonSpacing: 16,
       messageSpacing: 16,
       slideshowTopMargin: 0,
+      showSlideshowGalleryButton: true,
+      slideshowGalleryButtonPosition: 'left',
     };
     if (typeof window !== 'undefined') {
       try {
@@ -288,10 +291,10 @@ export default function App() {
             {siteSettings?.enableZenMode !== false && (
               <button
                 onClick={() => setShowZenMode(true)}
-                className="px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-[#1a1a1a] text-amber-200 border border-amber-300/40 hover:bg-[#2e2e2e] transition-all flex items-center gap-1.5 shadow-2xs"
+                className="px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-[#1a1a1a] text-[#e2d5c3] border border-[#d2c4b0]/40 hover:bg-[#2e2e2e] transition-all flex items-center gap-1.5 shadow-2xs"
                 title="Modo Exposição Ambient em Écrã Inteiro com Música e Efeito Ken Burns"
               >
-                <Tv size={12} className="text-amber-300 animate-pulse" />
+                <Tv size={12} className="text-[#c8b89e] animate-pulse" />
                 <span>Modo Exposição</span>
               </button>
             )}
@@ -428,13 +431,16 @@ export default function App() {
     };
   }, []);
 
-  // Preload adjacent images for slideshow using bounded preloader
+  // Preload adjacent images for slideshow using bounded preloader & pre-decode
   useEffect(() => {
     if (activeView === 'inicio' && galleryImages.length > 0) {
+      const currentUrl = galleryImages[slideIndex]?.url;
       const nextIdx = (slideIndex + 1) % galleryImages.length;
       const prevIdx = (slideIndex - 1 + galleryImages.length) % galleryImages.length;
-      preloadImage(galleryImages[nextIdx]?.url);
-      preloadImage(galleryImages[prevIdx]?.url);
+      
+      if (currentUrl) preloadImageAsync(currentUrl);
+      if (galleryImages[nextIdx]?.url) preloadImageAsync(galleryImages[nextIdx].url);
+      if (galleryImages[prevIdx]?.url) preloadImageAsync(galleryImages[prevIdx].url);
     }
   }, [slideIndex, galleryImages, activeView]);
 
@@ -444,11 +450,12 @@ export default function App() {
       const currentImg = filteredGallery[selectedImageIndex];
       if (currentImg) {
         markPhotoAsViewed(currentImg.id);
+        preloadImageAsync(currentImg.url);
       }
       const nextIdx = (selectedImageIndex + 1) % filteredGallery.length;
       const prevIdx = (selectedImageIndex - 1 + filteredGallery.length) % filteredGallery.length;
-      preloadImage(filteredGallery[nextIdx]?.url);
-      preloadImage(filteredGallery[prevIdx]?.url);
+      if (filteredGallery[nextIdx]?.url) preloadImageAsync(filteredGallery[nextIdx].url);
+      if (filteredGallery[prevIdx]?.url) preloadImageAsync(filteredGallery[prevIdx].url);
     }
   }, [selectedImageIndex, filteredGallery, markPhotoAsViewed]);
 
@@ -554,6 +561,7 @@ export default function App() {
     setZoomLevel(initialZoom);
     setShowExifPanel(false);
     setShowShortcutsModal(false);
+    setHideLightboxControls(false);
     setTouchStart(null);
     setTouchDelta({ x: 0, y: 0 });
   };
@@ -613,17 +621,19 @@ export default function App() {
   const handleTouchEnd = () => {
     if (!touchStart) return;
     const { x, y } = touchDelta;
-    if (Math.abs(x) > Math.abs(y)) {
-      if (x < -50) {
+    const absX = Math.abs(x);
+    const absY = Math.abs(y);
+
+    if (absX > absY && absX > 40) {
+      if (x < 0) {
         nextImage();
-      } else if (x > 50) {
+      } else {
         prevImage();
       }
-    } else {
-      if (y > 70) {
-        closeLightbox();
-      }
+    } else if (absY > absX && (y > 60 || y < -80)) {
+      closeLightbox();
     }
+
     setTouchStart(null);
     setTouchDelta({ x: 0, y: 0 });
   };
@@ -710,7 +720,9 @@ export default function App() {
           setIsAutoPlayActive(prev => !prev);
         } else if (e.key === 'z' || e.key === 'Z') {
           setShowZenMode(prev => !prev);
-        } else if (e.key === '?' || e.key === 'h' || e.key === 'H') {
+        } else if (e.key === 'h' || e.key === 'H') {
+          setHideLightboxControls(prev => !prev);
+        } else if (e.key === '?') {
           setShowShortcutsModal(prev => !prev);
         }
       } else {
@@ -1435,20 +1447,28 @@ export default function App() {
                 </div>
 
                 {/* Botão VER GALERIA na barra inferior, nunca se sobrepõe à imagem */}
-                <div className="w-full flex justify-end shrink-0 px-6 pb-6 md:px-8 md:pb-8 pt-2 z-50 pointer-events-none">
-                  <button 
-                    onClick={() => setActiveView('galeria')}
-                    className="pointer-events-auto flex items-center gap-3 py-2 tracking-[0.2em] uppercase hover:opacity-70 transition-all border-b pb-1 w-fit font-semibold drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] typography-slideshow-controls"
-                    style={{
-                      fontFamily: getFontFamily(siteSettings?.slideshowControlsFont),
-                      color: siteSettings?.slideshowControlsColor || '#ffffff',
-                      borderColor: `${siteSettings?.slideshowControlsColor || '#ffffff'}4d`
-                    }}
-                  >
-                    <span>VER GALERIA</span>
-                    <ArrowRight className="w-3 h-3" strokeWidth={1.5} />
-                  </button>
-                </div>
+                {siteSettings?.showSlideshowGalleryButton !== false && (
+                  <div className={`w-full flex ${
+                    siteSettings?.slideshowGalleryButtonPosition === 'center' 
+                      ? 'justify-center' 
+                      : siteSettings?.slideshowGalleryButtonPosition === 'right' 
+                      ? 'justify-end' 
+                      : 'justify-start'
+                  } shrink-0 px-6 pb-6 md:px-8 md:pb-8 pt-2 z-50 pointer-events-none`}>
+                    <button 
+                      onClick={() => setActiveView('galeria')}
+                      className="pointer-events-auto flex items-center gap-3 py-2 tracking-[0.2em] uppercase hover:opacity-70 transition-all border-b pb-1 w-fit font-semibold drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] typography-slideshow-controls"
+                      style={{
+                        fontFamily: getFontFamily(siteSettings?.slideshowControlsFont),
+                        color: siteSettings?.slideshowControlsColor || '#ffffff',
+                        borderColor: `${siteSettings?.slideshowControlsColor || '#ffffff'}4d`
+                      }}
+                    >
+                      <span>VER GALERIA</span>
+                      <ArrowRight className="w-3 h-3" strokeWidth={1.5} />
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-center p-8 bg-[#1a1a1a]">
@@ -1693,133 +1713,139 @@ export default function App() {
           >
             {/* Top Right Controls */}
             <div className="absolute top-6 right-6 z-[160] flex items-center gap-3 md:gap-4">
-              {siteSettings?.enableKeyboardShortcuts !== false && (
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowShortcutsModal(!showShortcutsModal);
-                  }}
-                  className={`px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 ${
-                    showShortcutsModal 
-                      ? 'bg-white text-black font-bold shadow-lg' 
-                      : 'bg-black/40 text-white/90 hover:bg-black/60 border border-white/20'
-                  }`}
-                  title="Atalhos de Teclado & Gestos (?)"
-                >
-                  <Keyboard size={14} /> <span className="hidden sm:inline">Atalhos</span>
-                </button>
-              )}
+              {!hideLightboxControls ? (
+                <>
+                  {/* Botão para esconder botões (posicionado antes de Atalhos) */}
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setHideLightboxControls(true);
+                    }}
+                    className="px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 bg-black/40 text-white/90 hover:bg-white hover:text-black border border-white/20"
+                    title="Esconder Todos os Botões (H)"
+                  >
+                    <EyeOff size={14} /> <span className="hidden sm:inline">Esconder</span>
+                  </button>
 
-              {siteSettings?.showExifData !== false && (
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowExifPanel(!showExifPanel);
-                  }}
-                  className={`px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 ${
-                    showExifPanel 
-                      ? 'bg-white text-black font-bold shadow-lg' 
-                      : 'bg-black/40 text-white/90 hover:bg-black/60 border border-white/20'
-                  }`}
-                  title="Ver Dados EXIF (E)"
-                >
-                  <Camera size={14} /> EXIF
-                </button>
-              )}
+                  {siteSettings?.enableKeyboardShortcuts !== false && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowShortcutsModal(!showShortcutsModal);
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 ${
+                        showShortcutsModal 
+                          ? 'bg-white text-black font-bold shadow-lg' 
+                          : 'bg-black/40 text-white/90 hover:bg-black/60 border border-white/20'
+                      }`}
+                      title="Atalhos de Teclado & Gestos (?)"
+                    >
+                      <Keyboard size={14} /> <span className="hidden sm:inline">Atalhos</span>
+                    </button>
+                  )}
 
-              <div className="flex items-center gap-3 text-white bg-black/40 border border-white/20 px-3 py-1 rounded-full">
-                <button onClick={(e) => handleZoom(e, 'out')} className="hover:text-white/70 transition-colors" title="Zoom Out (-)">
-                  <ZoomOut size={16} strokeWidth={1.5} />
-                </button>
-                <span className="text-[10px] tracking-wider font-sans w-8 text-center font-mono">{zoomLevel}%</span>
-                <button onClick={(e) => handleZoom(e, 'in')} className="hover:text-white/70 transition-colors" title="Zoom In (+)">
-                  <ZoomIn size={16} strokeWidth={1.5} />
-                </button>
-              </div>
+                  {siteSettings?.showExifData !== false && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowExifPanel(!showExifPanel);
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 ${
+                        showExifPanel 
+                          ? 'bg-white text-black font-bold shadow-lg' 
+                          : 'bg-black/40 text-white/90 hover:bg-black/60 border border-white/20'
+                      }`}
+                      title="Ver Dados EXIF (E)"
+                    >
+                      <Camera size={14} /> EXIF
+                    </button>
+                  )}
 
-              {/* Auto-Play Presentation Mode Button & Speed Selector */}
-              <div className="flex items-center gap-1 bg-black/40 border border-white/20 p-0.5 rounded-full">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsAutoPlayActive(!isAutoPlayActive);
-                    showToast(!isAutoPlayActive ? `Apresentação Automática Ativada (${slideshowSpeed / 1000}s)` : 'Apresentação Automática Pausada');
-                  }}
-                  className={`px-3 py-1 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 ${
-                    isAutoPlayActive 
-                      ? 'bg-amber-400 text-black font-bold shadow-lg' 
-                      : 'text-white/90 hover:bg-white/10'
-                  }`}
-                  title="Apresentação Automática (Tecla P)"
-                >
-                  {isAutoPlayActive ? <Pause size={13} /> : <Play size={13} />}
-                  <span className="hidden sm:inline">{isAutoPlayActive ? 'Pausar' : 'Apresentação'}</span>
-                </button>
-
-                {isAutoPlayActive && (
-                  <div className="flex items-center gap-0.5 pr-1 border-l border-white/20 pl-1">
-                    {[2000, 4000, 7000, 10000].map(speed => (
-                      <button
-                        key={speed}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSlideshowSpeed(speed);
-                          showToast(`Velocidade: ${speed / 1000}s por foto`);
-                        }}
-                        className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-all ${
-                          slideshowSpeed === speed
-                            ? 'bg-white text-black font-bold'
-                            : 'text-white/70 hover:text-white hover:bg-white/10'
-                        }`}
-                        title={`${speed / 1000} segundos por fotografia`}
-                      >
-                        {speed / 1000}s
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-3 text-white bg-black/40 border border-white/20 px-3 py-1 rounded-full">
+                    <button onClick={(e) => handleZoom(e, 'out')} className="hover:text-white/70 transition-colors" title="Zoom Out (-)">
+                      <ZoomOut size={16} strokeWidth={1.5} />
+                    </button>
+                    <span className="text-[10px] tracking-wider font-sans w-8 text-center font-mono">{zoomLevel}%</span>
+                    <button onClick={(e) => handleZoom(e, 'in')} className="hover:text-white/70 transition-colors" title="Zoom In (+)">
+                      <ZoomIn size={16} strokeWidth={1.5} />
+                    </button>
                   </div>
-                )}
-              </div>
 
-              {/* Share Photo Button */}
-              {filteredGallery[selectedImageIndex] && (
-                <button
+                  {/* Auto-Play Presentation Mode Button & Speed Selector */}
+                  <div className="flex items-center gap-1 bg-black/40 border border-white/20 p-0.5 rounded-full">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsAutoPlayActive(!isAutoPlayActive);
+                        showToast(!isAutoPlayActive ? `Apresentação Automática Ativada (${slideshowSpeed / 1000}s)` : 'Apresentação Automática Pausada');
+                      }}
+                      className={`px-3 py-1 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 ${
+                        isAutoPlayActive 
+                          ? 'bg-[#c8b89e] text-[#1a1a1a] font-bold shadow-lg' 
+                          : 'text-white/90 hover:bg-white/10'
+                      }`}
+                      title="Apresentação Automática (Tecla P)"
+                    >
+                      {isAutoPlayActive ? <Pause size={13} /> : <Play size={13} />}
+                      <span className="hidden sm:inline">{isAutoPlayActive ? 'Pausar' : 'Apresentação'}</span>
+                    </button>
+
+                    {isAutoPlayActive && (
+                      <div className="flex items-center gap-0.5 pr-1 border-l border-white/20 pl-1">
+                        {[2000, 4000, 7000, 10000].map(speed => (
+                          <button
+                            key={speed}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSlideshowSpeed(speed);
+                              showToast(`Velocidade: ${speed / 1000}s por foto`);
+                            }}
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-all ${
+                              slideshowSpeed === speed
+                                ? 'bg-white text-black font-bold'
+                                : 'text-white/70 hover:text-white hover:bg-white/10'
+                            }`}
+                            title={`${speed / 1000} segundos por fotografia`}
+                          >
+                            {speed / 1000}s
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {siteSettings?.enablePhotoDownload && filteredGallery[selectedImageIndex] && (
+                    <a 
+                      href={filteredGallery[selectedImageIndex].url}
+                      download={filteredGallery[selectedImageIndex].title || 'fotografia-highres'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 bg-black/40 text-white/90 hover:bg-white hover:text-black border border-white/20"
+                      title="Descarregar Foto High-Res"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Download size={14} /> Download
+                    </a>
+                  )}
+
+                  <button onClick={toggleFullScreen} className="text-white bg-black/40 hover:bg-black/60 border border-white/20 p-2 rounded-full transition-colors" title="Ecrã Inteiro (F)">
+                    <Maximize size={16} strokeWidth={1.5} />
+                  </button>
+                </>
+              ) : (
+                /* Quando os botões estão escondidos, exibe um botão posicionado ao lado do botão fechar para os mostrar novamente */
+                <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    const img = filteredGallery[selectedImageIndex];
-                    if (img) {
-                      const shareUrl = window.location.href.split('#')[0] + `#photo-${img.id}`;
-                      if (navigator.clipboard) {
-                        navigator.clipboard.writeText(shareUrl);
-                        showToast('Link da fotografia copiado!');
-                      } else {
-                        showToast(`Fotografia: ${img.title || 'Foto'}`);
-                      }
-                    }
+                    setHideLightboxControls(false);
                   }}
-                  className="px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 bg-black/40 text-white/90 hover:bg-white hover:text-black border border-white/20"
-                  title="Partilhar ou Copiar Link da Foto"
+                  className="px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 bg-black/60 hover:bg-black/80 text-white border border-white/30 shadow-lg"
+                  title="Mostrar Todos os Botões (H)"
                 >
-                  <Share2 size={14} /> <span className="hidden sm:inline">Partilhar</span>
+                  <Eye size={14} /> <span className="hidden sm:inline">Mostrar Botões</span>
                 </button>
               )}
 
-              {siteSettings?.enablePhotoDownload && filteredGallery[selectedImageIndex] && (
-                <a 
-                  href={filteredGallery[selectedImageIndex].url}
-                  download={filteredGallery[selectedImageIndex].title || 'fotografia-highres'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 bg-black/40 text-white/90 hover:bg-white hover:text-black border border-white/20"
-                  title="Descarregar Foto High-Res"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Download size={14} /> Download
-                </a>
-              )}
-
-              <button onClick={toggleFullScreen} className="text-white bg-black/40 hover:bg-black/60 border border-white/20 p-2 rounded-full transition-colors" title="Ecrã Inteiro (F)">
-                <Maximize size={16} strokeWidth={1.5} />
-              </button>
               <button onClick={closeLightbox} className="text-white bg-black/40 hover:bg-black/60 border border-white/20 p-2 rounded-full transition-colors ml-1" title="Fechar (Esc)">
                 <X size={18} strokeWidth={1.5} />
               </button>
@@ -1827,7 +1853,7 @@ export default function App() {
 
             {/* Mobile Touch Swipe Hint Pill */}
             <AnimatePresence>
-              {swipeHintVisible && siteSettings?.enableKeyboardShortcuts !== false && (
+              {!hideLightboxControls && swipeHintVisible && siteSettings?.enableKeyboardShortcuts !== false && (
                 <motion.div
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -1839,7 +1865,7 @@ export default function App() {
               )}
             </AnimatePresence>
 
-            {/* Navigation Arrows */}
+            {/* Navigation Arrows (sempre visíveis para navegação) */}
             <button 
               onClick={prevImage}
               className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 p-3 text-white/60 hover:text-white bg-black/30 hover:bg-black/60 rounded-full border border-white/10 transition-colors z-[160]"
@@ -2039,7 +2065,7 @@ export default function App() {
                 >
                   <div className="flex justify-between items-center pb-3 border-b border-white/15">
                     <span className="text-[11px] uppercase tracking-widest font-bold text-white flex items-center gap-2">
-                      <Keyboard size={16} className="text-amber-400" /> Atalhos & Gestos
+                      <Keyboard size={16} className="text-[#c8b89e]" /> Atalhos & Gestos
                     </span>
                     <button
                       onClick={() => setShowShortcutsModal(false)}
@@ -2084,6 +2110,10 @@ export default function App() {
                           <span className="text-white/80">Modo Zen</span>
                         </div>
                         <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">H</kbd>
+                          <span className="text-white/80">Esconder Botões</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
                           <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">?</kbd>
                           <span className="text-white/80">Ajuda</span>
                         </div>
@@ -2094,10 +2124,10 @@ export default function App() {
                       <p className="text-[10px] uppercase tracking-wider text-white/50 mb-2 font-bold">Gestos em Dispositivos Móveis</p>
                       <div className="space-y-1.5 text-[11px] text-white/80">
                         <p className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Deslizar ← / → para mudar de foto
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#c8b89e]"></span> Deslizar ← / → para mudar de foto
                         </p>
                         <p className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Deslizar ↓ para fechar visualizador
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#c8b89e]"></span> Deslizar ↓ para fechar visualizador
                         </p>
                       </div>
                     </div>
@@ -2287,7 +2317,7 @@ export default function App() {
             transition={{ duration: 0.2 }}
             className="fixed bottom-6 right-6 z-[500] bg-black/90 backdrop-blur-md text-white px-4 py-2.5 rounded-full border border-white/20 shadow-2xl flex items-center gap-2 text-xs font-sans tracking-wide pointer-events-none"
           >
-            <CheckCircle2 size={15} className="text-amber-400" />
+            <CheckCircle2 size={15} className="text-[#c8b89e]" />
             <span>{toastMessage}</span>
           </motion.div>
         )}
@@ -2314,7 +2344,7 @@ export default function App() {
             >
               <div className="flex justify-between items-center pb-3 border-b border-white/15">
                 <span className="text-xs uppercase tracking-widest font-bold text-white flex items-center gap-2">
-                  <Keyboard size={18} className="text-amber-400" /> Atalhos do Teclado
+                  <Keyboard size={18} className="text-[#c8b89e]" /> Atalhos do Teclado
                 </span>
                 <button
                   onClick={() => setShowShortcutsModal(false)}

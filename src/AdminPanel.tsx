@@ -1244,7 +1244,7 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                         }
                       }}
                       disabled={selectedPhotoIds.length === 0}
-                      className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white text-[10px] uppercase tracking-widest transition-all font-bold flex items-center gap-1.5 shadow-md"
+                      className="px-4 py-1.5 bg-[#2a2723] hover:bg-[#1f1d1a] border border-[#d2c4b0]/40 text-[#e2d5c3] disabled:opacity-40 text-[10px] uppercase tracking-widest transition-all font-bold flex items-center gap-1.5 shadow-md rounded-xs"
                       title={selectedPhotoIds.length === 1 ? "Editar detalhes da fotografia selecionada" : "Editar detalhes em lote das fotografias selecionadas"}
                     >
                       <Edit2 size={14} /> Editar {selectedPhotoIds.length > 0 ? `(${selectedPhotoIds.length})` : ''}
@@ -1252,7 +1252,7 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                     <button 
                       onClick={() => setShowBulkDeleteModal(true)}
                       disabled={selectedPhotoIds.length === 0}
-                      className="px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-[10px] uppercase tracking-widest transition-all font-bold flex items-center gap-1.5 shadow-md"
+                      className="px-4 py-1.5 bg-[#3b2222] hover:bg-[#2c1919] border border-[#8a4a4a]/40 text-[#f2d8d8] disabled:opacity-40 text-[10px] uppercase tracking-widest transition-all font-bold flex items-center gap-1.5 shadow-md rounded-xs"
                     >
                       <Trash2 size={14} /> Eliminar {selectedPhotoIds.length > 0 ? `(${selectedPhotoIds.length})` : ''}
                     </button>

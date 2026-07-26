@@ -5,6 +5,7 @@ import {
   X, Columns, Camera, Check, Eye, RectangleHorizontal, RectangleVertical, Square, Tv
 } from 'lucide-react';
 import { getWatermarkClasses } from '../utils/watermarkUtils';
+import { getOptimizedThumbnailUrl } from '../utils/imagePreloader';
 import { ImageProps } from '../types';
 
 interface GalleryCardProps {
@@ -60,6 +61,11 @@ const GalleryCard = React.memo(function GalleryCard({
   onToggleFavorite,
   onToggleComparison,
 }: GalleryCardProps) {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const displaySrc = useMemo(() => {
+    return getOptimizedThumbnailUrl(image.thumbnailUrl || image.url, 500);
+  }, [image.thumbnailUrl, image.url]);
+
   const handleCardClick = () => {
     onImageClick(index);
   };
@@ -82,16 +88,20 @@ const GalleryCard = React.memo(function GalleryCard({
         onContextMenu={handleContextMenu}
         onClick={handleCardClick}
       >
-        <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-105 flex items-center justify-center p-0">
+        <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-105 flex items-center justify-center p-0 bg-[#d2cbc0]">
+          {!isLoaded && (
+            <div className="absolute inset-0 bg-gradient-to-r from-[#d2cbc0] via-[#e5e0d8] to-[#d2cbc0] animate-pulse" />
+          )}
           <img
-            src={image.url}
+            src={displaySrc}
             alt={image.alt || image.title || 'Fotografia'}
             loading={index < 6 ? "eager" : "lazy"}
             decoding="async"
+            onLoad={() => setIsLoaded(true)}
             style={{ filter: isMonochrome ? 'grayscale(100%) contrast(108%)' : 'none' }}
-            className={`w-full h-full object-cover ${
-              protectPhotos ? 'pointer-events-none select-none' : ''
-            }`}
+            className={`w-full h-full object-cover transition-opacity duration-300 ${
+              isLoaded ? 'opacity-100' : 'opacity-0'
+            } ${protectPhotos ? 'pointer-events-none select-none' : ''}`}
             onContextMenu={handleContextMenu}
             referrerPolicy="no-referrer"
           />
@@ -104,47 +114,62 @@ const GalleryCard = React.memo(function GalleryCard({
 
         {/* Viewed Indicator */}
         {isViewed && (
-          <div className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded-full bg-black/60 text-amber-300 text-[8px] font-mono flex items-center gap-0.5 backdrop-blur-xs">
+          <div className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded-full bg-black/60 text-[#e2d5c3] text-[8px] font-mono flex items-center gap-0.5 backdrop-blur-xs">
             <Eye size={9} />
           </div>
         )}
 
-        {/* Action Icons (Favorite, Comparison, Likes) */}
-        <div className="absolute top-1.5 right-1.5 flex items-center gap-1 z-10">
+        {/* Action Icons (Favorite, Comparison, Likes) with touch-friendly targets */}
+        <div 
+          className="absolute top-1.5 right-1.5 flex items-center gap-1 z-10"
+          onClick={(e) => e.stopPropagation()}
+        >
           {enablePhotoLikes && (
             <button 
-              onClick={(e) => onToggleLike(e, image.id)}
-              className={`px-1.5 py-1 rounded-full text-[9px] font-mono flex items-center gap-1 transition-all backdrop-blur-md ${
-                isLiked ? 'bg-amber-500 text-black font-bold' : 'bg-black/40 text-white/90 hover:bg-black/70'
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleLike(e, image.id);
+              }}
+              className={`min-w-[44px] min-h-[44px] px-2 py-1 rounded-full text-[9px] font-mono flex items-center justify-center gap-1 transition-all backdrop-blur-md shadow-sm ${
+                isLiked ? 'bg-[#c8b89e] text-[#1a1a1a] font-bold' : 'bg-black/50 text-white/90 hover:bg-black/70'
               }`}
               title="Gosto nesta foto"
             >
-              <Heart size={10} className={isLiked ? 'fill-black' : ''} />
+              <Heart size={11} className={isLiked ? 'fill-[#1a1a1a]' : ''} />
               <span>{likesCount}</span>
             </button>
           )}
 
           {enableFavorites && (
             <button 
-              onClick={(e) => onToggleFavorite(e, image.id)}
-              className={`p-1.5 rounded-full transition-all backdrop-blur-md ${
-                isFav ? 'bg-rose-600 text-white' : 'bg-black/30 text-white/80 hover:bg-black/60'
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFavorite(e, image.id);
+              }}
+              className={`min-w-[44px] min-h-[44px] p-2 rounded-full flex items-center justify-center transition-all backdrop-blur-md shadow-sm ${
+                isFav ? 'bg-rose-600 text-white' : 'bg-black/40 text-white/80 hover:bg-black/60'
               }`}
               title="Guardar nos Favoritos"
             >
-              <Heart size={11} className={isFav ? 'fill-white' : ''} />
+              <Heart size={12} className={isFav ? 'fill-white' : ''} />
             </button>
           )}
 
           {enablePhotoComparison && (
             <button 
-              onClick={(e) => onToggleComparison(e, image.id)}
-              className={`p-1.5 rounded-full transition-all backdrop-blur-md ${
-                isComp ? 'bg-amber-500 text-black font-bold' : 'bg-black/30 text-white/80 hover:bg-black/60'
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleComparison(e, image.id);
+              }}
+              className={`min-w-[44px] min-h-[44px] p-2 rounded-full flex items-center justify-center transition-all backdrop-blur-md shadow-sm ${
+                isComp ? 'bg-[#c8b89e] text-[#1a1a1a] font-bold' : 'bg-black/40 text-white/80 hover:bg-black/60'
               }`}
               title="Selecionar para Comparação Lado a Lado"
             >
-              <Columns size={11} />
+              <Columns size={12} />
             </button>
           )}
         </div>
@@ -175,16 +200,20 @@ const GalleryCard = React.memo(function GalleryCard({
       onClick={handleCardClick}
       title={`${image.title || ''}${image.subtitle ? ` - ${image.subtitle}` : ''}`}
     >
-      <div className="absolute inset-0 transition-transform duration-400 ease-out group-hover:scale-105 flex items-center justify-center p-0">
+      <div className="absolute inset-0 transition-transform duration-400 ease-out group-hover:scale-105 flex items-center justify-center p-0 bg-[#d2cbc0]">
+        {!isLoaded && (
+          <div className="absolute inset-0 bg-gradient-to-r from-[#d2cbc0] via-[#e5e0d8] to-[#d2cbc0] animate-pulse" />
+        )}
         <img
-          src={image.url}
+          src={displaySrc}
           alt={image.alt || image.title || 'Fotografia'}
           loading={index < itemsPerPage ? "eager" : "lazy"}
           decoding="async"
+          onLoad={() => setIsLoaded(true)}
           style={{ filter: isMonochrome ? 'grayscale(100%) contrast(108%)' : 'none' }}
-          className={`w-full h-full object-cover ${
-            protectPhotos ? 'pointer-events-none select-none' : ''
-          }`}
+          className={`w-full h-full object-cover transition-opacity duration-300 ${
+            isLoaded ? 'opacity-100' : 'opacity-0'
+          } ${protectPhotos ? 'pointer-events-none select-none' : ''}`}
           onContextMenu={handleContextMenu}
           referrerPolicy="no-referrer"
         />
@@ -198,30 +227,41 @@ const GalleryCard = React.memo(function GalleryCard({
 
       {/* Viewed Indicator */}
       {isViewed && (
-        <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-full bg-black/40 text-amber-300 text-[9px] font-mono uppercase tracking-wider flex items-center gap-1 backdrop-blur-xs transition-all" title="Fotografia visualizada nesta sessão">
+        <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-full bg-black/40 text-[#e2d5c3] text-[9px] font-mono uppercase tracking-wider flex items-center gap-1 backdrop-blur-xs transition-all" title="Fotografia visualizada nesta sessão">
           <Eye size={10} />
           <span className="hidden group-hover:inline text-white/90 text-[8px]">Vista</span>
         </div>
       )}
 
       {/* Action Buttons */}
-      <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+      <div 
+        className="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        onClick={(e) => e.stopPropagation()}
+      >
         {enablePhotoLikes && (
           <button 
-            onClick={(e) => onToggleLike(e, image.id)}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleLike(e, image.id);
+            }}
             className={`px-2 py-1 rounded-full text-[10px] font-mono flex items-center gap-1 transition-all backdrop-blur-md shadow-sm ${
-              isLiked ? 'bg-amber-400 text-black font-bold' : 'bg-black/40 text-white/90 hover:bg-black/70'
+              isLiked ? 'bg-[#c8b89e] text-[#1a1a1a] font-bold' : 'bg-black/40 text-white/90 hover:bg-black/70'
             }`}
             title="Gosto nesta foto"
           >
-            <Heart size={11} className={isLiked ? 'fill-black' : ''} />
+            <Heart size={11} className={isLiked ? 'fill-[#1a1a1a]' : ''} />
             <span>{likesCount}</span>
           </button>
         )}
 
         {enableFavorites && (
           <button 
-            onClick={(e) => onToggleFavorite(e, image.id)}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite(e, image.id);
+            }}
             className={`p-1.5 rounded-full transition-all backdrop-blur-md shadow-sm ${
               isFav ? 'bg-rose-600 text-white opacity-100' : 'bg-black/40 text-white/90 hover:bg-rose-600 hover:text-white'
             }`}
@@ -233,9 +273,13 @@ const GalleryCard = React.memo(function GalleryCard({
 
         {enablePhotoComparison && (
           <button 
-            onClick={(e) => onToggleComparison(e, image.id)}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleComparison(e, image.id);
+            }}
             className={`p-1.5 rounded-full transition-all backdrop-blur-md shadow-sm ${
-              isComp ? 'bg-amber-400 text-black font-bold opacity-100' : 'bg-black/40 text-white/90 hover:bg-amber-400 hover:text-black'
+              isComp ? 'bg-[#c8b89e] text-[#1a1a1a] font-bold opacity-100' : 'bg-black/40 text-white/90 hover:bg-[#c8b89e] hover:text-[#1a1a1a]'
             }`}
             title="Comparar Fotografias Lado a Lado"
           >
@@ -676,7 +720,7 @@ function GalleryGrid({
         ) : isMobile ? (
           /* MOBILE SCROLLING GRID */
           <div 
-            className="grid gap-3 w-full overflow-y-auto max-h-full pb-4"
+            className="grid gap-3 w-full pb-4"
             style={{
               gridTemplateColumns: `repeat(auto-fill, minmax(${Math.min(180, targetSize)}px, 1fr))`
             }}

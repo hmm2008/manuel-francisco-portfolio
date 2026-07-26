@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Play, Pause, ChevronLeft, ChevronRight, X, Volume2, VolumeX, Camera, Info, Maximize, Settings, Sliders, Music, Tv, Sparkles } from 'lucide-react';
+import { preloadImage } from '../utils/imagePreloader';
 
 interface ZenStoryModeProps {
   images: any[];
@@ -183,6 +184,16 @@ export default function ZenStoryMode({ images, onClose, initialIndex = 0 }: ZenS
   }, [images.length, onClose]);
 
   const currentImage = images[currentIndex];
+
+  // Preload upcoming image for seamless transition
+  useEffect(() => {
+    if (images.length > 0) {
+      const nextIdx = (currentIndex + 1) % images.length;
+      if (images[nextIdx]?.url) {
+        preloadImage(images[nextIdx].url);
+      }
+    }
+  }, [currentIndex, images]);
 
   if (!currentImage) return null;
 

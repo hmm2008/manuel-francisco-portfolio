@@ -3,6 +3,7 @@ export type View = 'inicio' | 'galeria' | 'biografia' | 'livro' | 'contacto' | '
 export interface ImageProps {
   id: string;
   url: string;
+  thumbnailUrl?: string;
   alt?: string;
   title?: string;
   subtitle?: string;
@@ -62,6 +63,8 @@ export interface SiteSettings {
   slideshowInterval: number;
   slideshowFit: string;
   slideshowTopMargin: number;
+  showSlideshowGalleryButton?: boolean;
+  slideshowGalleryButtonPosition?: 'left' | 'center' | 'right';
   categories: string[];
   showExifData: boolean;
   enableKeyboardShortcuts: boolean;

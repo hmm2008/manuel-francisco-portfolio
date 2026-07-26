@@ -112,6 +112,8 @@ export default function SettingsPanel({ onBackToGallery }: { onBackToGallery?: (
     slideshowControlsFont: 'Plus Jakarta Sans — sans-serif limpo moderno',
     slideshowControlsSize: '11 px',
     slideshowControlsColor: '#ffffff',
+    showSlideshowGalleryButton: true,
+    slideshowGalleryButtonPosition: 'left',
     showWatermarkInSlideshow: true,
     slideshowWatermarkPosition: 'bottom-left',
 

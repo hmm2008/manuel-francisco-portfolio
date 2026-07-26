@@ -550,6 +550,33 @@ export default function SettingsGaleria({ settings, handleChange, handleRangeCha
             min={0} max={100}
             onChange={handleRangeChange}
           />
+
+          <div className="col-span-full pt-4 border-t border-[#e8e4dc]/80">
+            <h3 className="text-xs uppercase tracking-widest font-bold text-[#1a1a1a] mb-4">
+              Botão "Ver Galeria" (Slideshow)
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <SettingToggle
+                label="MOSTRAR BOTÃO 'VER GALERIA'"
+                name="showSlideshowGalleryButton"
+                checked={settings.showSlideshowGalleryButton ?? true}
+                onChange={handleChange}
+              />
+              {(settings.showSlideshowGalleryButton ?? true) && (
+                <SettingSelect
+                  label="POSICIONAMENTO DO BOTÃO"
+                  name="slideshowGalleryButtonPosition"
+                  value={settings.slideshowGalleryButtonPosition || 'left'}
+                  options={[
+                    { label: 'Esquerda (Padrão)', value: 'left' },
+                    { label: 'Centro', value: 'center' },
+                    { label: 'Direita', value: 'right' }
+                  ]}
+                  onChange={handleChange}
+                />
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </motion.div>
