@@ -273,6 +273,12 @@ interface GalleryGridProps {
   enablePhotoLikes?: boolean;
   thumbnailSize?: string;
   onOpenZenMode?: () => void;
+  isMonochrome?: boolean;
+  setIsMonochrome?: (v: boolean) => void;
+  showOnlyFavorites?: boolean;
+  setShowOnlyFavorites?: (v: boolean) => void;
+  favorites?: string[];
+  setFavorites?: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 function GalleryGrid({ 
@@ -291,7 +297,13 @@ function GalleryGrid({
   enableMonochromeToggle = true,
   enablePhotoLikes = true,
   thumbnailSize = '160 px',
-  onOpenZenMode
+  onOpenZenMode,
+  isMonochrome: propIsMonochrome,
+  setIsMonochrome: propSetIsMonochrome,
+  showOnlyFavorites: propShowOnlyFavorites,
+  setShowOnlyFavorites: propSetShowOnlyFavorites,
+  favorites: propFavorites,
+  setFavorites: propSetFavorites
 }: GalleryGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -301,13 +313,19 @@ function GalleryGrid({
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'title-asc' | 'title-desc'>('recent');
   const [selectedOrientation, setSelectedOrientation] = useState<'all' | 'landscape' | 'portrait' | 'square'>('all');
-  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
-  const [isMonochrome, setIsMonochrome] = useState(false);
-  const [photoLikes, setPhotoLikes] = useState<Record<string, number>>({});
-  const [userLikedPhotos, setUserLikedPhotos] = useState<string[]>(() => {
+  
+  const [localShowOnlyFavorites, setLocalShowOnlyFavorites] = useState(false);
+  const showOnlyFavorites = propShowOnlyFavorites !== undefined ? propShowOnlyFavorites : localShowOnlyFavorites;
+  const setShowOnlyFavorites = propSetShowOnlyFavorites || setLocalShowOnlyFavorites;
+
+  const [localIsMonochrome, setLocalIsMonochrome] = useState(false);
+  const isMonochrome = propIsMonochrome !== undefined ? propIsMonochrome : localIsMonochrome;
+  const setIsMonochrome = propSetIsMonochrome || setLocalIsMonochrome;
+
+  const [localFavorites, setLocalFavorites] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('gallery_user_liked_photos');
+        const saved = localStorage.getItem('gallery_user_favorites');
         return saved ? JSON.parse(saved) : [];
       } catch (e) {
         return [];
@@ -315,10 +333,14 @@ function GalleryGrid({
     }
     return [];
   });
-  const [favorites, setFavorites] = useState<string[]>(() => {
+  const favorites = propFavorites !== undefined ? propFavorites : localFavorites;
+  const setFavorites = propSetFavorites || setLocalFavorites;
+
+  const [photoLikes, setPhotoLikes] = useState<Record<string, number>>({});
+  const [userLikedPhotos, setUserLikedPhotos] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('gallery_user_favorites');
+        const saved = localStorage.getItem('gallery_user_liked_photos');
         return saved ? JSON.parse(saved) : [];
       } catch (e) {
         return [];
@@ -381,19 +403,6 @@ function GalleryGrid({
     };
   }, []);
 
-  // Category and Tag filtering
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-
-  const availableCategories = useMemo(() => {
-    const cats = new Set<string>();
-    images.forEach(img => {
-      if (img.category && img.category.trim()) {
-        cats.add(img.category.trim());
-      }
-    });
-    return Array.from(cats);
-  }, [images]);
-
   // Save favorites to localStorage
   useEffect(() => {
     try {
@@ -432,10 +441,6 @@ function GalleryGrid({
       result = result.filter(img => favorites.includes(String(img.id)));
     }
 
-    if (selectedCategory) {
-      result = result.filter(img => img.category?.trim().toLowerCase() === selectedCategory.trim().toLowerCase());
-    }
-
     if (selectedOrientation !== 'all') {
       result = result.filter(img => {
         if (img.orientation) return img.orientation === selectedOrientation;
@@ -466,7 +471,7 @@ function GalleryGrid({
     });
 
     return result;
-  }, [images, searchQuery, sortBy, showOnlyFavorites, selectedCategory, selectedOrientation, favorites]);
+  }, [images, searchQuery, sortBy, showOnlyFavorites, selectedOrientation, favorites]);
 
   // Monitor container width only (avoiding height measurement feedback loops)
   useEffect(() => {
@@ -501,7 +506,7 @@ function GalleryGrid({
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchQuery, sortBy, showOnlyFavorites, selectedCategory, selectedOrientation, images]);
+  }, [searchQuery, sortBy, showOnlyFavorites, selectedOrientation, images]);
 
   const gap = 16;
 
@@ -577,7 +582,7 @@ function GalleryGrid({
     <div id="gallery-grid-wrapper" className="w-full flex flex-col relative">
       
       {/* Top Utility Bar */}
-      {(enableGallerySearch || enableFavorites || enablePhotoComparison || availableCategories.length > 0) && (
+      {(enableGallerySearch || enableFavorites || enablePhotoComparison) && (
         <div className="w-full flex flex-col gap-2.5 mb-4 pb-3 border-b border-[#4a4a4a]/10 text-xs font-sans">
           
           <div className="w-full flex flex-wrap items-center justify-between gap-3">
@@ -605,45 +610,6 @@ function GalleryGrid({
 
             {/* Controls */}
             <div className="flex items-center gap-2 flex-wrap ml-auto">
-              {onOpenZenMode && (
-                <button
-                  onClick={onOpenZenMode}
-                  className="px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-[#1a1a1a] text-amber-200 border border-amber-300/40 hover:bg-[#2e2e2e] transition-all flex items-center gap-1.5 shadow-2xs"
-                  title="Modo Exposição Ambient em Écrã Inteiro com Música e Efeito Ken Burns"
-                >
-                  <Tv size={12} className="text-amber-300 animate-pulse" />
-                  <span>Modo Exposição</span>
-                </button>
-              )}
-
-              {enableMonochromeToggle && (
-                <button
-                  onClick={() => setIsMonochrome(!isMonochrome)}
-                  className={`px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-semibold transition-all flex items-center gap-1.5 ${
-                    isMonochrome 
-                      ? 'bg-[#1a1a1a] text-white border border-black shadow-sm' 
-                      : 'bg-white/60 border border-[#e2ddd5] text-[#4a4a4a] hover:bg-white'
-                  }`}
-                  title="Exibição Monocromática (Preto & Branco)"
-                >
-                  <span>P&B</span>
-                </button>
-              )}
-
-              {enableFavorites && (
-                <button
-                  onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
-                  className={`px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-semibold transition-all flex items-center gap-1.5 ${
-                    showOnlyFavorites 
-                      ? 'bg-rose-600 text-white shadow-sm' 
-                      : 'bg-white/60 border border-[#e2ddd5] text-[#4a4a4a] hover:bg-white'
-                  }`}
-                >
-                  <Heart size={12} className={showOnlyFavorites ? 'fill-white' : 'text-rose-500'} />
-                  <span>Favoritos ({favorites.length})</span>
-                </button>
-              )}
-
               {enableGallerySearch && (
                 <>
                   <div className="flex items-center gap-1 bg-white/60 border border-[#e2ddd5] px-2.5 py-1 rounded-full text-[10px]" title="Filtrar por Formato de Fotografia">
@@ -686,39 +652,6 @@ function GalleryGrid({
               )}
             </div>
           </div>
-
-          {/* Category Pills Bar */}
-          {availableCategories.length > 0 && (
-            <div className="w-full flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 no-scrollbar text-[10px] font-sans uppercase tracking-wider">
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className={`px-3 py-1 rounded-full font-medium transition-all whitespace-nowrap ${
-                  selectedCategory === null 
-                    ? 'bg-[#1a1a1a] text-white' 
-                    : 'bg-white/50 border border-[#e2ddd5] text-[#5a5a5a] hover:bg-white'
-                }`}
-              >
-                Todas ({images.length})
-              </button>
-              {availableCategories.map(cat => {
-                const count = images.filter(i => i.category?.trim().toLowerCase() === cat.toLowerCase()).length;
-                const isSelected = selectedCategory?.toLowerCase() === cat.toLowerCase();
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(isSelected ? null : cat)}
-                    className={`px-3 py-1 rounded-full font-medium transition-all whitespace-nowrap ${
-                      isSelected 
-                        ? 'bg-[#1a1a1a] text-white' 
-                        : 'bg-white/50 border border-[#e2ddd5] text-[#5a5a5a] hover:bg-white'
-                    }`}
-                  >
-                    {cat} ({count})
-                  </button>
-                );
-              })}
-            </div>
-          )}
 
         </div>
       )}

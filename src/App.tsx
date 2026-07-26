@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronLeft, ChevronRight, Cookie, ShieldCheck, Home, Image as ImageIcon, User, BookOpen, Mail, Link as LinkIcon, Settings, ArrowRight, ZoomIn, ZoomOut, Maximize, Menu, Camera, Info, Keyboard, HelpCircle, Sparkles, Play, Pause, Share2, CheckCircle2, Download, Tv, Instagram, Facebook, Twitter } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Cookie, ShieldCheck, Home, Image as ImageIcon, User, BookOpen, Mail, Link as LinkIcon, Settings, ArrowRight, ZoomIn, ZoomOut, Maximize, Menu, Camera, Info, Keyboard, HelpCircle, Sparkles, Play, Pause, Share2, CheckCircle2, Download, Tv, Instagram, Facebook, Twitter, Heart } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import Footer from './components/Footer';
@@ -150,6 +150,29 @@ export default function App() {
   const [galleryImages, setGalleryImages] = useState<ImageProps[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('TODAS');
+  const [isMonochrome, setIsMonochrome] = useState(false);
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('gallery_user_favorites');
+        return saved ? JSON.parse(saved) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  // Sync favorites with localStorage in App.tsx
+  useEffect(() => {
+    try {
+      localStorage.setItem('gallery_user_favorites', JSON.stringify(favorites));
+    } catch (e) {
+      console.error('Error saving favorites', e);
+    }
+  }, [favorites]);
+
   const [zoomLevel, setZoomLevel] = useState(100);
   const [siteSettings, setSiteSettings] = useState<Partial<SiteSettings>>({
     siteName: 'MANUEL FRANCISCO FOTOGRAFIA',
@@ -185,6 +208,112 @@ export default function App() {
     if (selectedCategory === 'TODAS') return galleryImages;
     return galleryImages.filter(img => img.category === selectedCategory);
   }, [galleryImages, selectedCategory, activeView]);
+
+  const renderGalleryHeader = () => {
+    return (
+      <div 
+        className="w-full mx-auto flex-shrink-0"
+        style={{ marginBottom: siteSettings?.mainTitleBottomMargin !== undefined ? `${siteSettings.mainTitleBottomMargin}px` : (isMobileLandscape ? '8px' : '16px') }}
+      >
+        {(siteSettings?.showPageHeaderTitle !== false || siteSettings?.showPageHeaderLines !== false) && !isMobileLandscape && (
+          <div className={`py-2.5 mb-3 text-center ${siteSettings?.showPageHeaderLines !== false ? 'border-y border-[#4a4a4a]/10' : ''}`}>
+            {siteSettings?.showPageHeaderTitle !== false && (
+              <h1 className="font-sans text-base md:text-lg text-[#4a4a4a] tracking-widest uppercase font-semibold">
+                {siteSettings?.siteName ? siteSettings.siteName.replace('\n', ' ') : 'Manuel Francisco Fotografia'}
+              </h1>
+            )}
+          </div>
+        )}
+        
+        {/* Title and utility controls row */}
+        <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#4a4a4a]/10 pb-3 mb-4">
+          <div className="text-left flex items-baseline flex-wrap gap-x-3">
+            <h2 className="font-sans font-medium text-xl md:text-2xl text-[#4a4a4a] tracking-wide">
+              Galeria
+            </h2>
+            <span className="font-sans text-xs md:text-sm text-[#7a7a7a]/50 tracking-[0.2em] uppercase font-light">
+              — {filteredGallery.length} {filteredGallery.length === 1 ? 'FOTOGRAFIA' : 'FOTOGRAFIAS'}
+            </span>
+          </div>
+
+          {/* Utilities (Modo Exposição, P&B, Favoritos) aligned to the right */}
+          <div className="flex items-center justify-start md:justify-end gap-2 flex-wrap">
+            {siteSettings?.enableZenMode !== false && (
+              <button
+                onClick={() => setShowZenMode(true)}
+                className="px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-[#1a1a1a] text-amber-200 border border-amber-300/40 hover:bg-[#2e2e2e] transition-all flex items-center gap-1.5 shadow-2xs"
+                title="Modo Exposição Ambient em Écrã Inteiro com Música e Efeito Ken Burns"
+              >
+                <Tv size={12} className="text-amber-300 animate-pulse" />
+                <span>Modo Exposição</span>
+              </button>
+            )}
+
+            {siteSettings?.enableMonochromeToggle !== false && (
+              <button
+                onClick={() => setIsMonochrome(!isMonochrome)}
+                className={`px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-semibold transition-all flex items-center gap-1.5 ${
+                  isMonochrome 
+                    ? 'bg-[#1a1a1a] text-white border border-black shadow-sm' 
+                    : 'bg-white/60 border border-[#e2ddd5] text-[#4a4a4a] hover:bg-white'
+                }`}
+                title="Exibição Monocromática (Preto & Branco)"
+              >
+                <span>P&B</span>
+              </button>
+            )}
+
+            {siteSettings?.enableFavorites !== false && (
+              <button
+                onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
+                className={`px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-semibold transition-all flex items-center gap-1.5 ${
+                  showOnlyFavorites 
+                    ? 'bg-rose-600 text-white shadow-sm' 
+                    : 'bg-white/60 border border-[#e2ddd5] text-[#4a4a4a] hover:bg-white'
+                }`}
+              >
+                <Heart size={12} className={showOnlyFavorites ? 'fill-white' : 'text-rose-500'} />
+                <span>Favoritos ({favorites.length})</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderGalleryControls = () => {
+    return (
+      <div className="w-full flex items-center justify-center md:justify-start gap-1.5 mb-5 pb-3 flex-shrink-0">
+        <button 
+          onClick={() => setSelectedCategory('TODAS')}
+          className={`px-3 py-1.5 border transition-colors text-[9px] tracking-[0.1em] uppercase font-bold rounded-sm ${
+            selectedCategory === 'TODAS' 
+              ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' 
+              : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'
+          }`}
+        >
+          TODAS ({galleryImages.length})
+        </button>
+        {allCategories.map(cat => {
+          const count = galleryImages.filter(img => img.category?.trim().toLowerCase() === cat.trim().toLowerCase()).length;
+          return (
+            <button 
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-3 py-1.5 border transition-colors text-[9px] tracking-[0.1em] uppercase font-bold rounded-sm ${
+                selectedCategory === cat 
+                  ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' 
+                  : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'
+              }`}
+            >
+              {cat} ({count})
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
 
   
   useEffect(() => {
@@ -1227,53 +1356,11 @@ export default function App() {
                 style={{ paddingTop: siteSettings?.mainTitleTopMargin !== undefined ? `${siteSettings.mainTitleTopMargin}px` : '32px' }}
               >
                 <div className="w-full mx-auto flex flex-col">
-                  <div 
-                    className="text-center w-full mx-auto flex-shrink-0"
-                    style={{ marginBottom: siteSettings?.mainTitleBottomMargin !== undefined ? `${siteSettings.mainTitleBottomMargin}px` : (isMobileLandscape ? '8px' : '16px') }}
-                  >
-                    {(siteSettings?.showPageHeaderTitle !== false || siteSettings?.showPageHeaderLines !== false) && !isMobileLandscape && (
-                      <div className={`py-2.5 mb-3 ${siteSettings?.showPageHeaderLines !== false ? 'border-y border-[#4a4a4a]/10' : ''}`}>
-                        {siteSettings?.showPageHeaderTitle !== false && (
-                          <h1 className="font-sans text-base md:text-lg text-[#4a4a4a] tracking-widest uppercase font-semibold">
-                            {siteSettings?.siteName ? siteSettings.siteName.replace('\n', ' ') : 'Manuel Francisco Fotografia'}
-                          </h1>
-                        )}
-                      </div>
-                    )}
-                    <h2 className={`font-sans font-medium text-[#4a4a4a] tracking-wide mb-1 ${isMobileLandscape ? 'text-base' : 'text-lg md:text-xl'}`}>Galeria</h2>
-                    <p className="text-[#7a7a7a] tracking-widest text-[10px] sm:text-[11px] uppercase font-sans">{filteredGallery.length} FOTOGRAFIAS</p>
-                  </div>
+                  {renderGalleryHeader()}
                   
                   {galleryImages.length > 0 ? (
                     <>
-                      <div className={`flex flex-wrap items-center justify-center gap-1.5 flex-shrink-0 ${isMobileLandscape ? 'mb-2' : 'mb-4'}`}>
-                        <button 
-                          onClick={() => setSelectedCategory('TODAS')}
-                          className={`px-3 py-1.5 border transition-colors text-[9px] tracking-[0.1em] uppercase ${selectedCategory === 'TODAS' ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'}`}
-                        >
-                          TODAS
-                        </button>
-                        {allCategories.map(cat => (
-                          <button 
-                            key={cat}
-                            onClick={() => setSelectedCategory(cat)}
-                            className={`px-3 py-1.5 border transition-colors text-[9px] tracking-[0.1em] uppercase ${selectedCategory === cat ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'}`}
-                          >
-                            {cat}
-                          </button>
-                        ))}
-
-                        {siteSettings?.enableZenMode !== false && (
-                          <button 
-                            onClick={() => setShowZenMode(true)}
-                            className="ml-2 px-3.5 py-1.5 bg-[#1a1a1a] hover:bg-[#333] text-amber-200 border border-amber-300/40 hover:border-amber-300/80 transition-all text-[9px] tracking-[0.15em] uppercase flex items-center gap-1.5 font-bold rounded-full shadow-xs"
-                            title="Iniciar Modo Exposição em Écrã Inteiro com Efeito Ken Burns e Música de Fundo"
-                          >
-                            <Tv size={12} className="text-amber-300 animate-pulse" />
-                            <span>Modo Exposição Ambient</span>
-                          </button>
-                        )}
-                      </div>
+                      {renderGalleryControls()}
 
                       <GalleryGrid 
                         images={filteredGallery} 
@@ -1292,6 +1379,12 @@ export default function App() {
                         enableMonochromeToggle={siteSettings?.enableMonochromeToggle}
                         enablePhotoLikes={siteSettings?.enablePhotoLikes}
                         thumbnailSize={siteSettings?.thumbnailSize}
+                        isMonochrome={isMonochrome}
+                        setIsMonochrome={setIsMonochrome}
+                        showOnlyFavorites={showOnlyFavorites}
+                        setShowOnlyFavorites={setShowOnlyFavorites}
+                        favorites={favorites}
+                        setFavorites={setFavorites}
                       />
                     </>
                   ) : (
@@ -1327,53 +1420,11 @@ export default function App() {
             >
               {/* Single scrollable container mode */}
               <div className="w-full mx-auto flex flex-col flex-1">
-                <div 
-                  className="text-center w-full mx-auto flex-shrink-0"
-                  style={{ marginBottom: siteSettings?.mainTitleBottomMargin !== undefined ? `${siteSettings.mainTitleBottomMargin}px` : (isMobileLandscape ? '8px' : '16px') }}
-                >
-                  {(siteSettings?.showPageHeaderTitle !== false || siteSettings?.showPageHeaderLines !== false) && !isMobileLandscape && (
-                    <div className={`py-2.5 mb-3 ${siteSettings?.showPageHeaderLines !== false ? 'border-y border-[#4a4a4a]/10' : ''}`}>
-                      {siteSettings?.showPageHeaderTitle !== false && (
-                        <h1 className="font-sans text-base md:text-lg text-[#4a4a4a] tracking-widest uppercase font-semibold">
-                          {siteSettings?.siteName ? siteSettings.siteName.replace('\n', ' ') : 'Manuel Francisco Fotografia'}
-                        </h1>
-                      )}
-                    </div>
-                  )}
-                  <h2 className={`font-sans font-medium text-[#4a4a4a] tracking-wide mb-1 ${isMobileLandscape ? 'text-base' : 'text-lg md:text-xl'}`}>Galeria</h2>
-                  <p className="text-[#7a7a7a] tracking-widest text-[10px] sm:text-[11px] uppercase font-sans">{filteredGallery.length} FOTOGRAFIAS</p>
-                </div>
+                {renderGalleryHeader()}
                 
                 {galleryImages.length > 0 ? (
                   <>
-                    <div className={`flex flex-wrap items-center justify-center gap-1.5 flex-shrink-0 ${isMobileLandscape ? 'mb-2' : 'mb-4'}`}>
-                      <button 
-                        onClick={() => setSelectedCategory('TODAS')}
-                        className={`px-3 py-1.5 border transition-colors text-[9px] tracking-[0.1em] uppercase ${selectedCategory === 'TODAS' ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'}`}
-                      >
-                        TODAS
-                      </button>
-                      {allCategories.map(cat => (
-                        <button 
-                          key={cat}
-                          onClick={() => setSelectedCategory(cat)}
-                          className={`px-3 py-1.5 border transition-colors text-[9px] tracking-[0.1em] uppercase ${selectedCategory === cat ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'}`}
-                        >
-                          {cat}
-                        </button>
-                      ))}
-
-                      {siteSettings?.enableZenMode !== false && (
-                        <button 
-                          onClick={() => setShowZenMode(true)}
-                          className="ml-2 px-3.5 py-1.5 bg-[#1a1a1a] hover:bg-[#333] text-amber-200 border border-amber-300/40 hover:border-amber-300/80 transition-all text-[9px] tracking-[0.15em] uppercase flex items-center gap-1.5 font-bold rounded-full shadow-xs"
-                          title="Iniciar Modo Exposição em Écrã Inteiro com Efeito Ken Burns e Música de Fundo"
-                        >
-                          <Tv size={12} className="text-amber-300 animate-pulse" />
-                          <span>Modo Exposição Ambient</span>
-                        </button>
-                      )}
-                    </div>
+                    {renderGalleryControls()}
 
                     <GalleryGrid 
                       images={filteredGallery} 
@@ -1392,6 +1443,12 @@ export default function App() {
                       enableMonochromeToggle={siteSettings?.enableMonochromeToggle}
                       enablePhotoLikes={siteSettings?.enablePhotoLikes}
                       thumbnailSize={siteSettings?.thumbnailSize}
+                      isMonochrome={isMonochrome}
+                      setIsMonochrome={setIsMonochrome}
+                      showOnlyFavorites={showOnlyFavorites}
+                      setShowOnlyFavorites={setShowOnlyFavorites}
+                      favorites={favorites}
+                      setFavorites={setFavorites}
                     />
                   </>
                 ) : (
