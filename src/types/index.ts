@@ -23,6 +23,7 @@ export interface ImageProps {
 
 export interface SiteSettings {
   siteName: string;
+  siteSubtitle?: string;
   siteNameFont: string;
   siteNameFontSize: number;
   siteNameColor: string;
@@ -72,6 +73,25 @@ export interface SiteSettings {
   enableFavorites: boolean;
   enablePhotoComparison: boolean;
   footerText: string;
+
+  // Text Styles
+  siteNameTextStyle?: string;
+  messageTextStyle?: string;
+  menuTextStyle?: string;
+  lightboxTitleStyle?: string;
+  lightboxSubtitleStyle?: string;
+  slideshowTitleStyle?: string;
+  slideshowSubtitleStyle?: string;
+  rightClickTitleStyle?: string;
+  rightClickSubtitleStyle?: string;
+  enableLightboxTextBg?: boolean;
+  lightboxTextBgColor?: string;
+  lightboxCaptionPlacement?: 'inside' | 'outside';
+  lightboxCaptionPadding?: number;
+  enableSlideshowTextBg?: boolean;
+  slideshowTextBgColor?: string;
+  slideshowCaptionPlacement?: 'inside' | 'outside';
+  slideshowCaptionPadding?: number;
   
   // Missing properties from Settings Panel Tabs
   importQuality?: string;

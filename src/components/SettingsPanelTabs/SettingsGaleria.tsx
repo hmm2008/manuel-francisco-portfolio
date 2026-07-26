@@ -4,7 +4,7 @@ import { ImageIcon, ShieldCheck, ZoomIn, Sliders, Play, Settings2 } from 'lucide
 import { SiteSettings } from '../../types';
 import { FONT_OPTIONS } from '../../utils/fontUtils';
 import { SLIDESHOW_EFFECT_OPTIONS, LIGHTBOX_EFFECT_OPTIONS } from "../../utils/transitionUtils";
-import { SettingRow, RangeSlider, SettingSelect, SettingToggle } from './SharedComponents';
+import { SettingRow, RangeSlider, SettingSelect, SettingToggle, SettingTextStyle } from './SharedComponents';
 
 interface SettingsGaleriaProps {
   settings: SiteSettings;
@@ -149,6 +149,107 @@ export default function SettingsGaleria({ settings, handleChange, handleRangeCha
             value={settings.lightboxBgColor}
             onChange={handleChange}
           />
+          <SettingSelect
+            label="POSICIONAMENTO DA LEGENDA NA LIGHTBOX"
+            name="lightboxTextPosition"
+            value={settings.lightboxTextPosition || 'canto inferior esq'}
+            options={[
+              { label: 'Canto Inferior Esquerdo', value: 'canto inferior esq' },
+              { label: 'Canto Inferior Direito', value: 'canto inferior dir' },
+              { label: 'Canto Superior Esquerdo', value: 'canto superior esq' },
+              { label: 'Canto Superior Direito', value: 'canto superior dir' },
+              { label: 'Centrado em Baixo', value: 'centrado em baixo' },
+              { label: 'Centrado em Cima', value: 'centrado em cima' },
+              { label: 'Ao Centro', value: 'ao centro' },
+              { label: 'Não mostrar', value: 'none' },
+            ]}
+            onChange={handleChange}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <SettingSelect
+              label="FONTE DO TÍTULO (LIGHTBOX)"
+              name="lightboxTitleFont"
+              value={settings.lightboxTitleFont || 'Plus Jakarta Sans — sans-serif limpo moderno'}
+              options={FONT_OPTIONS.map(f => ({ label: f, value: f }))}
+              onChange={handleChange}
+            />
+            <SettingRow
+              label="TAMANHO DO TÍTULO"
+              name="lightboxTitleSize"
+              value={settings.lightboxTitleSize || '18px'}
+              onChange={handleChange}
+              placeholder="ex: 18px"
+            />
+          </div>
+          <SettingTextStyle
+            label="ESTILO DO TÍTULO"
+            name="lightboxTitleStyle"
+            value={settings.lightboxTitleStyle || ''}
+            onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <SettingSelect
+              label="FONTE DO SUBTÍTULO (LIGHTBOX)"
+              name="lightboxSubtitleFont"
+              value={settings.lightboxSubtitleFont || 'Plus Jakarta Sans — sans-serif limpo moderno'}
+              options={FONT_OPTIONS.map(f => ({ label: f, value: f }))}
+              onChange={handleChange}
+            />
+            <SettingRow
+              label="TAMANHO DO SUBTÍTULO"
+              name="lightboxSubtitleSize"
+              value={settings.lightboxSubtitleSize || '12px'}
+              onChange={handleChange}
+              placeholder="ex: 12px"
+            />
+          </div>
+          <SettingTextStyle
+            label="ESTILO DO SUBTÍTULO"
+            name="lightboxSubtitleStyle"
+            value={settings.lightboxSubtitleStyle || ''}
+            onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
+          />
+          <SettingRow
+            label="COR DOS TEXTOS DA LIGHTBOX"
+            name="lightboxTextColor"
+            type="color"
+            value={settings.lightboxTextColor || '#ffffff'}
+            onChange={handleChange}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <SettingToggle
+              label="FUNDO DO TEXTO"
+              name="enableLightboxTextBg"
+              checked={settings.enableLightboxTextBg ?? false}
+              onChange={handleChange}
+            />
+            {settings.enableLightboxTextBg && (
+              <SettingRow
+                label="COR DO FUNDO DO TEXTO"
+                name="lightboxTextBgColor"
+                type="color"
+                value={settings.lightboxTextBgColor || '#000000'}
+                onChange={handleChange}
+              />
+            )}
+          </div>
+          <SettingSelect
+            label="LOCALIZAÇÃO DAS LEGENDAS"
+            name="lightboxCaptionPlacement"
+            value={settings.lightboxCaptionPlacement || 'inside'}
+            options={[
+              { label: 'Dentro da Imagem', value: 'inside' },
+              { label: 'Fora da Imagem (borda)', value: 'outside' }
+            ]}
+            onChange={handleChange}
+          />
+          <RangeSlider
+            label="DISTÂNCIA DA LEGENDA (px)"
+            name="lightboxCaptionPadding"
+            value={settings.lightboxCaptionPadding ?? 16}
+            min={0} max={100}
+            onChange={handleRangeChange}
+          />
         </div>
       </div>
 
@@ -271,6 +372,8 @@ export default function SettingsGaleria({ settings, handleChange, handleRangeCha
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#fcfbf9] border border-[#e8e4dc] p-4">
                   <SettingRow label="TÍTULO DO AVISO" name="rightClickTitle" value={settings.rightClickTitle || 'Copyright'} onChange={handleChange} />
                   <SettingRow label="SUBTÍTULO DO AVISO" name="rightClickSubtitle" value={settings.rightClickSubtitle || 'Todos os direitos reservados'} onChange={handleChange} />
+                  <SettingTextStyle label="ESTILO DO TÍTULO" name="rightClickTitleStyle" value={settings.rightClickTitleStyle || ''} onChange={(name, val) => handleChange({ target: { name, value: val } } as any)} />
+                  <SettingTextStyle label="ESTILO DO SUBTÍTULO" name="rightClickSubtitleStyle" value={settings.rightClickSubtitleStyle || ''} onChange={(name, val) => handleChange({ target: { name, value: val } } as any)} />
                   <SettingSelect label="FONTE DO AVISO" name="rightClickFont" value={settings.rightClickFont || settings.globalFont} options={FONT_OPTIONS.map(f => ({label: f, value: f}))} onChange={handleChange} />
                   <SettingRow label="TAMANHO DO AVISO" name="rightClickSize" value={settings.rightClickSize || '14px'} onChange={handleChange} />
                   <SettingRow label="COR DO TEXTO" name="rightClickColor" type="color" value={settings.rightClickColor || '#ffffff'} onChange={handleChange} />
@@ -336,7 +439,7 @@ export default function SettingsGaleria({ settings, handleChange, handleRangeCha
             label="NÍVEL DE ZOOM DO SLIDESHOW"
             name="slideshowZoom"
             value={settings.slideshowZoom || 100}
-            min={100} max={150} step={5} unit="%"
+            min={30} max={150} step={5} unit="%"
             onChange={handleRangeChange}
           />
           <SettingRow
@@ -345,6 +448,107 @@ export default function SettingsGaleria({ settings, handleChange, handleRangeCha
             type="color"
             value={settings.slideshowBgColor}
             onChange={handleChange}
+          />
+          <SettingSelect
+            label="POSICIONAMENTO DA LEGENDA NO SLIDESHOW"
+            name="slideshowTextPosition"
+            value={settings.slideshowTextPosition || 'canto inferior esq'}
+            options={[
+              { label: 'Canto Inferior Esquerdo', value: 'canto inferior esq' },
+              { label: 'Canto Inferior Direito', value: 'canto inferior dir' },
+              { label: 'Canto Superior Esquerdo', value: 'canto superior esq' },
+              { label: 'Canto Superior Direito', value: 'canto superior dir' },
+              { label: 'Centrado em Baixo', value: 'centrado em baixo' },
+              { label: 'Centrado em Cima', value: 'centrado em cima' },
+              { label: 'Ao Centro', value: 'ao centro' },
+              { label: 'Não mostrar', value: 'none' },
+            ]}
+            onChange={handleChange}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <SettingSelect
+              label="FONTE DO TÍTULO (SLIDESHOW)"
+              name="slideshowTitleFont"
+              value={settings.slideshowTitleFont || 'Plus Jakarta Sans — sans-serif limpo moderno'}
+              options={FONT_OPTIONS.map(f => ({ label: f, value: f }))}
+              onChange={handleChange}
+            />
+            <SettingRow
+              label="TAMANHO DO TÍTULO"
+              name="slideshowTitleSize"
+              value={settings.slideshowTitleSize || '48px'}
+              onChange={handleChange}
+              placeholder="ex: 48px"
+            />
+          </div>
+          <SettingTextStyle
+            label="ESTILO DO TÍTULO"
+            name="slideshowTitleStyle"
+            value={settings.slideshowTitleStyle || ''}
+            onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <SettingSelect
+              label="FONTE DO SUBTÍTULO (SLIDESHOW)"
+              name="slideshowSubtitleFont"
+              value={settings.slideshowSubtitleFont || 'Plus Jakarta Sans — sans-serif limpo moderno'}
+              options={FONT_OPTIONS.map(f => ({ label: f, value: f }))}
+              onChange={handleChange}
+            />
+            <SettingRow
+              label="TAMANHO DO SUBTÍTULO"
+              name="slideshowSubtitleSize"
+              value={settings.slideshowSubtitleSize || '12px'}
+              onChange={handleChange}
+              placeholder="ex: 12px"
+            />
+          </div>
+          <SettingTextStyle
+            label="ESTILO DO SUBTÍTULO"
+            name="slideshowSubtitleStyle"
+            value={settings.slideshowSubtitleStyle || ''}
+            onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
+          />
+          <SettingRow
+            label="COR DOS TEXTOS DO SLIDESHOW"
+            name="slideshowTextColor"
+            type="color"
+            value={settings.slideshowTextColor || '#ffffff'}
+            onChange={handleChange}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <SettingToggle
+              label="FUNDO DO TEXTO"
+              name="enableSlideshowTextBg"
+              checked={settings.enableSlideshowTextBg ?? false}
+              onChange={handleChange}
+            />
+            {settings.enableSlideshowTextBg && (
+              <SettingRow
+                label="COR DO FUNDO DO TEXTO"
+                name="slideshowTextBgColor"
+                type="color"
+                value={settings.slideshowTextBgColor || '#000000'}
+                onChange={handleChange}
+              />
+            )}
+          </div>
+          <SettingSelect
+            label="LOCALIZAÇÃO DAS LEGENDAS"
+            name="slideshowCaptionPlacement"
+            value={settings.slideshowCaptionPlacement || 'inside'}
+            options={[
+              { label: 'Dentro da Imagem', value: 'inside' },
+              { label: 'Fora da Imagem (borda)', value: 'outside' }
+            ]}
+            onChange={handleChange}
+          />
+          <RangeSlider
+            label="DISTÂNCIA DA LEGENDA (px)"
+            name="slideshowCaptionPadding"
+            value={settings.slideshowCaptionPadding ?? 16}
+            min={0} max={100}
+            onChange={handleRangeChange}
           />
         </div>
       </div>

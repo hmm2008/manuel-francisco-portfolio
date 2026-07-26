@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ChevronLeft, ChevronRight, Cookie, ShieldCheck, Home, Image as ImageIcon, User, BookOpen, Mail, Link as LinkIcon, Settings, ArrowRight, ZoomIn, ZoomOut, Maximize, Menu, Camera, Info, Keyboard, HelpCircle, Sparkles, Play, Pause, Share2, CheckCircle2, Download, Tv, Instagram, Facebook, Twitter, Heart } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
@@ -11,9 +11,9 @@ import { db } from './firebase';
 import Footer from './components/Footer';
 import AdminPasswordPrompt from './components/AdminPasswordPrompt';
 import GalleryGrid from './components/GalleryGrid';
-import { getFontFamily } from './utils/fontUtils';
+import { getFontFamily, getTextStyleProps } from './utils/fontUtils';
 import { getSlideshowVariants, getLightboxVariants } from './utils/transitionUtils';
-import { getWatermarkClasses, getPositionClasses } from './utils/watermarkUtils';
+import { getWatermarkClasses, getPositionClasses, getCaptionOffsetStyle } from './utils/watermarkUtils';
 import { preloadImage, preloadImagesBatch } from './utils/imagePreloader';
 
 const AdminPanel = lazy(() => import('./AdminPanel'));
@@ -147,8 +147,27 @@ export default function App() {
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [touchDelta, setTouchDelta] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [slideIndex, setSlideIndex] = useState(0);
-  const [galleryImages, setGalleryImages] = useState<ImageProps[]>([]);
-  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
+  const [galleryImages, setGalleryImages] = useState<ImageProps[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('cache_gallery_images');
+        return cached ? JSON.parse(cached) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
+  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return !localStorage.getItem('cache_gallery_images');
+      } catch (e) {
+        return true;
+      }
+    }
+    return true;
+  });
   const [selectedCategory, setSelectedCategory] = useState<string>('TODAS');
   const [isMonochrome, setIsMonochrome] = useState(false);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
@@ -174,23 +193,51 @@ export default function App() {
   }, [favorites]);
 
   const [zoomLevel, setZoomLevel] = useState(100);
-  const [siteSettings, setSiteSettings] = useState<Partial<SiteSettings>>({
-    siteName: 'MANUEL FRANCISCO FOTOGRAFIA',
-    siteSubtitle: 'FOTOGRAFIA',
-    welcomeMessage: 'Bem vindo a este espaço. Quero que descubra comigo o gosto pela fotografia.',
-    contactEmail: 'manuel.francisco3@gmail.com',
-    showExifData: true,
-    enableKeyboardShortcuts: true,
-    enableZenMode: true,
-    enableWatermark: false,
-    watermarkText: '© Manuel Francisco',
-    watermarkPosition: 'bottom-left',
-    enableGallerySearch: true,
-    enableFavorites: true,
-    enablePhotoComparison: true,
-    sidebarButtonSpacing: 16,
-    messageSpacing: 16,
-    slideshowTopMargin: 0,
+  const [slideshowAspects, setSlideshowAspects] = useState<Record<string, number>>({});
+  const [slideshowContainerSize, setSlideshowContainerSize] = useState<{ width: number; height: number } | null>(null);
+  const slideshowContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!slideshowContainerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setSlideshowContainerSize({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        });
+      }
+    });
+    observer.observe(slideshowContainerRef.current);
+    return () => observer.disconnect();
+  }, [activeView]);
+  const [siteSettings, setSiteSettings] = useState<Partial<SiteSettings>>(() => {
+    const defaults: Partial<SiteSettings> = {
+      siteName: 'MANUEL FRANCISCO FOTOGRAFIA',
+      siteSubtitle: 'FOTOGRAFIA',
+      welcomeMessage: 'Bem vindo a este espaço. Quero que descubra comigo o gosto pela fotografia.',
+      contactEmail: 'manuel.francisco3@gmail.com',
+      showExifData: true,
+      enableKeyboardShortcuts: true,
+      enableZenMode: true,
+      enableWatermark: false,
+      watermarkText: '© Manuel Francisco',
+      watermarkPosition: 'bottom-left',
+      enableGallerySearch: true,
+      enableFavorites: true,
+      enablePhotoComparison: true,
+      sidebarButtonSpacing: 16,
+      messageSpacing: 16,
+      slideshowTopMargin: 0,
+    };
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('cache_site_settings');
+        return cached ? { ...defaults, ...JSON.parse(cached) } : defaults;
+      } catch (e) {
+        return defaults;
+      }
+    }
+    return defaults;
   });
 
   const predefinedCategories = ['Paisagem', 'Retrato', 'Rua', 'Arquitetura', 'Natureza', 'Abstrato', 'Documentário', 'Animais'];
@@ -342,6 +389,11 @@ export default function App() {
 
       setGalleryImages(fetchedImages);
       setIsInitialLoading(false);
+      try {
+        localStorage.setItem('cache_gallery_images', JSON.stringify(fetchedImages));
+      } catch (e) {
+        console.error("Error saving cached images:", e);
+      }
       
       // Preload initial batch of images in background for instantaneous navigation
       if (fetchedImages.length > 0) {
@@ -355,7 +407,16 @@ export default function App() {
 
     const settingsUnsubscribe = onSnapshot(doc(db, 'settings', 'site'), (docSnap) => {
       if (docSnap.exists()) {
-        setSiteSettings(prev => ({ ...prev, ...docSnap.data() }));
+        const data = docSnap.data();
+        setSiteSettings(prev => {
+          const updated = { ...prev, ...data };
+          try {
+            localStorage.setItem('cache_site_settings', JSON.stringify(updated));
+          } catch (e) {
+            console.error("Error saving cached settings:", e);
+          }
+          return updated;
+        });
       }
     }, (error) => {
       console.error("Error listening to settings:", error);
@@ -701,14 +762,42 @@ export default function App() {
     return () => clearInterval(timer);
   }, [activeView, cookiesAccepted, galleryImages.length, siteSettings?.slideshowInterval]);
 
+  const rootCssVars = useMemo(() => {
+    const nameSize = siteSettings?.siteNameFontSize || 16;
+    const msgSize = siteSettings?.messageFontSize || 13;
+    const slideTitle = siteSettings?.slideshowTitleSize || '48px';
+    const slideSub = siteSettings?.slideshowSubtitleSize || '12px';
+    const slideCtrl = siteSettings?.slideshowControlsSize || '11px';
+    const lbTitle = siteSettings?.lightboxTitleSize || '18px';
+    const lbSub = siteSettings?.lightboxSubtitleSize || '12px';
+    const rcSize = siteSettings?.rightClickSize || '13px';
+    const rcNum = parseFloat(rcSize.replace('px', '')) || 13;
+
+    return {
+      '--site-name-size': `${nameSize}px`,
+      '--site-name-mobile-size': `${Math.max(12, nameSize * 0.8)}px`,
+      '--message-font-size': `${msgSize}px`,
+      '--message-font-mobile-size': `${Math.max(10, msgSize - 1)}px`,
+      '--slideshow-title-size': slideTitle.includes('px') || slideTitle.includes('rem') ? slideTitle : `${slideTitle}px`,
+      '--slideshow-subtitle-size': slideSub.includes('px') || slideSub.includes('rem') ? slideSub : `${slideSub}px`,
+      '--slideshow-controls-size': slideCtrl.includes('px') || slideCtrl.includes('rem') ? slideCtrl : `${slideCtrl}px`,
+      '--lightbox-title-size': lbTitle.includes('px') || lbTitle.includes('rem') ? lbTitle : `${lbTitle}px`,
+      '--lightbox-subtitle-size': lbSub.includes('px') || lbSub.includes('rem') ? lbSub : `${lbSub}px`,
+      '--right-click-size': rcSize.includes('px') || rcSize.includes('rem') ? rcSize : `${rcSize}px`,
+      '--right-click-sub-size': `${rcNum * 0.85}px`,
+    } as React.CSSProperties;
+  }, [siteSettings]);
+
   const globalStyle = {
     color: siteSettings?.globalColor || '#4a4a4a',
     fontFamily: getFontFamily(siteSettings?.globalFont),
+    ...rootCssVars,
   };
 
   const menuStyle = {
     color: siteSettings?.menuColor || '#7a7a7a',
     fontFamily: getFontFamily(siteSettings?.menuFont),
+    ...getTextStyleProps(siteSettings?.menuTextStyle)
   };
 
   const navItemClass = (isActive: boolean) => `relative flex items-center gap-4 px-10 py-4 border-b border-[#4a4a4a]/5 text-[13px] tracking-widest uppercase transition-colors font-sans ${
@@ -805,11 +894,14 @@ export default function App() {
 
       {/* Mobile Header/Nav */}
       <div className={`flex-shrink-0 z-40 bg-[#fafafa] border-b border-[#4a4a4a]/10 px-6 py-4 flex items-center justify-between ${isMobileLandscape ? 'flex' : 'md:hidden'}`}>
-        <div style={{ 
-          color: siteSettings?.siteNameColor || '#4a4a4a',
-          fontSize: `${Math.max(12, (siteSettings?.siteNameFontSize || 16) * 0.8)}px`,
-          fontFamily: getFontFamily(siteSettings?.siteNameFont)
-        }}>
+        <div 
+          className="typography-site-name-mobile"
+          style={{ 
+            color: siteSettings?.siteNameColor || '#4a4a4a',
+            fontFamily: getFontFamily(siteSettings?.siteNameFont),
+            ...getTextStyleProps(siteSettings?.siteNameTextStyle)
+          }}
+        >
           <h1 className="tracking-widest uppercase font-semibold">{siteSettings.siteName?.replace('\n', ' ')}</h1>
           <p className="text-[#7a7a7a] tracking-widest text-[12px] font-sans uppercase mt-1">{siteSettings.siteSubtitle}</p>
         </div>
@@ -840,7 +932,9 @@ export default function App() {
                 <div className="flex-shrink-0 bg-[#fafafa] border-b border-[#4a4a4a]/5 px-6 py-2.5 flex items-center justify-between">
                   <div style={{ 
                     color: siteSettings?.siteNameColor || '#4a4a4a',
-                    fontSize: `${Math.max(10, (siteSettings?.siteNameFontSize || 16) * 0.6)}px`
+                    fontSize: `${Math.max(10, (siteSettings?.siteNameFontSize || 16) * 0.6)}px`,
+                    fontFamily: getFontFamily(siteSettings?.siteNameFont),
+                    ...getTextStyleProps(siteSettings?.siteNameTextStyle)
                   }}>
                     <h1 className="tracking-widest uppercase font-sans font-semibold text-xs">{siteSettings.siteName?.replace('\n', ' ')}</h1>
                   </div>
@@ -915,7 +1009,9 @@ export default function App() {
                 <div className="flex-shrink-0 bg-[#fafafa] border-b border-[#4a4a4a]/5 px-6 py-4 flex items-center justify-between">
                   <div style={{ 
                     color: siteSettings?.siteNameColor || '#4a4a4a',
-                    fontSize: `${Math.max(12, (siteSettings?.siteNameFontSize || 16) * 0.8)}px`
+                    fontSize: `${Math.max(12, (siteSettings?.siteNameFontSize || 16) * 0.8)}px`,
+                    fontFamily: getFontFamily(siteSettings?.siteNameFont),
+                    ...getTextStyleProps(siteSettings?.siteNameTextStyle)
                   }}>
                     <h1 className="tracking-widest uppercase font-sans font-semibold">{siteSettings.siteName?.replace('\n', ' ')}</h1>
                     <p className="text-[#7a7a7a] tracking-widest text-[12px] font-sans uppercase mt-1">{siteSettings.siteSubtitle}</p>
@@ -970,9 +1066,11 @@ export default function App() {
                       className="mt-10 pt-6 border-t border-[#4a4a4a]/10 text-center"
                     >
                       <p 
-                        className="text-xs font-sans italic text-[#7a7a7a] leading-relaxed max-w-xs mx-auto"
+                        className="text-xs italic text-[#7a7a7a] leading-relaxed max-w-xs mx-auto"
                         style={{ 
                           fontSize: `${Math.max(10, (siteSettings?.messageFontSize || 13) - 1)}px`,
+                          fontFamily: getFontFamily(siteSettings?.messageFont),
+                          ...getTextStyleProps(siteSettings?.messageTextStyle)
                         }}
                       >
                         "{siteSettings.welcomeMessage}"
@@ -1037,26 +1135,26 @@ export default function App() {
       {/* Desktop Sidebar */}
       <aside className={`w-[340px] flex-shrink-0 h-full bg-[#fafafa] border-r border-[#4a4a4a]/10 flex-col justify-between overflow-y-auto z-30 ${isMobileLandscape ? 'hidden' : 'hidden md:flex'}`}>
         <div>
-          <div className="text-center" style={{ 
+          <div className="text-center typography-site-name-desktop" style={{ 
             paddingTop: `${siteSettings?.sidebarTitleTopMargin !== undefined ? siteSettings.sidebarTitleTopMargin : 48}px`,
             paddingBottom: `${siteSettings?.sidebarTitleBottomMargin !== undefined ? siteSettings.sidebarTitleBottomMargin : 32}px`,
             paddingLeft: `${siteSettings?.sidebarTitleLeftMargin !== undefined ? siteSettings.sidebarTitleLeftMargin : 40}px`,
             paddingRight: `${siteSettings?.sidebarTitleRightMargin !== undefined ? siteSettings.sidebarTitleRightMargin : 40}px`,
             color: siteSettings?.siteNameColor || '#4a4a4a',
-            fontSize: `${siteSettings?.siteNameFontSize || 16}px`,
-            fontFamily: getFontFamily(siteSettings?.siteNameFont)
+            fontFamily: getFontFamily(siteSettings?.siteNameFont),
+            ...getTextStyleProps(siteSettings?.siteNameTextStyle)
           }}>
             <h1 className="tracking-widest leading-tight uppercase whitespace-pre-line font-semibold">{siteSettings.siteName}</h1>
             <p className="text-[#7a7a7a] tracking-widest text-[12px] font-sans mt-2 uppercase">{siteSettings.siteSubtitle}</p>
           </div>
           <div 
-            className="px-10 text-xs md:text-sm font-sans leading-relaxed mb-8 whitespace-pre-line"
+            className="px-10 text-xs md:text-sm leading-relaxed mb-8 whitespace-pre-line typography-message"
             style={{ 
               marginTop: `${siteSettings?.messageSpacing !== undefined ? siteSettings.messageSpacing : 16}px`,
-              fontSize: `${siteSettings?.messageFontSize || 13}px`,
               color: siteSettings?.messageColor || '#4a4a4a',
-              textAlign: siteSettings?.messageAlignment || 'left',
-              fontFamily: getFontFamily(siteSettings?.messageFont)
+              textAlign: (siteSettings?.messageAlignment as any) || 'left',
+              fontFamily: getFontFamily(siteSettings?.messageFont),
+              ...getTextStyleProps(siteSettings?.messageTextStyle)
             }}
           >
             <p>{siteSettings.welcomeMessage}</p>
@@ -1156,7 +1254,7 @@ export default function App() {
             >
             {galleryImages.length > 0 ? (
               <>
-                <div className="relative flex-1 overflow-hidden grid place-items-center">
+                <div ref={slideshowContainerRef} className="relative flex-1 min-h-0 min-w-0 overflow-hidden grid place-items-center">
                 {(() => {
                   const slideshowVariants = getSlideshowVariants(siteSettings?.slideshowEffect, Number(siteSettings?.slideshowZoom) || 105, siteSettings?.reduceAnimations);
                   const photoPadding = isMobileLandscape ? 6 : (siteSettings?.slideshowPhotoPadding !== undefined ? siteSettings.slideshowPhotoPadding : 16);
@@ -1168,35 +1266,107 @@ export default function App() {
                         animate={slideshowVariants.animate}
                         exit={slideshowVariants.exit}
                         transition={slideshowVariants.transition}
-                        className="[grid-area:1/1] relative flex w-full h-full items-center justify-center"
+                        className="[grid-area:1/1] min-h-0 min-w-0 relative flex w-full h-full items-center justify-center"
                         style={{ padding: `${photoPadding}px` }}
                       >
                         {(() => {
                           const currentSlide = galleryImages[slideIndex];
+                          const currentAspect = currentSlide ? slideshowAspects[currentSlide.id || currentSlide.url] : null;
                           const titleText = currentSlide?.title || currentSlide?.caption || (currentSlide?.alt !== 'Fotografia' ? currentSlide?.alt : '');
                           const subtitleText = currentSlide?.subtitle || currentSlide?.description || '';
                           const textPos = siteSettings?.slideshowTextPosition || 'bottom-left';
                           const alignClasses = 
-                            textPos.includes('right') || textPos.includes('dto') || textPos.includes('direito') ? 'items-end text-right' :
-                            textPos.includes('center') || textPos.includes('centro') || textPos.includes('centrado') ? 'items-center text-center' :
+                            textPos.includes('right') || textPos.includes('dto') || textPos.includes('direito') || textPos.includes('dir') ? 'items-end text-right' :
+                            textPos.includes('center') || textPos.includes('centro') || textPos.includes('centrado') || textPos.includes('meio') ? 'items-center text-center' :
                             'items-start text-left';
-                          const effectiveFit = isMobileLandscape ? 'Ajustar' : (siteSettings?.slideshowFit || 'Ajustar');
+                          const zoomPercent = Number(siteSettings?.slideshowZoom) || 100;
+                          
+                          // Determine maximum multiplier for transition effects to prevent crop/cut-off
+                          let maxMultiplier = 1.05; // default fade transition max scale
+                          const effect = siteSettings?.slideshowEffect || '';
+                          if (effect.includes('Ken Burns')) {
+                            maxMultiplier = 1.2;
+                          } else if (effect.includes('Scale & Blur')) {
+                            maxMultiplier = 1.15;
+                          } else if (effect.includes('Rotate Cinema') || effect.includes('Crossfade Parallax')) {
+                            maxMultiplier = 1.1;
+                          }
+                          
+                          // Calculate base safe percentage to guarantee zero cropping at peak animation zoom
+                          const maxSafePercent = 100 / maxMultiplier;
+                          const safePercent = (zoomPercent / 100) * maxSafePercent;
+
+                          let wrapperStyle: React.CSSProperties = {
+                            width: `${safePercent}%`,
+                            height: `${safePercent}%`,
+                            maxWidth: '100%',
+                            maxHeight: '100%'
+                          };
+
+                          if (slideshowContainerSize && currentAspect) {
+                            const availW = slideshowContainerSize.width - 2 * photoPadding;
+                            const availH = slideshowContainerSize.height - 2 * photoPadding;
+                            
+                            if (availW > 0 && availH > 0) {
+                              const containerAspect = availW / availH;
+                              let w_fit = availW;
+                              let h_fit = availH;
+                              
+                              if (containerAspect > currentAspect) {
+                                // Height is the bottleneck (letterboxing on sides)
+                                h_fit = availH;
+                                w_fit = availH * currentAspect;
+                              } else {
+                                // Width is the bottleneck (letterboxing on top/bottom)
+                                w_fit = availW;
+                                h_fit = availW / currentAspect;
+                              }
+                              
+                              const finalWidth = w_fit * (safePercent / 100);
+                              const finalHeight = h_fit * (safePercent / 100);
+                              
+                              wrapperStyle = {
+                                width: `${finalWidth}px`,
+                                height: `${finalHeight}px`,
+                                maxWidth: '100%',
+                                maxHeight: '100%'
+                              };
+                            }
+                          } else if (currentAspect) {
+                            const isAspectLandscape = currentAspect >= 1;
+                            wrapperStyle = {
+                              width: isAspectLandscape ? `${safePercent}%` : 'auto',
+                              height: isAspectLandscape ? 'auto' : `${safePercent}%`,
+                              maxWidth: '100%',
+                              maxHeight: '100%',
+                              aspectRatio: `${currentAspect}`
+                            };
+                          }
 
                           return (
-                            <div className="relative w-full h-full flex items-center justify-center rounded-sm">
-                              <div className="relative flex items-center justify-center rounded-sm w-full h-full overflow-hidden">
+                            <div className="relative min-h-0 min-w-0 w-full h-full flex items-center justify-center rounded-sm">
+                              {/* Centered responsive inner container matching the image aspect ratio exactly */}
+                              <div 
+                                className="relative flex min-h-0 min-w-0 items-center justify-center rounded-sm"
+                                style={wrapperStyle}
+                              >
                                 <img
                                   src={currentSlide?.url}
                                   alt={currentSlide?.alt || titleText || 'Fotografia'}
                                   decoding="async"
                                   fetchPriority="high"
                                   referrerPolicy="no-referrer"
-                                  className={`block ${
-                                    effectiveFit === 'Preencher' 
-                                      ? 'w-full h-full object-cover object-center' 
-                                      : 'max-w-full max-h-full object-contain object-center'
-                                  }`}
-                                  style={effectiveFit === 'Preencher' ? {} : { height: 'auto', width: 'auto', maxHeight: '100%', maxWidth: '100%' }}
+                                  onLoad={(e) => {
+                                    const img = e.currentTarget;
+                                    if (img.naturalWidth && img.naturalHeight && currentSlide) {
+                                      const aspect = img.naturalWidth / img.naturalHeight;
+                                      setSlideshowAspects(prev => ({
+                                        ...prev,
+                                        [currentSlide.id || currentSlide.url]: aspect
+                                      }));
+                                    }
+                                  }}
+                                  className="max-h-full max-w-full block object-contain select-none pointer-events-none"
                                 />
 
                                 {siteSettings?.enableWatermark && siteSettings?.showWatermarkInSlideshow !== false && (
@@ -1205,44 +1375,54 @@ export default function App() {
                                   </div>
                                 )}
 
-                                {siteSettings?.showSlideshowCaptions !== false && (titleText || subtitleText) && (
-                                  <div className={`absolute z-50 pointer-events-none select-none flex flex-col p-4 md:p-6 ${getPositionClasses(textPos, true)} ${alignClasses}`}>
-                                    {titleText && (
-                                      <motion.h2 
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: 0.2, duration: 0.8 }}
-                                        className="mb-1 sm:mb-2 tracking-wide font-light drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
-                                        style={{
-                                          fontFamily: getFontFamily(siteSettings?.slideshowTitleFont),
-                                          fontSize: isMobileLandscape 
-                                            ? `calc(${(siteSettings?.slideshowTitleSize || '48px').replace(/\s+/g, '')} * 0.5)`
-                                            : (siteSettings?.slideshowTitleSize || '48px').replace(/\s+/g, ''),
-                                          color: siteSettings?.slideshowTextColor || '#ffffff'
-                                        }}
-                                      >
-                                        {titleText}
-                                      </motion.h2>
-                                    )}
-                                    {subtitleText && (
-                                      <motion.p 
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ delay: 0.4, duration: 0.8 }}
-                                        className="tracking-widest uppercase opacity-95 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
-                                        style={{
-                                          fontFamily: getFontFamily(siteSettings?.slideshowSubtitleFont),
-                                          fontSize: isMobileLandscape
-                                            ? `calc(${(siteSettings?.slideshowSubtitleSize || '12px').replace(/\s+/g, '')} * 0.8)`
-                                            : (siteSettings?.slideshowSubtitleSize || '12px').replace(/\s+/g, ''),
-                                          color: siteSettings?.slideshowTextColor || '#ffffff'
-                                        }}
-                                      >
-                                        {subtitleText}
-                                      </motion.p>
-                                    )}
-                                  </div>
-                                )}
+                                {/* Slideshow Caption inserida na foto, com os mesmos critérios do lightbox */}
+                                {siteSettings?.showSlideshowCaptions !== false && siteSettings?.slideshowTextPosition !== 'none' && siteSettings?.slideshowTextPosition !== 'Não mostrar' && (titleText || subtitleText) && (
+                                  <div 
+                                    className={`absolute z-50 pointer-events-none select-none flex flex-col ${getPositionClasses(textPos, true, siteSettings?.slideshowCaptionPlacement as 'inside' | 'outside')} ${alignClasses}`}
+                                    style={getCaptionOffsetStyle(textPos, siteSettings?.slideshowCaptionPlacement as 'inside' | 'outside', siteSettings?.slideshowCaptionPadding ?? 16)}
+                                  >
+                                  {titleText && (
+                                    <motion.h2 
+                                      initial={{ opacity: 0, y: 10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      transition={{ delay: 0.2, duration: 0.8 }}
+                                      className="tracking-widest drop-shadow-md w-fit max-w-full"
+                                      style={{
+                                        fontFamily: getFontFamily(siteSettings?.slideshowTitleFont),
+                                        fontSize: isMobileLandscape 
+                                          ? `calc(${(siteSettings?.slideshowTitleSize || '48px').replace(/\s+/g, '')} * 0.5)`
+                                          : (siteSettings?.slideshowTitleSize || '48px').replace(/\s+/g, ''),
+                                        color: siteSettings?.slideshowTextColor || '#ffffff',
+                                        backgroundColor: siteSettings?.enableSlideshowTextBg ? (siteSettings?.slideshowTextBgColor || '#000000') : 'transparent',
+                                        padding: siteSettings?.enableSlideshowTextBg ? '0.2em 0.4em' : 0,
+                                        ...getTextStyleProps(siteSettings?.slideshowTitleStyle)
+                                      }}
+                                    >
+                                      {titleText}
+                                    </motion.h2>
+                                  )}
+                                  {subtitleText && (
+                                    <motion.p 
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      transition={{ delay: 0.4, duration: 0.8 }}
+                                      className="tracking-widest opacity-90 drop-shadow-md mt-1 w-fit max-w-full"
+                                      style={{
+                                        fontFamily: getFontFamily(siteSettings?.slideshowSubtitleFont),
+                                        fontSize: isMobileLandscape
+                                          ? `calc(${(siteSettings?.slideshowSubtitleSize || '12px').replace(/\s+/g, '')} * 0.8)`
+                                          : (siteSettings?.slideshowSubtitleSize || '12px').replace(/\s+/g, ''),
+                                        color: siteSettings?.slideshowTextColor || '#ffffff',
+                                        backgroundColor: siteSettings?.enableSlideshowTextBg ? (siteSettings?.slideshowTextBgColor || '#000000') : 'transparent',
+                                        padding: siteSettings?.enableSlideshowTextBg ? '0.2em 0.4em' : 0,
+                                        ...getTextStyleProps(siteSettings?.slideshowSubtitleStyle)
+                                      }}
+                                    >
+                                      {subtitleText}
+                                    </motion.p>
+                                  )}
+                                </div>
+                              )}
                               </div>
                             </div>
                           );
@@ -1251,42 +1431,23 @@ export default function App() {
                     </AnimatePresence>
                   );
                 })()}
+
                 </div>
-                
-                {/* Controls Area (Outside Photo) */}
-                <div 
-                  className={`shrink-0 flex flex-col gap-2 z-20 justify-center ${
-                    isMobileLandscape 
-                      ? 'w-[180px] border-l border-white/10 p-3 h-full text-center items-center' 
-                      : `p-4 sm:p-6 lg:px-8 lg:py-6 ${
-                          siteSettings?.slideshowControlsAlign === 'left' ? 'items-start text-left' :
-                          siteSettings?.slideshowControlsAlign === 'right' ? 'items-end text-right' :
-                          'items-center text-center'
-                        }`
-                  }`}
-                  style={{ backgroundColor: siteSettings?.slideshowBgColor || '#1a1a1a' }}
-                >
-                  <div className={`flex ${isMobileLandscape ? 'flex-col gap-3' : 'flex-row gap-4'} items-center ${
-                    isMobileLandscape
-                      ? 'justify-center'
-                      : siteSettings?.slideshowControlsAlign === 'left' ? 'justify-start' :
-                        siteSettings?.slideshowControlsAlign === 'right' ? 'justify-end' :
-                        'justify-center'
-                  } w-full`}>
-                    <button 
-                      onClick={() => setActiveView('galeria')}
-                      className="flex items-center gap-3 py-2 tracking-[0.2em] uppercase hover:opacity-70 transition-all border-b pb-1 w-fit font-semibold"
-                      style={{
-                        fontFamily: getFontFamily(siteSettings?.slideshowControlsFont),
-                        fontSize: (siteSettings?.slideshowControlsSize || '11px').replace(/\s+/g, ''),
-                        color: siteSettings?.slideshowControlsColor || '#ffffff',
-                        borderColor: `${siteSettings?.slideshowControlsColor || '#ffffff'}4d`
-                      }}
-                    >
-                      <span>VER GALERIA</span>
-                      <ArrowRight className="w-3 h-3" strokeWidth={1.5} />
-                    </button>
-                  </div>
+
+                {/* Botão VER GALERIA na barra inferior, nunca se sobrepõe à imagem */}
+                <div className="w-full flex justify-end shrink-0 px-6 pb-6 md:px-8 md:pb-8 pt-2 z-50 pointer-events-none">
+                  <button 
+                    onClick={() => setActiveView('galeria')}
+                    className="pointer-events-auto flex items-center gap-3 py-2 tracking-[0.2em] uppercase hover:opacity-70 transition-all border-b pb-1 w-fit font-semibold drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] typography-slideshow-controls"
+                    style={{
+                      fontFamily: getFontFamily(siteSettings?.slideshowControlsFont),
+                      color: siteSettings?.slideshowControlsColor || '#ffffff',
+                      borderColor: `${siteSettings?.slideshowControlsColor || '#ffffff'}4d`
+                    }}
+                  >
+                    <span>VER GALERIA</span>
+                    <ArrowRight className="w-3 h-3" strokeWidth={1.5} />
+                  </button>
                 </div>
               </>
             ) : (
@@ -1696,7 +1857,7 @@ export default function App() {
 
             {/* Image Container with Touch Swipe Gesture Support */}
             <div 
-              className="overflow-hidden max-h-screen max-w-full flex items-center justify-center touch-pan-y relative select-none" 
+              className="max-h-screen max-w-full flex items-center justify-center touch-pan-y relative select-none" 
               onClick={(e) => e.stopPropagation()}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
@@ -1733,36 +1894,45 @@ export default function App() {
                     )}
                     
                     {/* Lightbox Caption inserida na foto */}
-                    <div className={`absolute pointer-events-none select-none flex flex-col ${getPositionClasses(siteSettings?.lightboxTextPosition, true)} ${
-                      siteSettings?.lightboxTextPosition?.includes('right') ? 'items-end text-right' :
-                      siteSettings?.lightboxTextPosition?.includes('center') || siteSettings?.lightboxTextPosition === 'centrado em baixo' ? 'items-center text-center' :
-                      'items-start text-left'
-                    }`}>
-                      {filteredGallery[selectedImageIndex]?.title && (
-                        <h3 
-                          className="tracking-widest font-medium drop-shadow-md"
-                          style={{
-                            fontFamily: getFontFamily(siteSettings?.lightboxTitleFont),
-                            fontSize: (siteSettings?.lightboxTitleSize || '18px').replace(/\s+/g, ''),
-                            color: siteSettings?.lightboxTextColor || '#ffffff'
-                          }}
-                        >
-                          {filteredGallery[selectedImageIndex]?.title}
-                        </h3>
-                      )}
-                      {filteredGallery[selectedImageIndex]?.subtitle && (
-                        <p 
-                          className="tracking-widest uppercase opacity-90 drop-shadow-md mt-1"
-                          style={{
-                            fontFamily: getFontFamily(siteSettings?.lightboxSubtitleFont),
-                            fontSize: (siteSettings?.lightboxSubtitleSize || '12px').replace(/\s+/g, ''),
-                            color: siteSettings?.lightboxTextColor || '#ffffff'
-                          }}
-                        >
-                          {filteredGallery[selectedImageIndex]?.subtitle}
-                        </p>
-                      )}
-                    </div>
+                    {siteSettings?.lightboxTextPosition !== 'none' && siteSettings?.lightboxTextPosition !== 'Não mostrar' && (
+                      <div 
+                        className={`absolute pointer-events-none select-none flex flex-col ${getPositionClasses(siteSettings?.lightboxTextPosition, true, siteSettings?.lightboxCaptionPlacement as 'inside' | 'outside')} ${
+                        siteSettings?.lightboxTextPosition?.includes('right') ? 'items-end text-right' :
+                        siteSettings?.lightboxTextPosition?.includes('center') || siteSettings?.lightboxTextPosition === 'centrado em baixo' ? 'items-center text-center' :
+                        'items-start text-left'
+                      }`}
+                        style={getCaptionOffsetStyle(siteSettings?.lightboxTextPosition, siteSettings?.lightboxCaptionPlacement as 'inside' | 'outside', siteSettings?.lightboxCaptionPadding ?? 16)}
+                      >
+                        {filteredGallery[selectedImageIndex]?.title && (
+                          <h3 
+                            className="tracking-widest drop-shadow-md w-fit max-w-full typography-lightbox-title"
+                            style={{
+                              fontFamily: getFontFamily(siteSettings?.lightboxTitleFont),
+                              color: siteSettings?.lightboxTextColor || '#ffffff',
+                              backgroundColor: siteSettings?.enableLightboxTextBg ? (siteSettings?.lightboxTextBgColor || '#000000') : 'transparent',
+                              padding: siteSettings?.enableLightboxTextBg ? '0.2em 0.4em' : 0,
+                              ...getTextStyleProps(siteSettings?.lightboxTitleStyle)
+                            }}
+                          >
+                            {filteredGallery[selectedImageIndex]?.title}
+                          </h3>
+                        )}
+                        {filteredGallery[selectedImageIndex]?.subtitle && (
+                          <p 
+                            className="tracking-widest opacity-90 drop-shadow-md mt-1 w-fit max-w-full typography-lightbox-subtitle"
+                            style={{
+                              fontFamily: getFontFamily(siteSettings?.lightboxSubtitleFont),
+                              color: siteSettings?.lightboxTextColor || '#ffffff',
+                              backgroundColor: siteSettings?.enableLightboxTextBg ? (siteSettings?.lightboxTextBgColor || '#000000') : 'transparent',
+                              padding: siteSettings?.enableLightboxTextBg ? '0.2em 0.4em' : 0,
+                              ...getTextStyleProps(siteSettings?.lightboxSubtitleStyle)
+                            }}
+                          >
+                            {filteredGallery[selectedImageIndex]?.subtitle}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </motion.div>
                 );
               })()}
@@ -2093,10 +2263,14 @@ export default function App() {
                 color: siteSettings?.rightClickColor || '#ffffff',
               }}
             >
-              <h4 className="font-bold tracking-wide" style={{ fontSize: siteSettings?.rightClickSize || '13px' }}>
+              <h4 className="tracking-wide typography-right-click-title" style={{ 
+                ...getTextStyleProps(siteSettings?.rightClickTitleStyle)
+              }}>
                 {siteSettings?.rightClickTitle || 'Copyright © 2026'}
               </h4>
-              <p className="opacity-90 text-[11px] font-sans tracking-wide">
+              <p className="opacity-90 tracking-wide typography-right-click-subtitle" style={{
+                ...getTextStyleProps(siteSettings?.rightClickSubtitleStyle)
+              }}>
                 {siteSettings?.rightClickSubtitle || 'manuelfrancisco. Todos os direitos reservados'}
               </p>
             </div>

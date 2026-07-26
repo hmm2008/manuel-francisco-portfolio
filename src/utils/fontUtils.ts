@@ -1,3 +1,5 @@
+import React from 'react';
+
 export const FONT_OPTIONS = [
   'Playfair Display — serif clássico editorial',
   'Cormorant Garamond — serif elegante e refinado',
@@ -38,4 +40,14 @@ export function getFontFamily(fontName?: string): string {
   if (fontName.includes('Satoshi')) return '"Satoshi", sans-serif';
   if (fontName.includes('Playfair Display')) return '"Playfair Display", Georgia, serif';
   return fontName;
+}
+
+export function getTextStyleProps(styleString?: string): React.CSSProperties {
+  if (!styleString) return {};
+  const styles: React.CSSProperties = {};
+  if (styleString.includes('bold')) styles.fontWeight = 'bold';
+  if (styleString.includes('italic')) styles.fontStyle = 'italic';
+  if (styleString.includes('underline')) styles.textDecoration = 'underline';
+  if (styleString.includes('uppercase')) styles.textTransform = 'uppercase';
+  return styles;
 }

@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Palette, MessageSquare } from 'lucide-react';
 import { SiteSettings } from '../../types';
 import { FONT_OPTIONS } from '../../utils/fontUtils';
-import { SettingRow, RangeSlider, SettingSelect, SettingToggle } from './SharedComponents';
+import { SettingRow, RangeSlider, SettingSelect, SettingToggle, SettingTextStyle } from './SharedComponents';
 
 interface SettingsMarcaProps {
   settings: SiteSettings;
@@ -77,6 +77,12 @@ export default function SettingsMarca({ settings, handleChange, handleRangeChang
               onChange={handleChange}
             />
           </div>
+          <SettingTextStyle
+            label="ESTILO DO LOGÓTIPO"
+            name="siteNameTextStyle"
+            value={settings.siteNameTextStyle || ''}
+            onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
+          />
         </div>
       </div>
 
@@ -243,6 +249,14 @@ export default function SettingsMarca({ settings, handleChange, handleRangeChang
             value={settings.messageColor}
             onChange={handleChange}
           />
+          <div className="md:col-span-2">
+            <SettingTextStyle
+              label="ESTILO DA MENSAGEM"
+              name="messageTextStyle"
+              value={settings.messageTextStyle || ''}
+              onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
+            />
+          </div>
           <div className="md:col-span-2">
             <RangeSlider
               label="DISTÂNCIA DO TOPO (SLIDESHOW/GALERIA)"

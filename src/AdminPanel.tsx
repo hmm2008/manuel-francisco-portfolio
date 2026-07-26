@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import SettingsPanel from './components/SettingsPanel';
+import { CategoryManagerModal } from './components/CategoryManagerModal';
 import { ImageProps, SiteSettings } from './types';
 
 interface ExifData {
@@ -217,6 +218,7 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
   const [activeTab, setActiveTab] = useState<'gallery' | 'settings'>('gallery');
   
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showCategoryManagerModal, setShowCategoryManagerModal] = useState<boolean>(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showDeleteCategoryConfirm, setShowDeleteCategoryConfirm] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('TODAS');
@@ -720,9 +722,8 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
   const toggleSelectPhoto = (id: string) => {
     setSelectedPhotoIds(prev => {
       const next = prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id];
-      if (next.length > 0) {
-        setIsSelectionMode(true);
-      } else {
+      // Do not auto-activate selection mode, user wants to toggle it manually
+      if (next.length === 0) {
         setIsSelectionMode(false);
       }
       return next;
@@ -1177,6 +1178,16 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                 >
                   <ArrowUpDown size={14} />
                   <span>Reordenar Posições</span>
+                </button>
+
+                {/* Manage Categories Button */}
+                <button 
+                  onClick={() => setShowCategoryManagerModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 border border-[#4a4a4a]/20 text-[#4a4a4a] hover:bg-[#4a4a4a]/5 transition-colors text-[10px] tracking-widest uppercase font-semibold bg-white"
+                  title="Criar e eliminar categorias"
+                >
+                  <Tags size={14} />
+                  <span>Criar e eliminar categorias</span>
                 </button>
 
                 {/* Add Photo Button */}
@@ -2106,6 +2117,18 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Category Manager Modal */}
+      <CategoryManagerModal
+        isOpen={showCategoryManagerModal}
+        onClose={() => setShowCategoryManagerModal(false)}
+        categories={currentCategories}
+        images={images}
+        newCategoryName={newCategoryName}
+        setNewCategoryName={setNewCategoryName}
+        onAddCategory={handleAddCategory}
+        onDeleteCategory={handleDeleteCategory}
+      />
 
       {/* Category Delete Confirmation Modal */}
       <AnimatePresence>

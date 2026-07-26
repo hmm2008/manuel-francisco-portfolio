@@ -4,3 +4,77 @@
   --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-serif: "Playfair Display", Georgia, Cambria, "Times New Roman", Times, serif;
 }
+
+:root {
+  /* Dynamic Typography CSS Custom Properties (with responsive fallbacks) */
+  --site-name-size: 16px;
+  --site-name-mobile-size: 13px;
+  --message-font-size: 13px;
+  --message-font-mobile-size: 12px;
+  --slideshow-title-size: 48px;
+  --slideshow-subtitle-size: 12px;
+  --slideshow-controls-size: 11px;
+  --lightbox-title-size: 18px;
+  --lightbox-subtitle-size: 12px;
+  --right-click-size: 13px;
+  --right-click-sub-size: 11px;
+  --exif-font-size: 11px;
+}
+
+/* Consolidated Typographic Scale Utilities */
+.typography-site-name-desktop {
+  font-size: var(--site-name-size);
+  line-height: 1.25;
+}
+
+.typography-site-name-mobile {
+  font-size: var(--site-name-mobile-size);
+  line-height: 1.25;
+}
+
+.typography-message {
+  font-size: var(--message-font-size);
+  line-height: 1.6;
+}
+
+.typography-message-quote {
+  font-size: var(--message-font-mobile-size);
+  line-height: 1.5;
+}
+
+.typography-slideshow-title {
+  font-size: var(--slideshow-title-size);
+  line-height: 1.1;
+}
+
+.typography-slideshow-subtitle {
+  font-size: var(--slideshow-subtitle-size);
+  line-height: 1.4;
+}
+
+.typography-slideshow-controls {
+  font-size: var(--slideshow-controls-size);
+}
+
+.typography-lightbox-title {
+  font-size: var(--lightbox-title-size);
+  line-height: 1.2;
+}
+
+.typography-lightbox-subtitle {
+  font-size: var(--lightbox-subtitle-size);
+  line-height: 1.4;
+}
+
+.typography-right-click-title {
+  font-size: var(--right-click-size);
+}
+
+.typography-right-click-subtitle {
+  font-size: var(--right-click-sub-size);
+}
+
+.typography-exif {
+  font-size: var(--exif-font-size);
+}
+

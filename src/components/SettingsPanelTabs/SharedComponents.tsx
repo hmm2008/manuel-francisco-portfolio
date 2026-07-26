@@ -1,5 +1,70 @@
 import React from 'react';
+import { Bold, Italic, Underline, Type } from 'lucide-react';
 import { SiteSettings } from '../../types';
+
+interface SettingTextStyleProps {
+  label: string;
+  name: keyof SiteSettings;
+  value: string;
+  onChange: (name: string, value: string) => void;
+}
+
+export function SettingTextStyle({ label, name, value = '', onChange }: SettingTextStyleProps) {
+  const isBold = value.includes('bold');
+  const isItalic = value.includes('italic');
+  const isUnderline = value.includes('underline');
+  const isUppercase = value.includes('uppercase');
+
+  const toggleStyle = (style: string) => {
+    let newStyles = (value || '').split(' ').filter(s => s);
+    if (newStyles.includes(style)) {
+      newStyles = newStyles.filter(s => s !== style);
+    } else {
+      newStyles.push(style);
+    }
+    onChange(name as string, newStyles.join(' '));
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="text-[10px] uppercase tracking-widest text-[#1a1a1a] font-bold block">{label}</label>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => toggleStyle('bold')}
+          className={`p-2 border rounded-none transition-colors ${isBold ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]' : 'bg-[#f8f7f5] text-[#1a1a1a] border-[#e5e0d8] hover:border-[#1a1a1a]'}`}
+          title="Negrito"
+        >
+          <Bold size={16} />
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleStyle('italic')}
+          className={`p-2 border rounded-none transition-colors ${isItalic ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]' : 'bg-[#f8f7f5] text-[#1a1a1a] border-[#e5e0d8] hover:border-[#1a1a1a]'}`}
+          title="Itálico"
+        >
+          <Italic size={16} />
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleStyle('underline')}
+          className={`p-2 border rounded-none transition-colors ${isUnderline ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]' : 'bg-[#f8f7f5] text-[#1a1a1a] border-[#e5e0d8] hover:border-[#1a1a1a]'}`}
+          title="Sublinhado"
+        >
+          <Underline size={16} />
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleStyle('uppercase')}
+          className={`p-2 border rounded-none transition-colors ${isUppercase ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]' : 'bg-[#f8f7f5] text-[#1a1a1a] border-[#e5e0d8] hover:border-[#1a1a1a]'}`}
+          title="Maiúsculas"
+        >
+          <Type size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 interface RangeSliderProps {
   label: string;

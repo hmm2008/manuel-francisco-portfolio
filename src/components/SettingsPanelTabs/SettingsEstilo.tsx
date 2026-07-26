@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Type, LayoutDashboard } from 'lucide-react';
 import { SiteSettings } from '../../types';
 import { FONT_OPTIONS } from '../../utils/fontUtils';
-import { SettingRow, RangeSlider, SettingSelect } from './SharedComponents';
+import { SettingRow, RangeSlider, SettingSelect, SettingTextStyle } from './SharedComponents';
 
 interface SettingsEstiloProps {
   settings: SiteSettings;
@@ -54,6 +54,12 @@ export default function SettingsEstilo({ settings, handleChange, handleRangeChan
               type="color"
               value={settings.menuColor || '#000000'}
               onChange={handleChange}
+            />
+            <SettingTextStyle
+              label="ESTILO DO MENU"
+              name="menuTextStyle"
+              value={settings.menuTextStyle || ''}
+              onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
             />
             <SettingRow
               label="COR DAS LINHAS DE SEPARAÇÃO"
