@@ -1266,35 +1266,6 @@ export default function App() {
                   }`}
                   style={{ backgroundColor: siteSettings?.slideshowBgColor || '#1a1a1a' }}
                 >
-                  <div 
-                    className="tracking-[0.2em] uppercase mb-1"
-                    style={{
-                      fontFamily: getFontFamily(siteSettings?.slideshowControlsFont),
-                      fontSize: (siteSettings?.slideshowControlsSize || '11px').replace(/\s+/g, ''),
-                      color: siteSettings?.slideshowControlsColor || '#ffffff',
-                      opacity: 0.6
-                    }}
-                  >
-                    {slideIndex + 1} <span className="mx-1 opacity-50">/</span> {galleryImages.length}
-                  </div>
-                  
-                  {galleryImages.length > 1 && (
-                    <div className="flex flex-wrap justify-center gap-2 mb-2 max-w-full px-1">
-                      {galleryImages.map((_, i) => (
-                        <button 
-                          key={i} 
-                          onClick={() => setSlideIndex(i)}
-                          className={`h-[2px] transition-all duration-500 ${i === slideIndex ? 'w-8' : 'w-4 hover:opacity-80'}`} 
-                          style={{
-                            backgroundColor: siteSettings?.slideshowControlsColor || '#ffffff',
-                            opacity: i === slideIndex ? 1 : 0.3
-                          }}
-                          aria-label={`Ir para a foto ${i + 1}`}
-                        />
-                      ))}
-                    </div>
-                  )}
-                  
                   <div className={`flex ${isMobileLandscape ? 'flex-col gap-3' : 'flex-row gap-4'} items-center ${
                     isMobileLandscape
                       ? 'justify-center'
@@ -1315,23 +1286,6 @@ export default function App() {
                       <span>VER GALERIA</span>
                       <ArrowRight className="w-3 h-3" strokeWidth={1.5} />
                     </button>
-
-                    {siteSettings?.enableZenMode !== false && (
-                      <button 
-                        onClick={() => setShowZenMode(true)}
-                        className="flex items-center gap-2 px-4 py-1.5 hover:opacity-80 transition-all rounded-full border backdrop-blur-md"
-                        style={{
-                          backgroundColor: siteSettings?.zenModeButtonBgColor || 'rgba(0, 0, 0, 0.4)',
-                          color: siteSettings?.zenModeButtonColor || '#fde68a',
-                          borderColor: `${siteSettings?.zenModeButtonColor || '#fde68a'}4d`,
-                          fontFamily: getFontFamily(siteSettings?.slideshowControlsFont),
-                          fontSize: (siteSettings?.slideshowControlsSize || '11px').replace(/\s+/g, ''),
-                        }}
-                      >
-                        <Sparkles className="w-3.5 h-3.5 animate-pulse" style={{ color: siteSettings?.zenModeButtonColor || '#fde68a' }} />
-                        <span>MODO ZEN</span>
-                      </button>
-                    )}
                   </div>
                 </div>
               </>
