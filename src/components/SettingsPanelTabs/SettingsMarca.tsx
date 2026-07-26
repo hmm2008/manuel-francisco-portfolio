@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Palette, MessageSquare } from 'lucide-react';
 import { SiteSettings } from '../../types';
 import { FONT_OPTIONS } from '../../utils/fontUtils';
-import { SettingRow, RangeSlider, SettingSelect } from './SharedComponents';
+import { SettingRow, RangeSlider, SettingSelect, SettingToggle } from './SharedComponents';
 
 interface SettingsMarcaProps {
   settings: SiteSettings;
@@ -133,14 +133,41 @@ export default function SettingsMarca({ settings, handleChange, handleRangeChang
         </div>
       </div>
 
-      {/* Margens das Páginas Principais */}
+      {/* Margens e Visibilidade das Páginas Principais */}
       <div className="bg-white border border-[#e8e4dc] p-6 md:p-8 space-y-6 shadow-sm">
         <div className="border-b border-[#f0ece5] pb-4">
-          <h3 className="font-serif text-lg text-[#1a1a1a]">Espaçamentos do Título Central</h3>
-          <p className="text-xs text-[#8e8a82] font-sans mt-1">Ajuste o espaço à volta do título nas páginas (Galeria, Biografia, etc).</p>
+          <h3 className="font-serif text-lg text-[#1a1a1a]">Visibilidade & Espaçamentos do Título Central</h3>
+          <p className="text-xs text-[#8e8a82] font-sans mt-1">Configure o título "Manuel Francisco" e as linhas superior/inferior nas páginas (Galeria, Biografia, Livro de Visitas, Contacto e Links).</p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-2">
+          <SettingToggle
+            label="EXIBIR TÍTULO 'MANUEL FRANCISCO' NAS PÁGINAS"
+            name="showPageHeaderTitle"
+            checked={settings.showPageHeaderTitle !== false}
+            onChange={handleChange}
+            description="Exibe o título principal no topo das páginas de conteúdo para identificação da marca."
+          />
+          <SettingToggle
+            label="EXIBIR LINHAS SUPERIOR E INFERIOR DO TÍTULO"
+            name="showPageHeaderLines"
+            checked={settings.showPageHeaderLines !== false}
+            onChange={handleChange}
+            description="Exibe as molduras/linhas horizontais em volta do título do topo nas páginas."
+          />
+        </div>
+
+        <div className="pt-4 border-t border-[#f0ece5]">
+          <SettingToggle
+            label="RODAPÉ EM DIV SEPARADA (ESTRUTURA EM 2 DIVS)"
+            name="separateFooterDiv"
+            checked={settings.separateFooterDiv === true}
+            onChange={handleChange}
+            description="Quando DESATIVADO (recomendado para écrans pequenos): Usa 1 div única onde o rodapé fica no fim do scroll da página. Quando ATIVADO: Divide a página em 2 divs (conteúdo com scroll + rodapé fixo no fundo do écran)."
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2 border-t border-[#f0ece5]">
           <RangeSlider
             label="ESPAÇAMENTO SUPERIOR"
             name="mainTitleTopMargin"

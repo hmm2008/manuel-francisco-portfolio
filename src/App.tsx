@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronLeft, ChevronRight, Cookie, ShieldCheck, Home, Image as ImageIcon, User, BookOpen, Mail, Link as LinkIcon, Settings, ArrowRight, ZoomIn, ZoomOut, Maximize, Menu, Camera, Info, Keyboard, HelpCircle, Sparkles, Play, Pause, Share2, CheckCircle2, Download, Tv } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Cookie, ShieldCheck, Home, Image as ImageIcon, User, BookOpen, Mail, Link as LinkIcon, Settings, ArrowRight, ZoomIn, ZoomOut, Maximize, Menu, Camera, Info, Keyboard, HelpCircle, Sparkles, Play, Pause, Share2, CheckCircle2, Download, Tv, Instagram, Facebook, Twitter } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import Footer from './components/Footer';
@@ -854,9 +854,48 @@ export default function App() {
 
                 {/* Overlay Footer */}
                 <div 
-                  className="px-6 pt-4 text-center text-[#7a7a7a]/60 text-[9px] tracking-[0.05em] font-sans border-t border-[#4a4a4a]/5"
+                  className="px-6 pt-4 text-center text-[#7a7a7a]/60 text-[9px] tracking-[0.05em] font-sans border-t border-[#4a4a4a]/5 flex flex-col items-center"
                   style={{ paddingBottom: siteSettings?.footerBottomSpacing !== undefined ? `${siteSettings.footerBottomSpacing}px` : '32px' }}
                 >
+                  {/* Social Network Icons */}
+                  {(siteSettings?.instagram || siteSettings?.facebook || siteSettings?.twitter) && (
+                    <div className="flex items-center justify-center gap-4 mb-3 text-[#4a4a4a]">
+                      {siteSettings?.instagram && (
+                        <a 
+                          href={siteSettings.instagram.startsWith('http') ? siteSettings.instagram : `https://${siteSettings.instagram}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="hover:text-[#1a1a1a] transition-colors p-1" 
+                          title="Instagram"
+                        >
+                          <Instagram className="w-4 h-4 stroke-[1.5]" />
+                        </a>
+                      )}
+                      {siteSettings?.facebook && (
+                        <a 
+                          href={siteSettings.facebook.startsWith('http') ? siteSettings.facebook : `https://${siteSettings.facebook}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="hover:text-[#1a1a1a] transition-colors p-1" 
+                          title="Facebook"
+                        >
+                          <Facebook className="w-4 h-4 stroke-[1.5]" />
+                        </a>
+                      )}
+                      {siteSettings?.twitter && (
+                        <a 
+                          href={siteSettings.twitter.startsWith('http') ? siteSettings.twitter : `https://${siteSettings.twitter}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="hover:text-[#1a1a1a] transition-colors p-1" 
+                          title="Twitter / X"
+                        >
+                          <Twitter className="w-4 h-4 stroke-[1.5]" />
+                        </a>
+                      )}
+                    </div>
+                  )}
+
                   <p className="mb-1">{siteSettings.footerText || `© ${new Date().getFullYear()} — Todos os direitos reservados.`}</p>
                   <p className="text-[8px] opacity-80 leading-relaxed max-w-xs mx-auto">O conteúdo e as imagens não podem ser reproduzidos de qualquer forma sem o consentimento do autor.</p>
                 </div>
@@ -919,9 +958,48 @@ export default function App() {
           </nav>
         </div>
         <div 
-          className="px-10 pt-8 text-center text-[#7a7a7a]/60 text-[10px] tracking-[0.05em] font-sans"
+          className="px-10 pt-8 text-center text-[#7a7a7a]/60 text-[10px] tracking-[0.05em] font-sans flex flex-col items-center"
           style={{ paddingBottom: siteSettings?.sidebarFooterBottomMargin !== undefined ? `${siteSettings.sidebarFooterBottomMargin}px` : '32px' }}
         >
+          {/* Social Network Icons above copyright in sidebar */}
+          {(siteSettings?.instagram || siteSettings?.facebook || siteSettings?.twitter) && (
+            <div className="flex items-center justify-center gap-4 mb-4 text-[#4a4a4a]">
+              {siteSettings?.instagram && (
+                <a 
+                  href={siteSettings.instagram.startsWith('http') ? siteSettings.instagram : `https://${siteSettings.instagram}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-[#1a1a1a] hover:scale-110 transition-all p-1" 
+                  title="Instagram"
+                >
+                  <Instagram className="w-4 h-4 stroke-[1.5]" />
+                </a>
+              )}
+              {siteSettings?.facebook && (
+                <a 
+                  href={siteSettings.facebook.startsWith('http') ? siteSettings.facebook : `https://${siteSettings.facebook}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-[#1a1a1a] hover:scale-110 transition-all p-1" 
+                  title="Facebook"
+                >
+                  <Facebook className="w-4 h-4 stroke-[1.5]" />
+                </a>
+              )}
+              {siteSettings?.twitter && (
+                <a 
+                  href={siteSettings.twitter.startsWith('http') ? siteSettings.twitter : `https://${siteSettings.twitter}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-[#1a1a1a] hover:scale-110 transition-all p-1" 
+                  title="Twitter / X"
+                >
+                  <Twitter className="w-4 h-4 stroke-[1.5]" />
+                </a>
+              )}
+            </div>
+          )}
+
           <p className="mb-1">{siteSettings.footerText || `© ${new Date().getFullYear()} — Todos os direitos reservados.`}</p>
           <p>O conteúdo e as imagens não podem ser reproduzidos de qualquer forma sem o consentimento do autor.</p>
         </div>
@@ -1141,21 +1219,125 @@ export default function App() {
           </div>
         </div>
         ) : activeView === 'galeria' ? (
-          <div 
-            className="w-full h-full px-4 pb-4 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8 overflow-y-auto"
-            style={{ paddingTop: siteSettings?.mainTitleTopMargin !== undefined ? `${siteSettings.mainTitleTopMargin}px` : '32px' }}
-          >
-            <div className="w-full mx-auto flex flex-col min-h-full justify-between">
-              <div className="flex flex-col w-full">
+          siteSettings?.separateFooterDiv ? (
+            <div className="w-full h-full flex flex-col overflow-hidden">
+              {/* Upper scrollable content container (2-div mode) */}
+              <div 
+                className="flex-1 w-full overflow-y-auto px-4 pb-6 sm:px-6 lg:px-8"
+                style={{ paddingTop: siteSettings?.mainTitleTopMargin !== undefined ? `${siteSettings.mainTitleTopMargin}px` : '32px' }}
+              >
+                <div className="w-full mx-auto flex flex-col">
+                  <div 
+                    className="text-center w-full mx-auto flex-shrink-0"
+                    style={{ marginBottom: siteSettings?.mainTitleBottomMargin !== undefined ? `${siteSettings.mainTitleBottomMargin}px` : (isMobileLandscape ? '8px' : '16px') }}
+                  >
+                    {(siteSettings?.showPageHeaderTitle !== false || siteSettings?.showPageHeaderLines !== false) && !isMobileLandscape && (
+                      <div className={`py-2.5 mb-3 ${siteSettings?.showPageHeaderLines !== false ? 'border-y border-[#4a4a4a]/10' : ''}`}>
+                        {siteSettings?.showPageHeaderTitle !== false && (
+                          <h1 className="font-sans text-base md:text-lg text-[#4a4a4a] tracking-widest uppercase font-semibold">
+                            {siteSettings?.siteName ? siteSettings.siteName.replace('\n', ' ') : 'Manuel Francisco Fotografia'}
+                          </h1>
+                        )}
+                      </div>
+                    )}
+                    <h2 className={`font-sans font-medium text-[#4a4a4a] tracking-wide mb-1 ${isMobileLandscape ? 'text-base' : 'text-lg md:text-xl'}`}>Galeria</h2>
+                    <p className="text-[#7a7a7a] tracking-widest text-[10px] sm:text-[11px] uppercase font-sans">{filteredGallery.length} FOTOGRAFIAS</p>
+                  </div>
+                  
+                  {galleryImages.length > 0 ? (
+                    <>
+                      <div className={`flex flex-wrap items-center justify-center gap-1.5 flex-shrink-0 ${isMobileLandscape ? 'mb-2' : 'mb-4'}`}>
+                        <button 
+                          onClick={() => setSelectedCategory('TODAS')}
+                          className={`px-3 py-1.5 border transition-colors text-[9px] tracking-[0.1em] uppercase ${selectedCategory === 'TODAS' ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'}`}
+                        >
+                          TODAS
+                        </button>
+                        {allCategories.map(cat => (
+                          <button 
+                            key={cat}
+                            onClick={() => setSelectedCategory(cat)}
+                            className={`px-3 py-1.5 border transition-colors text-[9px] tracking-[0.1em] uppercase ${selectedCategory === cat ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'}`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+
+                        {siteSettings?.enableZenMode !== false && (
+                          <button 
+                            onClick={() => setShowZenMode(true)}
+                            className="ml-2 px-3.5 py-1.5 bg-[#1a1a1a] hover:bg-[#333] text-amber-200 border border-amber-300/40 hover:border-amber-300/80 transition-all text-[9px] tracking-[0.15em] uppercase flex items-center gap-1.5 font-bold rounded-full shadow-xs"
+                            title="Iniciar Modo Exposição em Écrã Inteiro com Efeito Ken Burns e Música de Fundo"
+                          >
+                            <Tv size={12} className="text-amber-300 animate-pulse" />
+                            <span>Modo Exposição Ambient</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <GalleryGrid 
+                        images={filteredGallery} 
+                        onImageClick={openLightbox} 
+                        viewedPhotos={viewedPhotos}
+                        onOpenZenMode={() => setShowZenMode(true)}
+                        protectPhotos={siteSettings?.protectPhotos}
+                        showCaptions={siteSettings?.showCaptions}
+                        captionPosition={siteSettings?.captionPosition}
+                        enableWatermark={siteSettings?.enableWatermark}
+                        watermarkText={siteSettings?.watermarkText}
+                        watermarkPosition={siteSettings?.watermarkPosition}
+                        enableFavorites={siteSettings?.enableFavorites}
+                        enableGallerySearch={siteSettings?.enableGallerySearch}
+                        enablePhotoComparison={siteSettings?.enablePhotoComparison}
+                        enableMonochromeToggle={siteSettings?.enableMonochromeToggle}
+                        enablePhotoLikes={siteSettings?.enablePhotoLikes}
+                        thumbnailSize={siteSettings?.thumbnailSize}
+                      />
+                    </>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
+                      <p className="text-[#7a7a7a] text-[10px] md:text-xs font-sans tracking-[0.2em] uppercase mb-4">A galeria está vazia de momento.</p>
+                      {isAdminUnlocked && (
+                        <button 
+                          onClick={() => setActiveView('admin')}
+                          className="px-6 py-3 border border-[#4a4a4a]/20 hover:border-[#4a4a4a]/50 text-[#4a4a4a] text-[10px] font-sans tracking-widest uppercase transition-colors font-semibold"
+                        >
+                          Adicionar Fotografias
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Separate fixed bottom Footer div */}
+              <div className="w-full flex-shrink-0 border-t border-[#4a4a4a]/10 bg-[#f7f5f0]/95 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-2.5 z-10">
+                <Footer 
+                  activeView={activeView} 
+                  setActiveView={setActiveView} 
+                  settings={siteSettings} 
+                  onOpenTerms={() => setShowTermsModal(true)} 
+                />
+              </div>
+            </div>
+          ) : (
+            <div 
+              className="w-full h-full overflow-y-auto px-4 pb-6 sm:px-6 lg:px-8 flex flex-col"
+              style={{ paddingTop: siteSettings?.mainTitleTopMargin !== undefined ? `${siteSettings.mainTitleTopMargin}px` : '32px' }}
+            >
+              {/* Single scrollable container mode */}
+              <div className="w-full mx-auto flex flex-col flex-1">
                 <div 
                   className="text-center w-full mx-auto flex-shrink-0"
                   style={{ marginBottom: siteSettings?.mainTitleBottomMargin !== undefined ? `${siteSettings.mainTitleBottomMargin}px` : (isMobileLandscape ? '8px' : '16px') }}
                 >
-                  {!isMobileLandscape && (
-                    <div className="border-y border-[#4a4a4a]/10 py-2.5 mb-3">
-                      <h1 className="font-sans text-base md:text-lg text-[#4a4a4a] tracking-widest uppercase font-semibold">
-                        Manuel Francisco Fotografia
-                      </h1>
+                  {(siteSettings?.showPageHeaderTitle !== false || siteSettings?.showPageHeaderLines !== false) && !isMobileLandscape && (
+                    <div className={`py-2.5 mb-3 ${siteSettings?.showPageHeaderLines !== false ? 'border-y border-[#4a4a4a]/10' : ''}`}>
+                      {siteSettings?.showPageHeaderTitle !== false && (
+                        <h1 className="font-sans text-base md:text-lg text-[#4a4a4a] tracking-widest uppercase font-semibold">
+                          {siteSettings?.siteName ? siteSettings.siteName.replace('\n', ' ') : 'Manuel Francisco Fotografia'}
+                        </h1>
+                      )}
                     </div>
                   )}
                   <h2 className={`font-sans font-medium text-[#4a4a4a] tracking-wide mb-1 ${isMobileLandscape ? 'text-base' : 'text-lg md:text-xl'}`}>Galeria</h2>
@@ -1226,8 +1408,9 @@ export default function App() {
                   </div>
                 )}
               </div>
-              
-              <div className="w-full pt-4 mt-auto flex-shrink-0">
+
+              {/* Footer inside main scrollable div */}
+              <div className="w-full mt-10 pt-4 border-t border-[#4a4a4a]/10 flex-shrink-0">
                 <Footer 
                   activeView={activeView} 
                   setActiveView={setActiveView} 
@@ -1236,7 +1419,7 @@ export default function App() {
                 />
               </div>
             </div>
-          </div>
+          )
         ) : activeView === 'biografia' ? (
           <Suspense fallback={<div className="flex-1 h-full flex items-center justify-center"><span className="text-[10px] uppercase tracking-widest text-[#7a7a7a]">A carregar...</span></div>}>
             <Biography 

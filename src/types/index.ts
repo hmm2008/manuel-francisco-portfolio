@@ -33,6 +33,9 @@ export interface SiteSettings {
   sidebarFooterBottomMargin: number;
   mainTitleTopMargin: number;
   mainTitleBottomMargin: number;
+  showPageHeaderTitle?: boolean;
+  showPageHeaderLines?: boolean;
+  separateFooterDiv?: boolean;
   mobileTitle: string;
   welcomeMessage: string;
   messageSpacing: number;

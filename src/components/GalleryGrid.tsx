@@ -358,7 +358,12 @@ function GalleryGrid({
     return false;
   });
 
-  // Track window size for mobile vs desktop switch
+  const [windowHeight, setWindowHeight] = useState(() => {
+    if (typeof window !== 'undefined') return window.innerHeight;
+    return 800;
+  });
+
+  // Track window size for mobile vs desktop switch & window height
   useEffect(() => {
     let timeoutId: number;
     const handleResize = () => {
@@ -366,6 +371,7 @@ function GalleryGrid({
       timeoutId = window.setTimeout(() => {
         const isLandscape = window.innerWidth > window.innerHeight && window.innerHeight < 600;
         setIsMobile(window.innerWidth < 768 || isLandscape);
+        setWindowHeight(window.innerHeight);
       }, 100);
     };
     window.addEventListener('resize', handleResize);
@@ -462,7 +468,7 @@ function GalleryGrid({
     return result;
   }, [images, searchQuery, sortBy, showOnlyFavorites, selectedCategory, selectedOrientation, favorites]);
 
-  // Monitor container size
+  // Monitor container width only (avoiding height measurement feedback loops)
   useEffect(() => {
     if (!containerRef.current || isMobile) return;
     
@@ -471,9 +477,9 @@ function GalleryGrid({
       clearTimeout(timeoutId);
       timeoutId = window.setTimeout(() => {
         for (const entry of entries) {
-          const { width, height } = entry.contentRect;
-          if (width > 0 && height > 0) {
-            setDimensions({ width, height });
+          const { width } = entry.contentRect;
+          if (width > 0) {
+            setDimensions(prev => (prev.width === width ? prev : { ...prev, width }));
           }
         }
       }, 50);
@@ -483,29 +489,19 @@ function GalleryGrid({
     resizeObserver.observe(containerRef.current);
     
     const rect = containerRef.current.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-      setDimensions({ width: rect.width, height: rect.height });
+    if (rect.width > 0) {
+      setDimensions(prev => ({ ...prev, width: rect.width }));
     }
-
-    const timer1 = setTimeout(() => {
-      if (containerRef.current) {
-        const r = containerRef.current.getBoundingClientRect();
-        if (r.width > 0 && r.height > 0) {
-          setDimensions({ width: r.width, height: r.height });
-        }
-      }
-    }, 150);
 
     return () => {
       clearTimeout(timeoutId);
-      clearTimeout(timer1);
       resizeObserver.disconnect();
     };
   }, [isMobile]);
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchQuery, sortBy, showOnlyFavorites, images]);
+  }, [searchQuery, sortBy, showOnlyFavorites, selectedCategory, selectedOrientation, images]);
 
   const gap = 16;
 
@@ -535,23 +531,19 @@ function GalleryGrid({
     let widthBasedItemSize = Math.floor((width - totalGapsWidth) / finalCols);
     let finalItemSize = Math.max(minItemSize, Math.min(maxItemSize, widthBasedItemSize));
 
-    const viewHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
-    let rows = 2;
-    if (viewHeight < 550) {
-      rows = 1;
-    } else if (viewHeight > 1050 && finalItemSize < 220) {
-      rows = 3;
-    }
+    // Calculate rows based on viewport height (windowHeight) minus top/bottom overheads (~280px)
+    const availableGridHeight = Math.max(180, windowHeight - 280);
+    let calcRows = Math.max(1, Math.floor((availableGridHeight + gap) / (finalItemSize + gap)));
 
-    const totalItems = Math.max(1, finalCols * rows);
+    const totalItems = Math.max(1, finalCols * calcRows);
 
     return {
       cols: finalCols,
       itemSize: finalItemSize,
-      rows,
+      rows: calcRows,
       itemsPerPage: totalItems
     };
-  }, [dimensions.width, gap, targetSize]);
+  }, [dimensions.width, windowHeight, gap, targetSize]);
 
   const totalPages = Math.ceil(processedImages.length / itemsPerPage);
   const validPage = Math.min(Math.max(0, currentPage), Math.max(0, totalPages - 1));
@@ -790,7 +782,7 @@ function GalleryGrid({
             style={{
               display: 'grid',
               gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-              gridTemplateRows: `repeat(${rows}, ${itemSize}px)`,
+              gridTemplateRows: `repeat(${Math.max(1, Math.ceil(pageImages.length / cols))}, ${itemSize}px)`,
               gap: `${gap}px`,
               justifyContent: 'center',
               alignContent: 'center',

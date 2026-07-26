@@ -61,110 +61,143 @@ export default function Contact({ settings, setActiveView, onOpenTerms }: Contac
     }
   };
 
-  return (
-    <div 
-      className="w-full h-full overflow-y-auto px-6 pb-6 md:px-10 md:pb-10 flex flex-col items-center justify-between"
-      style={{ paddingTop: settings?.mainTitleTopMargin !== undefined ? `${settings.mainTitleTopMargin}px` : '40px' }}
-    >
-      <div className="w-full flex-1 max-w-5xl mx-auto flex flex-col">
-        {/* Header Section */}
+  const mainContent = (
+    <div className="w-full flex-1 max-w-5xl mx-auto flex flex-col items-center">
+      {/* Header Section */}
+      {(settings?.showPageHeaderTitle !== false || settings?.showPageHeaderLines !== false) && (
         <div 
           className="text-center w-full flex-shrink-0"
           style={{ marginBottom: settings?.mainTitleBottomMargin !== undefined ? `${settings.mainTitleBottomMargin}px` : '40px' }}
         >
-          <div className="border-y border-[#4a4a4a]/10 py-4 mb-4">
-            <h1 className="font-sans text-lg md:text-xl text-[#4a4a4a] tracking-widest uppercase font-semibold">
-              {settings?.siteName || 'Manuel Francisco Fotografia'}
-            </h1>
+          <div className={`py-4 mb-4 ${settings?.showPageHeaderLines !== false ? 'border-y border-[#4a4a4a]/10' : ''}`}>
+            {settings?.showPageHeaderTitle !== false && (
+              <h1 className="font-sans text-lg md:text-xl text-[#4a4a4a] tracking-widest uppercase font-semibold">
+                {settings?.siteName ? settings.siteName.replace('\n', ' ') : 'Manuel Francisco Fotografia'}
+              </h1>
+            )}
           </div>
         </div>
+      )}
 
-        {/* Form Container */}
-        <div className="w-full max-w-[600px] mx-auto flex-1 pb-12 pt-10">
-          <div className="mb-10 text-left">
-            <p className="text-[#7a7a7a] tracking-widest text-[10px] uppercase font-sans mb-3">
-              ENTRE EM CONTACTO
-            </p>
-            <h2 className="font-serif text-4xl text-[#4a4a4a] font-light">
-              Contacto
-            </h2>
+      {/* Form Container */}
+      <div className="w-full max-w-[600px] mx-auto flex-1 pb-8 pt-4">
+        <div className="mb-10 text-left">
+          <p className="text-[#7a7a7a] tracking-widest text-[10px] uppercase font-sans mb-3">
+            ENTRE EM CONTACTO
+          </p>
+          <h2 className="font-serif text-4xl text-[#4a4a4a] font-light">
+            Contacto
+          </h2>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6 text-left">
+          <div className="space-y-2">
+            <label htmlFor="name" className="block text-[10px] font-sans tracking-[0.2em] uppercase text-[#4a4a4a]">
+              Nome *
+            </label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="O seu nome"
+              required
+              className="w-full bg-transparent border border-[#4a4a4a]/20 px-4 py-3 text-sm font-sans text-[#4a4a4a] focus:outline-none focus:border-[#4a4a4a]/60 transition-colors placeholder:text-[#4a4a4a]/40"
+            />
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6 text-left">
-            <div className="space-y-2">
-              <label htmlFor="name" className="block text-[10px] font-sans tracking-[0.2em] uppercase text-[#4a4a4a]">
-                Nome *
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="O seu nome"
-                required
-                className="w-full bg-transparent border border-[#4a4a4a]/20 px-4 py-3 text-sm font-sans text-[#4a4a4a] focus:outline-none focus:border-[#4a4a4a]/60 transition-colors placeholder:text-[#4a4a4a]/40"
-              />
-            </div>
+          <div className="space-y-2">
+            <label htmlFor="email" className="block text-[10px] font-sans tracking-[0.2em] uppercase text-[#4a4a4a]">
+              Email *
+            </label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="email@exemplo.com"
+              required
+              className="w-full bg-transparent border border-[#4a4a4a]/20 px-4 py-3 text-sm font-sans text-[#4a4a4a] focus:outline-none focus:border-[#4a4a4a]/60 transition-colors placeholder:text-[#4a4a4a]/40"
+            />
+          </div>
 
-            <div className="space-y-2">
-              <label htmlFor="email" className="block text-[10px] font-sans tracking-[0.2em] uppercase text-[#4a4a4a]">
-                Email *
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="email@exemplo.com"
-                required
-                className="w-full bg-transparent border border-[#4a4a4a]/20 px-4 py-3 text-sm font-sans text-[#4a4a4a] focus:outline-none focus:border-[#4a4a4a]/60 transition-colors placeholder:text-[#4a4a4a]/40"
-              />
-            </div>
+          <div className="space-y-2">
+            <label htmlFor="message" className="block text-[10px] font-sans tracking-[0.2em] uppercase text-[#4a4a4a]">
+              Mensagem *
+            </label>
+            <textarea
+              id="message"
+              name="message"
+              value={formData.message}
+              onChange={handleChange}
+              placeholder="A sua mensagem..."
+              required
+              rows={6}
+              className="w-full bg-transparent border border-[#4a4a4a]/20 px-4 py-3 text-sm font-sans text-[#4a4a4a] focus:outline-none focus:border-[#4a4a4a]/60 transition-colors resize-none placeholder:text-[#4a4a4a]/40"
+            />
+          </div>
 
-            <div className="space-y-2">
-              <label htmlFor="message" className="block text-[10px] font-sans tracking-[0.2em] uppercase text-[#4a4a4a]">
-                Mensagem *
-              </label>
-              <textarea
-                id="message"
-                name="message"
-                value={formData.message}
-                onChange={handleChange}
-                placeholder="A sua mensagem..."
-                required
-                rows={6}
-                className="w-full bg-transparent border border-[#4a4a4a]/20 px-4 py-3 text-sm font-sans text-[#4a4a4a] focus:outline-none focus:border-[#4a4a4a]/60 transition-colors resize-none placeholder:text-[#4a4a4a]/40"
-              />
-            </div>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full bg-[#1a1a1a] hover:bg-[#333333] text-white px-6 py-4 text-[11px] font-sans tracking-[0.2em] uppercase transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+          >
+            {isSubmitting ? 'A ENVIAR...' : 'ENVIAR MENSAGEM'}
+          </button>
+          
+          {submitStatus === 'success' && (
+            <p className="text-sm text-green-600 font-sans mt-4 text-center">Mensagem enviada com sucesso!</p>
+          )}
+          {submitStatus === 'error' && (
+            <p className="text-sm text-red-600 font-sans mt-4 text-center">Ocorreu um erro ao enviar a mensagem. Tente novamente.</p>
+          )}
+        </form>
+      </div>
+    </div>
+  );
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-[#1a1a1a] hover:bg-[#333333] text-white px-6 py-4 text-[11px] font-sans tracking-[0.2em] uppercase transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
-            >
-              {isSubmitting ? 'A ENVIAR...' : 'ENVIAR MENSAGEM'}
-            </button>
-            
-            {submitStatus === 'success' && (
-              <p className="text-sm text-green-600 font-sans mt-4 text-center">Mensagem enviada com sucesso!</p>
-            )}
-            {submitStatus === 'error' && (
-              <p className="text-sm text-red-600 font-sans mt-4 text-center">Ocorreu um erro ao enviar a mensagem. Tente novamente.</p>
-            )}
-          </form>
+  return (
+    <div className="w-full h-full flex flex-col overflow-hidden">
+      {settings?.separateFooterDiv ? (
+        <>
+          {/* Scrollable upper content container (2-divs mode) */}
+          <div 
+            className="flex-1 w-full overflow-y-auto px-6 pb-6 md:px-10 md:pb-10 flex flex-col items-center"
+            style={{ paddingTop: settings?.mainTitleTopMargin !== undefined ? `${settings.mainTitleTopMargin}px` : '40px' }}
+          >
+            {mainContent}
+          </div>
+
+          {/* Separate fixed bottom Footer div */}
+          <div className="w-full flex-shrink-0 border-t border-[#4a4a4a]/10 bg-[#f7f5f0]/95 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-2.5 z-10">
+            <Footer 
+              activeView="contacto" 
+              setActiveView={setActiveView} 
+              settings={settings} 
+              onOpenTerms={onOpenTerms} 
+            />
+          </div>
+        </>
+      ) : (
+        <div 
+          className="w-full h-full overflow-y-auto px-6 pb-6 md:px-10 md:pb-10 flex flex-col items-center justify-between"
+          style={{ paddingTop: settings?.mainTitleTopMargin !== undefined ? `${settings.mainTitleTopMargin}px` : '40px' }}
+        >
+          {mainContent}
+
+          {/* Footer inside main scrollable div */}
+          <div className="w-full max-w-5xl mt-10 pt-4 border-t border-[#4a4a4a]/10 flex-shrink-0">
+            <Footer 
+              activeView="contacto" 
+              setActiveView={setActiveView} 
+              settings={settings} 
+              onOpenTerms={onOpenTerms} 
+            />
+          </div>
         </div>
-      </div>
-      
-      <div className="w-full flex-shrink-0 mt-auto">
-        <Footer 
-          activeView="contacto" 
-          setActiveView={setActiveView} 
-          settings={settings} 
-          onOpenTerms={onOpenTerms} 
-        />
-      </div>
+      )}
     </div>
   );
 }

@@ -45,7 +45,7 @@ function Footer({ activeView, setActiveView, settings, onOpenTerms }: FooterProp
     >
       {/* Navigation Links */}
       <div className={`flex flex-wrap justify-center items-center px-4 ${
-        isMobileLandscape ? 'gap-x-4 gap-y-2 mb-2' : 'gap-x-8 gap-y-3 mb-4'
+        isMobileLandscape ? 'gap-x-4 gap-y-2' : 'gap-x-8 gap-y-3'
       }`}>
         {filteredItems.map((item) => (
           <button
@@ -67,13 +67,6 @@ function Footer({ activeView, setActiveView, settings, onOpenTerms }: FooterProp
         >
           TERMOS
         </button>
-      </div>
-
-      {/* Copyright text */}
-      <div className="text-center text-[9px] md:text-[10px] tracking-[0.1em] text-[#7a7a7a]/50 uppercase font-sans px-4">
-        <p>
-          {settings?.footerText || `© 2026 Manuel Francisco Fotografia — Todos os direitos reservados.`}
-        </p>
       </div>
     </footer>
   );

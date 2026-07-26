@@ -133,105 +133,137 @@ export default function Guestbook({ settings, isAdminUnlocked, setActiveView, on
     });
   };
 
-  return (
-    <div 
-      className="w-full h-full overflow-y-auto px-6 pb-6 md:px-10 md:pb-10 flex flex-col justify-between"
-      style={{ paddingTop: settings?.mainTitleTopMargin !== undefined ? `${settings.mainTitleTopMargin}px` : '40px' }}
-    >
-      <div className="w-full max-w-5xl mx-auto flex-shrink-0">
-        {/* Same header as Gallery */}
+  const mainContent = (
+    <div className="w-full max-w-5xl mx-auto flex-shrink-0 flex-1 flex flex-col">
+      {/* Same header as Gallery */}
+      {(settings?.showPageHeaderTitle !== false || settings?.showPageHeaderLines !== false) && (
         <div 
           className="text-center w-full flex-shrink-0"
           style={{ marginBottom: settings?.mainTitleBottomMargin !== undefined ? `${settings.mainTitleBottomMargin}px` : '24px' }}
         >
-          <div className="border-y border-[#4a4a4a]/10 py-4 mb-4">
-            <h1 className="font-sans text-lg md:text-xl text-[#4a4a4a] tracking-widest uppercase font-semibold">
-              {settings?.siteName || 'Manuel Francisco Fotografia'}
-            </h1>
+          <div className={`py-4 mb-4 ${settings?.showPageHeaderLines !== false ? 'border-y border-[#4a4a4a]/10' : ''}`}>
+            {settings?.showPageHeaderTitle !== false && (
+              <h1 className="font-sans text-lg md:text-xl text-[#4a4a4a] tracking-widest uppercase font-semibold">
+                {settings?.siteName ? settings.siteName.replace('\n', ' ') : 'Manuel Francisco Fotografia'}
+              </h1>
+            )}
           </div>
         </div>
+      )}
 
-        {/* Dynamic header stats and action */}
-        <div className="flex justify-between items-end w-full border-b border-[#4a4a4a]/10 pb-4 mb-10">
-          <div>
-            <p className="text-[#7a7a7a] tracking-widest text-[10px] md:text-xs uppercase font-sans mb-1">
-              {signatures.length} {signatures.length === 1 ? 'REGISTO' : 'REGISTOS'}
-            </p>
-            <h2 className="font-sans font-medium text-xl md:text-2xl text-[#4a4a4a] tracking-wide">
-              Livro de Visitas
-            </h2>
-          </div>
-          <button
-            onClick={() => setIsOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 border border-[#4a4a4a]/20 text-[#4a4a4a] hover:bg-[#4a4a4a]/5 hover:border-[#4a4a4a]/40 uppercase font-sans text-xs tracking-widest transition-all duration-200"
-          >
-            <PenTool className="w-3.5 h-3.5" strokeWidth={1.5} />
-            <span>Assinar</span>
-          </button>
+      {/* Dynamic header stats and action */}
+      <div className="flex justify-between items-end w-full border-b border-[#4a4a4a]/10 pb-4 mb-10">
+        <div>
+          <p className="text-[#7a7a7a] tracking-widest text-[10px] md:text-xs uppercase font-sans mb-1">
+            {signatures.length} {signatures.length === 1 ? 'REGISTO' : 'REGISTOS'}
+          </p>
+          <h2 className="font-sans font-medium text-xl md:text-2xl text-[#4a4a4a] tracking-wide">
+            Livro de Visitas
+          </h2>
         </div>
+        <button
+          onClick={() => setIsOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 border border-[#4a4a4a]/20 text-[#4a4a4a] hover:bg-[#4a4a4a]/5 hover:border-[#4a4a4a]/40 uppercase font-sans text-xs tracking-widest transition-all duration-200"
+        >
+          <PenTool className="w-3.5 h-3.5" strokeWidth={1.5} />
+          <span>Assinar</span>
+        </button>
+      </div>
 
-        {isLoading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-6 h-6 border-2 border-[#4a4a4a]/25 border-t-[#4a4a4a] rounded-full animate-spin"></div>
-          </div>
-        ) : signatures.length === 0 ? (
-          <div className="text-center py-32 flex flex-col items-center">
-            <p className="text-lg md:text-xl text-[#7a7a7a] font-light font-sans">
-              Ainda sem registos
-            </p>
-            <p className="text-xs md:text-sm text-[#7a7a7a]/60 font-sans tracking-wide mt-1">
-              Seja o primeiro a assinar o livro
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-8 max-w-3xl mx-auto mb-16">
-            {signatures.map((sig, index) => (
-              <motion.div
-                key={sig.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: Math.min(index * 0.05, 0.5) }}
-                className="group border-b border-[#4a4a4a]/5 pb-6 last:border-0"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-sans font-medium text-sm md:text-base text-[#4a4a4a] tracking-wide">
-                      {sig.name}
-                    </h4>
-                    <p className="text-[10px] text-[#7a7a7a]/60 font-sans uppercase tracking-widest mt-0.5">
-                      {formatDate(sig.createdAt)}
-                    </p>
-                  </div>
-                  {isAdminUnlocked && (
-                    <button
-                      onClick={() => handleDelete(sig.id)}
-                      className="text-[#7a7a7a]/60 hover:text-red-500 transition-colors p-1"
-                      title="Eliminar comentário"
-                    >
-                      <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-                    </button>
-                  )}
-                </div>
-                <div className="border-l border-[#4a4a4a]/10 pl-4 py-0.5 mt-3">
-                  <p className="font-sans text-xs md:text-sm text-[#4a4a4a]/85 leading-relaxed whitespace-pre-line text-left">
-                    {sig.message}
+      {isLoading ? (
+        <div className="flex justify-center py-20">
+          <div className="w-6 h-6 border-2 border-[#4a4a4a]/25 border-t-[#4a4a4a] rounded-full animate-spin"></div>
+        </div>
+      ) : signatures.length === 0 ? (
+        <div className="text-center py-32 flex flex-col items-center">
+          <p className="text-lg md:text-xl text-[#7a7a7a] font-light font-sans">
+            Ainda sem registos
+          </p>
+          <p className="text-xs md:text-sm text-[#7a7a7a]/60 font-sans tracking-wide mt-1">
+            Seja o primeiro a assinar o livro
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-8 max-w-3xl mx-auto mb-12 w-full">
+          {signatures.map((sig, index) => (
+            <motion.div
+              key={sig.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: Math.min(index * 0.05, 0.5) }}
+              className="group border-b border-[#4a4a4a]/5 pb-6 last:border-0"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <h4 className="font-sans font-medium text-sm md:text-base text-[#4a4a4a] tracking-wide">
+                    {sig.name}
+                  </h4>
+                  <p className="text-[10px] text-[#7a7a7a]/60 font-sans uppercase tracking-widest mt-0.5">
+                    {formatDate(sig.createdAt)}
                   </p>
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
+                {isAdminUnlocked && (
+                  <button
+                    onClick={() => handleDelete(sig.id)}
+                    className="text-[#7a7a7a]/60 hover:text-red-500 transition-colors p-1"
+                    title="Eliminar comentário"
+                  >
+                    <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                  </button>
+                )}
+              </div>
+              <div className="border-l border-[#4a4a4a]/10 pl-4 py-0.5 mt-3">
+                <p className="font-sans text-xs md:text-sm text-[#4a4a4a]/85 leading-relaxed whitespace-pre-line text-left">
+                  {sig.message}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
-      {/* Footer */}
-      <div className="w-full max-w-5xl mx-auto flex-shrink-0">
-        <Footer 
-          activeView="livro" 
-          setActiveView={setActiveView} 
-          settings={settings} 
-          onOpenTerms={onOpenTerms} 
-        />
-      </div>
+  return (
+    <div className="w-full h-full flex flex-col overflow-hidden">
+      {settings?.separateFooterDiv ? (
+        <>
+          {/* Scrollable upper content container (2-divs mode) */}
+          <div 
+            className="flex-1 w-full overflow-y-auto px-6 pb-6 md:px-10 md:pb-10 flex flex-col"
+            style={{ paddingTop: settings?.mainTitleTopMargin !== undefined ? `${settings.mainTitleTopMargin}px` : '40px' }}
+          >
+            {mainContent}
+          </div>
+
+          {/* Separate fixed bottom Footer div */}
+          <div className="w-full flex-shrink-0 border-t border-[#4a4a4a]/10 bg-[#f7f5f0]/95 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-2.5 z-10">
+            <Footer 
+              activeView="livro" 
+              setActiveView={setActiveView} 
+              settings={settings} 
+              onOpenTerms={onOpenTerms} 
+            />
+          </div>
+        </>
+      ) : (
+        <div 
+          className="w-full h-full overflow-y-auto px-6 pb-6 md:px-10 md:pb-10 flex flex-col items-center justify-between"
+          style={{ paddingTop: settings?.mainTitleTopMargin !== undefined ? `${settings.mainTitleTopMargin}px` : '40px' }}
+        >
+          {mainContent}
+
+          {/* Footer inside main scrollable div */}
+          <div className="w-full max-w-5xl mt-10 pt-4 border-t border-[#4a4a4a]/10 flex-shrink-0">
+            <Footer 
+              activeView="livro" 
+              setActiveView={setActiveView} 
+              settings={settings} 
+              onOpenTerms={onOpenTerms} 
+            />
+          </div>
+        </div>
+      )}
 
       {/* Signature Modal */}
       <AnimatePresence>

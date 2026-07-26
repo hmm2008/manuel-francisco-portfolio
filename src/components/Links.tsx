@@ -76,92 +76,125 @@ export default function Links({ settings, isAdminUnlocked, setActiveView, onOpen
     }
   };
 
-  return (
-    <div 
-      className="w-full h-full overflow-y-auto px-6 pb-6 md:px-10 md:pb-10 flex flex-col items-center justify-between"
-      style={{ paddingTop: settings?.mainTitleTopMargin !== undefined ? `${settings.mainTitleTopMargin}px` : '40px' }}
-    >
-      <div className="w-full flex-1 max-w-5xl mx-auto flex flex-col">
-        {/* Header Section */}
+  const mainContent = (
+    <div className="w-full flex-1 max-w-5xl mx-auto flex flex-col items-center">
+      {/* Header Section */}
+      {(settings?.showPageHeaderTitle !== false || settings?.showPageHeaderLines !== false) && (
         <div 
           className="text-center w-full flex-shrink-0"
           style={{ marginBottom: settings?.mainTitleBottomMargin !== undefined ? `${settings.mainTitleBottomMargin}px` : '40px' }}
         >
-          <div className="border-y border-[#4a4a4a]/10 py-4 mb-4">
-            <h1 className="font-sans text-lg md:text-xl text-[#4a4a4a] tracking-widest uppercase font-semibold">
-              {settings?.siteName || 'Manuel Francisco Fotografia'}
-            </h1>
-          </div>
-        </div>
-
-        {/* Content Container */}
-        <div className="w-full max-w-[600px] mx-auto flex-1 pb-12 pt-10">
-          <div className="mb-10 text-left flex justify-between items-end">
-            <div>
-              <p className="text-[#7a7a7a] tracking-widest text-[10px] uppercase font-sans mb-3">
-                RECURSOS
-              </p>
-              <h2 className="font-serif text-4xl text-[#4a4a4a] font-light">
-                Links
-              </h2>
-            </div>
-            
-            {isAdminUnlocked && (
-              <button 
-                onClick={() => setShowAddForm(true)}
-                className="flex items-center gap-2 px-4 py-2 border border-[#4a4a4a]/20 hover:border-[#4a4a4a]/50 text-[#4a4a4a] transition-colors text-[10px] tracking-widest uppercase font-sans bg-transparent"
-              >
-                <Plus size={14} />
-                <span>ADICIONAR</span>
-              </button>
+          <div className={`py-4 mb-4 ${settings?.showPageHeaderLines !== false ? 'border-y border-[#4a4a4a]/10' : ''}`}>
+            {settings?.showPageHeaderTitle !== false && (
+              <h1 className="font-sans text-lg md:text-xl text-[#4a4a4a] tracking-widest uppercase font-semibold">
+                {settings?.siteName ? settings.siteName.replace('\n', ' ') : 'Manuel Francisco Fotografia'}
+              </h1>
             )}
           </div>
+        </div>
+      )}
 
-          {isLoading ? (
-            <div className="flex justify-center py-12 opacity-50">
-              <div className="w-6 h-6 border-2 border-[#4a4a4a]/20 border-t-[#4a4a4a] rounded-full animate-spin"></div>
-            </div>
-          ) : links.length > 0 ? (
-            <div className="space-y-4">
-              {links.map((link) => (
-                <a
-                  key={link.id}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block p-6 border border-[#4a4a4a]/10 hover:border-[#4a4a4a]/30 transition-colors bg-white/50 group"
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="text-lg text-[#4a4a4a] font-sans group-hover:text-black transition-colors font-light">{link.title}</h3>
-                    <ExternalLink size={14} className="text-[#7a7a7a] group-hover:text-[#4a4a4a] transition-colors" />
-                  </div>
-                  <p className="text-[#7a7a7a] text-xs font-sans tracking-wide">
-                    {link.url}
-                  </p>
-                  {link.description && (
-                    <p className="text-[#4a4a4a]/80 text-sm font-sans mt-3">
-                      {link.description}
-                    </p>
-                  )}
-                </a>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 border border-[#4a4a4a]/10 text-[#7a7a7a] text-sm font-sans">
-              Ainda não existem links adicionados.
-            </div>
+      {/* Content Container */}
+      <div className="w-full max-w-[600px] mx-auto flex-1 pb-8 pt-4">
+        <div className="mb-10 text-left flex justify-between items-end">
+          <div>
+            <p className="text-[#7a7a7a] tracking-widest text-[10px] uppercase font-sans mb-3">
+              RECURSOS
+            </p>
+            <h2 className="font-serif text-4xl text-[#4a4a4a] font-light">
+              Links
+            </h2>
+          </div>
+          
+          {isAdminUnlocked && (
+            <button 
+              onClick={() => setShowAddForm(true)}
+              className="flex items-center gap-2 px-4 py-2 border border-[#4a4a4a]/20 hover:border-[#4a4a4a]/50 text-[#4a4a4a] transition-colors text-[10px] tracking-widest uppercase font-sans bg-transparent"
+            >
+              <Plus size={14} />
+              <span>ADICIONAR</span>
+            </button>
           )}
         </div>
+
+        {isLoading ? (
+          <div className="flex justify-center py-12 opacity-50">
+            <div className="w-6 h-6 border-2 border-[#4a4a4a]/20 border-t-[#4a4a4a] rounded-full animate-spin"></div>
+          </div>
+        ) : links.length > 0 ? (
+          <div className="space-y-4">
+            {links.map((link) => (
+              <a
+                key={link.id}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block p-6 border border-[#4a4a4a]/10 hover:border-[#4a4a4a]/30 transition-colors bg-white/50 group"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg text-[#4a4a4a] font-sans group-hover:text-black transition-colors font-light">{link.title}</h3>
+                  <ExternalLink size={14} className="text-[#7a7a7a] group-hover:text-[#4a4a4a] transition-colors" />
+                </div>
+                <p className="text-[#7a7a7a] text-xs font-sans tracking-wide">
+                  {link.url}
+                </p>
+                {link.description && (
+                  <p className="text-[#4a4a4a]/80 text-sm font-sans mt-3">
+                    {link.description}
+                  </p>
+                )}
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 border border-[#4a4a4a]/10 text-[#7a7a7a] text-sm font-sans">
+            Ainda não existem links adicionados.
+          </div>
+        )}
       </div>
-      
-      <div className="w-full flex-shrink-0 mt-auto">
-        <Footer 
-          activeView="links" 
-          setActiveView={setActiveView} 
-          settings={settings} 
-          onOpenTerms={onOpenTerms} 
-        />
-      </div>
+    </div>
+  );
+
+  return (
+    <div className="w-full h-full flex flex-col overflow-hidden">
+      {settings?.separateFooterDiv ? (
+        <>
+          {/* Scrollable upper content container (2-divs mode) */}
+          <div 
+            className="flex-1 w-full overflow-y-auto px-6 pb-6 md:px-10 md:pb-10 flex flex-col items-center"
+            style={{ paddingTop: settings?.mainTitleTopMargin !== undefined ? `${settings.mainTitleTopMargin}px` : '40px' }}
+          >
+            {mainContent}
+          </div>
+
+          {/* Separate fixed bottom Footer div */}
+          <div className="w-full flex-shrink-0 border-t border-[#4a4a4a]/10 bg-[#f7f5f0]/95 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-2.5 z-10">
+            <Footer 
+              activeView="links" 
+              setActiveView={setActiveView} 
+              settings={settings} 
+              onOpenTerms={onOpenTerms} 
+            />
+          </div>
+        </>
+      ) : (
+        <div 
+          className="w-full h-full overflow-y-auto px-6 pb-6 md:px-10 md:pb-10 flex flex-col items-center justify-between"
+          style={{ paddingTop: settings?.mainTitleTopMargin !== undefined ? `${settings.mainTitleTopMargin}px` : '40px' }}
+        >
+          {mainContent}
+
+          {/* Footer inside main scrollable div */}
+          <div className="w-full max-w-5xl mt-10 pt-4 border-t border-[#4a4a4a]/10 flex-shrink-0">
+            <Footer 
+              activeView="links" 
+              setActiveView={setActiveView} 
+              settings={settings} 
+              onOpenTerms={onOpenTerms} 
+            />
+          </div>
+        </div>
+      )}
 
       {/* Modal Centrado */}
       {showAddForm && isAdminUnlocked && (
