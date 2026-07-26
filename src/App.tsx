@@ -782,6 +782,7 @@ export default function App() {
     const slideCtrl = siteSettings?.slideshowControlsSize || '11px';
     const lbTitle = siteSettings?.lightboxTitleSize || '18px';
     const lbSub = siteSettings?.lightboxSubtitleSize || '12px';
+    const lbCat = siteSettings?.lightboxCategorySize || '11px';
     const rcSize = siteSettings?.rightClickSize || '13px';
     const rcNum = parseFloat(rcSize.replace('px', '')) || 13;
 
@@ -793,6 +794,7 @@ export default function App() {
       '--slideshow-title-size': slideTitle.includes('px') || slideTitle.includes('rem') ? slideTitle : `${slideTitle}px`,
       '--slideshow-subtitle-size': slideSub.includes('px') || slideSub.includes('rem') ? slideSub : `${slideSub}px`,
       '--slideshow-controls-size': slideCtrl.includes('px') || slideCtrl.includes('rem') ? slideCtrl : `${slideCtrl}px`,
+      '--lightbox-category-size': lbCat.includes('px') || lbCat.includes('rem') ? lbCat : `${lbCat}px`,
       '--lightbox-title-size': lbTitle.includes('px') || lbTitle.includes('rem') ? lbTitle : `${lbTitle}px`,
       '--lightbox-subtitle-size': lbSub.includes('px') || lbSub.includes('rem') ? lbSub : `${lbSub}px`,
       '--right-click-size': rcSize.includes('px') || rcSize.includes('rem') ? rcSize : `${rcSize}px`,
@@ -803,12 +805,14 @@ export default function App() {
   const globalStyle = {
     color: siteSettings?.globalColor || '#4a4a4a',
     fontFamily: getFontFamily(siteSettings?.globalFont),
+    letterSpacing: siteSettings?.globalLetterSpacing || '0px',
     ...rootCssVars,
   };
 
   const menuStyle = {
     color: siteSettings?.menuColor || '#7a7a7a',
     fontFamily: getFontFamily(siteSettings?.menuFont),
+    letterSpacing: siteSettings?.menuLetterSpacing || '0px',
     ...getTextStyleProps(siteSettings?.menuTextStyle)
   };
 
@@ -911,6 +915,7 @@ export default function App() {
           style={{ 
             color: siteSettings?.siteNameColor || '#4a4a4a',
             fontFamily: getFontFamily(siteSettings?.siteNameFont),
+            letterSpacing: siteSettings?.siteNameLetterSpacing || '0px',
             ...getTextStyleProps(siteSettings?.siteNameTextStyle)
           }}
         >
@@ -1154,6 +1159,7 @@ export default function App() {
             paddingRight: `${siteSettings?.sidebarTitleRightMargin !== undefined ? siteSettings.sidebarTitleRightMargin : 40}px`,
             color: siteSettings?.siteNameColor || '#4a4a4a',
             fontFamily: getFontFamily(siteSettings?.siteNameFont),
+            letterSpacing: siteSettings?.siteNameLetterSpacing || '0px',
             ...getTextStyleProps(siteSettings?.siteNameTextStyle)
           }}>
             <h1 className="tracking-widest leading-tight uppercase whitespace-pre-line font-semibold">{siteSettings.siteName}</h1>
@@ -1166,6 +1172,7 @@ export default function App() {
               color: siteSettings?.messageColor || '#4a4a4a',
               textAlign: (siteSettings?.messageAlignment as any) || 'left',
               fontFamily: getFontFamily(siteSettings?.messageFont),
+              letterSpacing: siteSettings?.messageLetterSpacing || '0px',
               ...getTextStyleProps(siteSettings?.messageTextStyle)
             }}
           >
@@ -1405,6 +1412,7 @@ export default function App() {
                                           ? `calc(${(siteSettings?.slideshowTitleSize || '48px').replace(/\s+/g, '')} * 0.5)`
                                           : (siteSettings?.slideshowTitleSize || '48px').replace(/\s+/g, ''),
                                         color: siteSettings?.slideshowTextColor || '#ffffff',
+                                        letterSpacing: siteSettings?.slideshowTitleLetterSpacing || '1px',
                                         backgroundColor: siteSettings?.enableSlideshowTextBg ? (siteSettings?.slideshowTextBgColor || '#000000') : 'transparent',
                                         padding: siteSettings?.enableSlideshowTextBg ? '0.2em 0.4em' : 0,
                                         ...getTextStyleProps(siteSettings?.slideshowTitleStyle)
@@ -1425,6 +1433,7 @@ export default function App() {
                                           ? `calc(${(siteSettings?.slideshowSubtitleSize || '12px').replace(/\s+/g, '')} * 0.8)`
                                           : (siteSettings?.slideshowSubtitleSize || '12px').replace(/\s+/g, ''),
                                         color: siteSettings?.slideshowTextColor || '#ffffff',
+                                        letterSpacing: siteSettings?.slideshowSubtitleLetterSpacing || '1px',
                                         backgroundColor: siteSettings?.enableSlideshowTextBg ? (siteSettings?.slideshowTextBgColor || '#000000') : 'transparent',
                                         padding: siteSettings?.enableSlideshowTextBg ? '0.2em 0.4em' : 0,
                                         ...getTextStyleProps(siteSettings?.slideshowSubtitleStyle)
@@ -1919,15 +1928,46 @@ export default function App() {
                       </div>
                     )}
                     
-                    {/* Lightbox Caption inserida na foto */}
-                    {siteSettings?.lightboxTextPosition !== 'none' && siteSettings?.lightboxTextPosition !== 'Não mostrar' && (
+                    {/* Lightbox Categoria inserida na foto */}
+                    {siteSettings?.showLightboxCategory !== false && 
+                      filteredGallery[selectedImageIndex]?.category && 
+                      (siteSettings?.lightboxCategoryPosition || 'canto inferior esq') !== 'none' && 
+                      (siteSettings?.lightboxCategoryPosition || 'canto inferior esq') !== 'Não mostrar' && (
                       <div 
-                        className={`absolute pointer-events-none select-none flex flex-col ${getPositionClasses(siteSettings?.lightboxTextPosition, true, siteSettings?.lightboxCaptionPlacement as 'inside' | 'outside')} ${
-                        siteSettings?.lightboxTextPosition?.includes('right') ? 'items-end text-right' :
-                        siteSettings?.lightboxTextPosition?.includes('center') || siteSettings?.lightboxTextPosition === 'centrado em baixo' ? 'items-center text-center' :
-                        'items-start text-left'
-                      }`}
-                        style={getCaptionOffsetStyle(siteSettings?.lightboxTextPosition, siteSettings?.lightboxCaptionPlacement as 'inside' | 'outside', siteSettings?.lightboxCaptionPadding ?? 16)}
+                        className={`absolute pointer-events-none select-none flex flex-col ${getPositionClasses(siteSettings?.lightboxCategoryPosition || 'canto inferior esq', true, (siteSettings?.lightboxCategoryPlacement || 'inside') as 'inside' | 'outside')} ${
+                          (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('right') ? 'items-end text-right' :
+                          (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('center') || (siteSettings?.lightboxCategoryPosition || 'canto inferior esq') === 'centrado em baixo' ? 'items-center text-center' :
+                          'items-start text-left'
+                        }`}
+                        style={getCaptionOffsetStyle(siteSettings?.lightboxCategoryPosition || 'canto inferior esq', (siteSettings?.lightboxCategoryPlacement || 'inside') as 'inside' | 'outside', siteSettings?.lightboxCategoryPadding ?? 16)}
+                      >
+                        <span 
+                          className="tracking-widest uppercase opacity-80 drop-shadow-md w-fit max-w-full typography-lightbox-category font-semibold"
+                          style={{
+                            fontFamily: getFontFamily(siteSettings?.lightboxCategoryFont || siteSettings?.lightboxTitleFont),
+                            color: siteSettings?.lightboxCategoryColor || siteSettings?.lightboxTextColor || '#ffffff',
+                            letterSpacing: siteSettings?.lightboxCategoryLetterSpacing || '1px',
+                            backgroundColor: siteSettings?.enableLightboxCategoryBg ? (siteSettings?.lightboxCategoryBgColor || '#000000') : 'transparent',
+                            padding: siteSettings?.enableLightboxCategoryBg ? '0.2em 0.4em' : 0,
+                            ...getTextStyleProps(siteSettings?.lightboxCategoryStyle)
+                          }}
+                        >
+                          {filteredGallery[selectedImageIndex]?.category}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Lightbox Título e Subtítulo inseridos na foto */}
+                    {(siteSettings?.lightboxTextPosition || 'canto inferior dir') !== 'none' && 
+                      (siteSettings?.lightboxTextPosition || 'canto inferior dir') !== 'Não mostrar' && 
+                      (filteredGallery[selectedImageIndex]?.title || filteredGallery[selectedImageIndex]?.subtitle) && (
+                      <div 
+                        className={`absolute pointer-events-none select-none flex flex-col ${getPositionClasses(siteSettings?.lightboxTextPosition || 'canto inferior dir', true, (siteSettings?.lightboxCaptionPlacement || 'inside') as 'inside' | 'outside')} ${
+                          (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('right') ? 'items-end text-right' :
+                          (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('center') || (siteSettings?.lightboxTextPosition || 'canto inferior dir') === 'centrado em baixo' ? 'items-center text-center' :
+                          'items-start text-left'
+                        }`}
+                        style={getCaptionOffsetStyle(siteSettings?.lightboxTextPosition || 'canto inferior dir', (siteSettings?.lightboxCaptionPlacement || 'inside') as 'inside' | 'outside', siteSettings?.lightboxCaptionPadding ?? 16)}
                       >
                         {filteredGallery[selectedImageIndex]?.title && (
                           <h3 
@@ -1935,6 +1975,7 @@ export default function App() {
                             style={{
                               fontFamily: getFontFamily(siteSettings?.lightboxTitleFont),
                               color: siteSettings?.lightboxTextColor || '#ffffff',
+                              letterSpacing: siteSettings?.lightboxTitleLetterSpacing || '1px',
                               backgroundColor: siteSettings?.enableLightboxTextBg ? (siteSettings?.lightboxTextBgColor || '#000000') : 'transparent',
                               padding: siteSettings?.enableLightboxTextBg ? '0.2em 0.4em' : 0,
                               ...getTextStyleProps(siteSettings?.lightboxTitleStyle)
@@ -1949,6 +1990,7 @@ export default function App() {
                             style={{
                               fontFamily: getFontFamily(siteSettings?.lightboxSubtitleFont),
                               color: siteSettings?.lightboxTextColor || '#ffffff',
+                              letterSpacing: siteSettings?.lightboxSubtitleLetterSpacing || '1px',
                               backgroundColor: siteSettings?.enableLightboxTextBg ? (siteSettings?.lightboxTextBgColor || '#000000') : 'transparent',
                               padding: siteSettings?.enableLightboxTextBg ? '0.2em 0.4em' : 0,
                               ...getTextStyleProps(siteSettings?.lightboxSubtitleStyle)
@@ -2293,12 +2335,14 @@ export default function App() {
                 color: siteSettings?.rightClickColor || '#ffffff',
               }}
             >
-              <h4 className="tracking-wide typography-right-click-title" style={{ 
+              <h4 className="typography-right-click-title" style={{ 
+                letterSpacing: siteSettings?.rightClickTitleLetterSpacing || '1px',
                 ...getTextStyleProps(siteSettings?.rightClickTitleStyle)
               }}>
                 {siteSettings?.rightClickTitle || 'Copyright © 2026'}
               </h4>
-              <p className="opacity-90 tracking-wide typography-right-click-subtitle" style={{
+              <p className="opacity-90 typography-right-click-subtitle" style={{
+                letterSpacing: siteSettings?.rightClickSubtitleLetterSpacing || '0px',
                 ...getTextStyleProps(siteSettings?.rightClickSubtitleStyle)
               }}>
                 {siteSettings?.rightClickSubtitle || 'manuelfrancisco. Todos os direitos reservados'}

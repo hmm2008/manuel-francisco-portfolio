@@ -56,6 +56,11 @@
   font-size: var(--slideshow-controls-size);
 }
 
+.typography-lightbox-category {
+  font-size: var(--lightbox-category-size);
+  line-height: 1.4;
+}
+
 .typography-lightbox-title {
   font-size: var(--lightbox-title-size);
   line-height: 1.2;

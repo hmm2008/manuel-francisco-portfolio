@@ -3,6 +3,7 @@ import { ExternalLink, Plus, X } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import Footer from './Footer';
+import { getFontFamily, getTextStyleProps } from '../utils/fontUtils';
 
 interface LinksProps {
   settings: any;
@@ -98,11 +99,29 @@ export default function Links({ settings, isAdminUnlocked, setActiveView, onOpen
       <div className="w-full max-w-[600px] mx-auto flex-1 pb-8 pt-4">
         <div className="mb-10 text-left flex justify-between items-end">
           <div>
-            <p className="text-[#7a7a7a] tracking-widest text-[10px] uppercase font-sans mb-3">
-              RECURSOS
+            <p 
+              className="uppercase mb-3"
+              style={{
+                fontFamily: getFontFamily(settings?.linksSubtitleFont || settings?.globalFont),
+                fontSize: settings?.linksSubtitleFontSize ? (settings.linksSubtitleFontSize.includes('px') ? settings.linksSubtitleFontSize : `${settings.linksSubtitleFontSize}px`) : undefined,
+                color: settings?.linksSubtitleColor || '#7a7a7a',
+                letterSpacing: settings?.linksSubtitleLetterSpacing || '2px',
+                ...getTextStyleProps(settings?.linksSubtitleStyle)
+              }}
+            >
+              {settings?.linksSectionSubtitle || 'RECURSOS'}
             </p>
-            <h2 className="font-serif text-4xl text-[#4a4a4a] font-light">
-              Links
+            <h2 
+              className="font-light"
+              style={{
+                fontFamily: getFontFamily(settings?.linksTitleFont || settings?.globalFont),
+                fontSize: settings?.linksTitleFontSize ? (settings.linksTitleFontSize.includes('px') ? settings.linksTitleFontSize : `${settings.linksTitleFontSize}px`) : undefined,
+                color: settings?.linksTitleColor || '#4a4a4a',
+                letterSpacing: settings?.linksTitleLetterSpacing || '0px',
+                ...getTextStyleProps(settings?.linksTitleStyle)
+              }}
+            >
+              {settings?.linksSectionTitle || 'Links'}
             </h2>
           </div>
           

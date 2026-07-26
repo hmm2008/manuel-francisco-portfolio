@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Footer from './Footer';
+import { getFontFamily, getTextStyleProps } from '../utils/fontUtils';
 
 interface ContactProps {
   settings: any;
@@ -82,17 +83,44 @@ export default function Contact({ settings, setActiveView, onOpenTerms }: Contac
       {/* Form Container */}
       <div className="w-full max-w-[600px] mx-auto flex-1 pb-8 pt-4">
         <div className="mb-10 text-left">
-          <p className="text-[#7a7a7a] tracking-widest text-[10px] uppercase font-sans mb-3">
-            ENTRE EM CONTACTO
+          <p 
+            className="mb-3 uppercase"
+            style={{
+              fontFamily: getFontFamily(settings?.contactSubtitleFont || settings?.globalFont),
+              fontSize: settings?.contactSubtitleFontSize ? (settings.contactSubtitleFontSize.includes('px') ? settings.contactSubtitleFontSize : `${settings.contactSubtitleFontSize}px`) : undefined,
+              color: settings?.contactSubtitleColor || '#7a7a7a',
+              letterSpacing: settings?.contactSubtitleLetterSpacing || '2px',
+              ...getTextStyleProps(settings?.contactSubtitleStyle)
+            }}
+          >
+            {settings?.contactSectionSubtitle || 'ENTRE EM CONTACTO'}
           </p>
-          <h2 className="font-serif text-4xl text-[#4a4a4a] font-light">
-            Contacto
+          <h2 
+            className="font-light"
+            style={{
+              fontFamily: getFontFamily(settings?.contactTitleFont || settings?.globalFont),
+              fontSize: settings?.contactTitleFontSize ? (settings.contactTitleFontSize.includes('px') ? settings.contactTitleFontSize : `${settings.contactTitleFontSize}px`) : undefined,
+              color: settings?.contactTitleColor || '#4a4a4a',
+              letterSpacing: settings?.contactTitleLetterSpacing || '0px',
+              ...getTextStyleProps(settings?.contactTitleStyle)
+            }}
+          >
+            {settings?.contactSectionTitle || 'Contacto'}
           </h2>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6 text-left">
           <div className="space-y-2">
-            <label htmlFor="name" className="block text-[10px] font-sans tracking-[0.2em] uppercase text-[#4a4a4a]">
+            <label 
+              htmlFor="name" 
+              className="block uppercase"
+              style={{
+                fontFamily: getFontFamily(settings?.contactFormLabelFont || settings?.globalFont),
+                fontSize: settings?.contactFormLabelSize ? (settings.contactFormLabelSize.includes('px') ? settings.contactFormLabelSize : `${settings.contactFormLabelSize}px`) : '10px',
+                color: settings?.contactFormLabelColor || '#4a4a4a',
+                letterSpacing: settings?.contactFormLabelLetterSpacing || '0.2em',
+              }}
+            >
               Nome *
             </label>
             <input
@@ -108,7 +136,16 @@ export default function Contact({ settings, setActiveView, onOpenTerms }: Contac
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="email" className="block text-[10px] font-sans tracking-[0.2em] uppercase text-[#4a4a4a]">
+            <label 
+              htmlFor="email" 
+              className="block uppercase"
+              style={{
+                fontFamily: getFontFamily(settings?.contactFormLabelFont || settings?.globalFont),
+                fontSize: settings?.contactFormLabelSize ? (settings.contactFormLabelSize.includes('px') ? settings.contactFormLabelSize : `${settings.contactFormLabelSize}px`) : '10px',
+                color: settings?.contactFormLabelColor || '#4a4a4a',
+                letterSpacing: settings?.contactFormLabelLetterSpacing || '0.2em',
+              }}
+            >
               Email *
             </label>
             <input
@@ -124,7 +161,16 @@ export default function Contact({ settings, setActiveView, onOpenTerms }: Contac
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="message" className="block text-[10px] font-sans tracking-[0.2em] uppercase text-[#4a4a4a]">
+            <label 
+              htmlFor="message" 
+              className="block uppercase"
+              style={{
+                fontFamily: getFontFamily(settings?.contactFormLabelFont || settings?.globalFont),
+                fontSize: settings?.contactFormLabelSize ? (settings.contactFormLabelSize.includes('px') ? settings.contactFormLabelSize : `${settings.contactFormLabelSize}px`) : '10px',
+                color: settings?.contactFormLabelColor || '#4a4a4a',
+                letterSpacing: settings?.contactFormLabelLetterSpacing || '0.2em',
+              }}
+            >
               Mensagem *
             </label>
             <textarea

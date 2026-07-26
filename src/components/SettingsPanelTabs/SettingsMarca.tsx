@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Palette, MessageSquare } from 'lucide-react';
 import { SiteSettings } from '../../types';
 import { FONT_OPTIONS } from '../../utils/fontUtils';
-import { SettingRow, RangeSlider, SettingSelect, SettingToggle, SettingTextStyle } from './SharedComponents';
+import { SettingRow, RangeSlider, SettingSelect, SettingToggle, SettingTextStyle, SettingLetterSpacing } from './SharedComponents';
 
 interface SettingsMarcaProps {
   settings: SiteSettings;
@@ -77,12 +77,20 @@ export default function SettingsMarca({ settings, handleChange, handleRangeChang
               onChange={handleChange}
             />
           </div>
-          <SettingTextStyle
-            label="ESTILO DO LOGÓTIPO"
-            name="siteNameTextStyle"
-            value={settings.siteNameTextStyle || ''}
-            onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <SettingTextStyle
+              label="ESTILO DO LOGÓTIPO"
+              name="siteNameTextStyle"
+              value={settings.siteNameTextStyle || ''}
+              onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
+            />
+            <SettingLetterSpacing
+              label="ESPAÇAMENTO ENTRE LETRAS DO LOGÓTIPO"
+              name="siteNameLetterSpacing"
+              value={settings.siteNameLetterSpacing || '0px'}
+              onChange={handleChange}
+            />
+          </div>
         </div>
       </div>
 
@@ -249,12 +257,18 @@ export default function SettingsMarca({ settings, handleChange, handleRangeChang
             value={settings.messageColor}
             onChange={handleChange}
           />
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
             <SettingTextStyle
               label="ESTILO DA MENSAGEM"
               name="messageTextStyle"
               value={settings.messageTextStyle || ''}
               onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
+            />
+            <SettingLetterSpacing
+              label="ESPAÇAMENTO ENTRE LETRAS DA MENSAGEM"
+              name="messageLetterSpacing"
+              value={settings.messageLetterSpacing || '0px'}
+              onChange={handleChange}
             />
           </div>
           <div className="md:col-span-2">

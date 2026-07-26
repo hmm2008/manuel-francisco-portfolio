@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { User, Loader2, Upload } from 'lucide-react';
+import { User, Loader2, Upload, BookOpen, Award, Mail } from 'lucide-react';
 import { SiteSettings } from '../../types';
 import { SettingRow } from './SharedComponents';
 
@@ -14,12 +14,15 @@ interface SettingsPerfilProps {
 export default function SettingsPerfil({ settings, handleChange, handleProfilePhotoUpload, uploadingProfile }: SettingsPerfilProps) {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+      {/* Photo & Social Info */}
       <div className="bg-white border border-[#e8e4dc] p-6 md:p-8 space-y-6 shadow-sm">
         <div className="border-b border-[#f0ece5] pb-4">
           <h2 className="font-serif text-xl text-[#1a1a1a] flex items-center gap-2">
-            <User size={20} className="text-[#8e8a82]" /> Sobre o Fotógrafo
+            <User size={20} className="text-[#8e8a82]" /> Foto de Perfil & Contactos
           </h2>
-          <p className="text-xs text-[#8e8a82] font-sans mt-1">Dados exibidos nas secções Biografia e Contacto.</p>
+          <p className="text-xs text-[#8e8a82] font-sans mt-1">
+            Fotografia de perfil e ligações de contacto do fotógrafo. (As definições de estilo e tipografia de cada página encontram-se no separador Estilo e Menus).
+          </p>
         </div>
         
         <div className="flex flex-col md:flex-row gap-8 items-start pt-2">
@@ -52,16 +55,12 @@ export default function SettingsPerfil({ settings, handleChange, handleProfilePh
           </div>
 
           <div className="w-full md:w-2/3 space-y-6">
-            <SettingRow
-              label="TEXTO BIOGRÁFICO"
-              name="biography"
-              type="textarea"
-              value={settings.biography}
-              onChange={handleChange}
-              rows={8}
-            />
-
-            <div className="pt-4 border-t border-[#f0ece5] grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="border-b border-[#f0ece5] pb-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a] flex items-center gap-2">
+                <Mail size={16} className="text-[#8e8a82]" /> Informações de Contacto & Redes Sociais
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <SettingRow label="EMAIL DE CONTACTO" name="contactEmail" value={settings.contactEmail} onChange={handleChange} />
               <SettingRow label="LINK INSTAGRAM" name="instagram" value={settings.instagram} onChange={handleChange} placeholder="https://instagram.com/..." />
               <SettingRow label="LINK FACEBOOK" name="facebook" value={settings.facebook} onChange={handleChange} placeholder="https://facebook.com/..." />
@@ -69,6 +68,95 @@ export default function SettingsPerfil({ settings, handleChange, handleProfilePh
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Conteúdo Biográfico */}
+      <div className="bg-white border border-[#e8e4dc] p-6 md:p-8 space-y-6 shadow-sm">
+        <div className="border-b border-[#f0ece5] pb-4">
+          <h2 className="font-serif text-xl text-[#1a1a1a] flex items-center gap-2">
+            <User size={20} className="text-[#8e8a82]" /> Texto Biográfico
+          </h2>
+          <p className="text-xs text-[#8e8a82] font-sans mt-1">Edite aqui o texto principal da biografia do fotógrafo.</p>
+        </div>
+
+        <SettingRow
+          label="TÍTULO DA SECÇÃO BIOGRAFIA"
+          name="biographySectionTitle"
+          value={settings.biographySectionTitle || 'Biografia'}
+          onChange={handleChange}
+          placeholder="ex: Biografia"
+        />
+
+        <SettingRow
+          label="SUBTÍTULO DA SECÇÃO BIOGRAFIA"
+          name="biographySectionSubtitle"
+          value={settings.biographySectionSubtitle || 'Sobre o Fotógrafo'}
+          onChange={handleChange}
+          placeholder="ex: Sobre o Fotógrafo"
+        />
+
+        <SettingRow
+          label="TEXTO BIOGRÁFICO"
+          name="biography"
+          type="textarea"
+          value={settings.biography || ''}
+          onChange={handleChange}
+          rows={6}
+        />
+      </div>
+
+      {/* Trabalhos Publicados */}
+      <div className="bg-white border border-[#e8e4dc] p-6 md:p-8 space-y-6 shadow-sm">
+        <div className="border-b border-[#f0ece5] pb-4">
+          <h2 className="font-serif text-xl text-[#1a1a1a] flex items-center gap-2">
+            <BookOpen size={20} className="text-[#8e8a82]" /> Trabalhos Publicados
+          </h2>
+          <p className="text-xs text-[#8e8a82] font-sans mt-1">Edite a lista e o título dos trabalhos publicados.</p>
+        </div>
+
+        <SettingRow
+          label="TÍTULO DA SECÇÃO TRABALHOS PUBLICADOS"
+          name="publishedWorksSectionTitle"
+          value={settings.publishedWorksSectionTitle || 'Trabalhos Publicados'}
+          onChange={handleChange}
+          placeholder="ex: Trabalhos Publicados"
+        />
+
+        <SettingRow
+          label="CONTEÚDO DE TRABALHOS PUBLICADOS"
+          name="publishedWorks"
+          type="textarea"
+          value={settings.publishedWorks ?? '1985 — Revista "Mais" no espaço as suas fotos\n1988 — Anuário Português de Fotografia\n2006 — Foto Plus\n2006 — Participação numa brochura para uma agência de turismo.'}
+          onChange={handleChange}
+          rows={5}
+        />
+      </div>
+
+      {/* Exposições */}
+      <div className="bg-white border border-[#e8e4dc] p-6 md:p-8 space-y-6 shadow-sm">
+        <div className="border-b border-[#f0ece5] pb-4">
+          <h2 className="font-serif text-xl text-[#1a1a1a] flex items-center gap-2">
+            <Award size={20} className="text-[#8e8a82]" /> Exposições
+          </h2>
+          <p className="text-xs text-[#8e8a82] font-sans mt-1">Edite a lista e o título das exposições do fotógrafo.</p>
+        </div>
+
+        <SettingRow
+          label="TÍTULO DA SECÇÃO EXPOSIÇÕES"
+          name="exhibitionsSectionTitle"
+          value={settings.exhibitionsSectionTitle || 'Exposições'}
+          onChange={handleChange}
+          placeholder="ex: Exposições"
+        />
+
+        <SettingRow
+          label="CONTEÚDO DE EXPOSIÇÕES"
+          name="exhibitions"
+          type="textarea"
+          value={settings.exhibitions ?? 'Março 2005 — "Encontro de olhares" - Fórum Cultural de Ermesinde\nJaneiro 2006 — "Encontro de olhares" - Paços do concelho - Pinheiro da Bemposta\nFevereiro 2006 — "Encontro de Olhares" - Biblioteca Municipal da Covilhã\nFevereiro 2006 — "Sensibilidades" - Integrada no projecto Photographyaproject2006\nMarço 2006 — "Encontro de Olhares" - Cine-Teatro Caracas - Oliveira de Azeméis\nMaio 2006 — "Rostos da Raia" - integrada num trabalho realizado para a Adraces - Casa de Artes e Cultura do Tejo - Vila Velha de Rodão'}
+          onChange={handleChange}
+          rows={7}
+        />
       </div>
     </motion.div>
   );

@@ -232,6 +232,7 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
   // Bulk Edit State
   const [showBulkEditModal, setShowBulkEditModal] = useState<boolean>(false);
   const [isBulkEditing, setIsBulkEditing] = useState<boolean>(false);
+  const [bulkTitle, setBulkTitle] = useState<string>('');
   const [bulkCategory, setBulkCategory] = useState<string>('');
   const [bulkSubtitle, setBulkSubtitle] = useState<string>('');
   const [bulkCameraSettings, setBulkCameraSettings] = useState<string>('');
@@ -720,12 +721,9 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
 
   // Selection & Bulk Delete Functions
   const toggleSelectPhoto = (id: string) => {
+    setIsSelectionMode(true);
     setSelectedPhotoIds(prev => {
       const next = prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id];
-      // Do not auto-activate selection mode, user wants to toggle it manually
-      if (next.length === 0) {
-        setIsSelectionMode(false);
-      }
       return next;
     });
   };
@@ -772,10 +770,12 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
   };
 
   const openBulkEditModal = () => {
+    setBulkTitle('');
     setBulkCategory('');
     setBulkSubtitle('');
     setBulkCameraSettings('');
     setBulkDescription('');
+    setShowCategoryManager(false);
     setShowBulkEditModal(true);
   };
 
@@ -789,6 +789,7 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
       for (const id of selectedPhotoIds) {
         const imgRef = doc(db, 'images', id);
         const updates: Partial<ImageProps> = {};
+        if (bulkTitle) updates.title = bulkTitle;
         if (bulkCategory) updates.category = bulkCategory;
         if (bulkSubtitle) updates.subtitle = bulkSubtitle;
         if (bulkCameraSettings) updates.cameraSettings = bulkCameraSettings;
@@ -1145,25 +1146,22 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
               
               {/* Mode Toggles & Add Photo Button */}
               <div className="flex flex-wrap items-center gap-2">
-                {/* Toggle Multi-Select Mode */}
+                {/* Toggle Multi-Select / Select All */}
                 <button 
-                  onClick={() => {
-                    if (isSelectionMode) {
-                      setIsSelectionMode(false);
-                      setSelectedPhotoIds([]);
-                    } else {
-                      setIsSelectionMode(true);
-                    }
-                  }}
+                  onClick={handleSelectAll}
                   className={`flex items-center gap-1.5 px-3 py-2 border text-[10px] tracking-widest uppercase transition-all font-semibold ${
                     isSelectionMode
-                      ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                      ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] shadow-sm'
                       : 'border-[#4a4a4a]/20 text-[#4a4a4a] hover:bg-[#4a4a4a]/5 bg-white'
                   }`}
-                  title="Selecionar várias fotografias para apagar em lote"
+                  title="Selecionar todas as fotografias"
                 >
                   <CheckSquare size={14} />
-                  <span>Seleção Múltipla {selectedPhotoIds.length > 0 && `(${selectedPhotoIds.length})`}</span>
+                  <span>
+                    {selectedPhotoIds.length === filteredImages.length && filteredImages.length > 0 
+                      ? 'Desselecionar todas' 
+                      : 'Selecionar todas'} {selectedPhotoIds.length > 0 && `(${selectedPhotoIds.length})`}
+                  </span>
                 </button>
 
                 {/* Toggle Reorder Mode */}
@@ -1221,7 +1219,7 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                       onClick={handleSelectAll}
                       className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-[10px] uppercase tracking-widest transition-colors font-semibold border border-white/20"
                     >
-                      {selectedPhotoIds.length === filteredImages.length && filteredImages.length > 0 ? 'Desselecionar Todas' : 'Selecionar Todas'}
+                      {selectedPhotoIds.length === filteredImages.length && filteredImages.length > 0 ? 'Desselecionar todas' : 'Selecionar todas'}
                     </button>
                     {selectedPhotoIds.length > 0 && (
                       <button 
@@ -1347,6 +1345,15 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
               <div 
                 key={img.id} 
                 data-photo-id={img.id}
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest('button, input, a, label')) {
+                    return;
+                  }
+                  if (pointerDrag?.isDragging) return;
+
+                  setIsSelectionMode(true);
+                  toggleSelectPhoto(img.id);
+                }}
                 onPointerDown={(e) => {
                   if ((e.target as HTMLElement).closest('button, input, a, label')) {
                     return;
@@ -1361,13 +1368,11 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                   };
                 }}
                 className={`relative group aspect-[4/3] bg-[#dcd7cf] overflow-hidden rounded-sm transition-all duration-150 border cursor-grab active:cursor-grabbing select-none ${
-                  isSelected 
-                    ? 'ring-2 ring-red-600 border-red-600 shadow-lg scale-[0.99]' 
-                    : isDragTarget 
-                      ? 'ring-4 ring-amber-500 border-amber-500 scale-[1.03] shadow-2xl z-30'
-                      : isBeingDragged
-                        ? 'opacity-25 border-2 border-dashed border-[#1a1a1a] scale-95'
-                        : 'border-[#1a1a1a]/10 hover:border-[#1a1a1a]/30'
+                  isDragTarget 
+                    ? 'ring-4 ring-amber-500 border-amber-500 scale-[1.03] shadow-2xl z-30'
+                    : isBeingDragged
+                      ? 'opacity-25 border-2 border-dashed border-[#1a1a1a] scale-95'
+                      : 'border-[#1a1a1a]/10 hover:border-[#1a1a1a]/30'
                 }`}
               >
                 {/* Photo Thumbnail Image */}
@@ -1403,7 +1408,7 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                     onDragStart={(e) => e.stopPropagation()}
                     className={`p-1.5 rounded-sm transition-all shadow-md backdrop-blur-md ${
                       isSelected 
-                        ? 'bg-red-600 text-white' 
+                        ? 'bg-amber-600 text-white border border-amber-500 shadow-md' 
                         : 'bg-black/50 text-white/80 hover:bg-black/80 hover:text-white border border-white/20'
                     }`}
                     title={isSelected ? "Desselecionar fotografia" : "Selecionar fotografia"}
@@ -1431,7 +1436,7 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
 
                 {/* Overlay with Actions */}
                 <div className={`absolute inset-0 bg-black/50 transition-opacity flex flex-col justify-between p-3 z-10 pointer-events-none ${
-                  isReorderMode || isSelectionMode ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  isReorderMode ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                 }`}>
                   <div className="flex justify-between items-center w-full pt-6 pointer-events-auto" onMouseDown={(e) => e.stopPropagation()}>
                     {/* Position Move Buttons Left / Right */}
@@ -2187,15 +2192,15 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="bg-[#f5f2ed] p-8 w-full max-w-lg relative shadow-2xl rounded-sm max-h-[90vh] overflow-y-auto"
+              className="bg-[#f5f2ed] p-8 md:p-10 w-full max-w-2xl relative shadow-2xl overflow-y-auto max-h-[90vh] transition-all duration-300 rounded-sm"
             >
-              <div className="flex justify-between items-center border-b border-[#1a1a1a]/10 pb-4 mb-4">
+              <div className="flex justify-between items-center border-b border-[#1a1a1a]/10 pb-4 mb-6">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center">
                     <Edit2 className="text-amber-700" size={18} />
                   </div>
                   <div className="text-left">
-                    <h4 className="font-sans text-lg text-[#1a1a1a] font-semibold">
+                    <h4 className="font-sans text-xl text-[#1a1a1a] font-semibold">
                       Editar {selectedPhotoIds.length} Fotografias Selecionadas
                     </h4>
                     <p className="text-[10px] text-[#8e8a82] uppercase tracking-wider">Edição em Lote</p>
@@ -2203,9 +2208,9 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                 </div>
                 <button 
                   onClick={() => setShowBulkEditModal(false)}
-                  className="text-[#8e8a82] hover:text-[#1a1a1a]"
+                  className="text-[#8e8a82] hover:text-[#1a1a1a] transition-colors"
                 >
-                  <X size={20} />
+                  <X size={24} strokeWidth={1} />
                 </button>
               </div>
 
@@ -2226,78 +2231,149 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                 })}
               </div>
 
-              <form onSubmit={handleBulkEditSubmit} className="space-y-4 text-left">
+              <form onSubmit={handleBulkEditSubmit} className="space-y-6 text-left">
                 <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] mb-1.5 font-semibold">
-                    NOVA CATEGORIA
-                  </label>
-                  <select 
-                    value={bulkCategory}
-                    onChange={e => setBulkCategory(e.target.value)}
-                    className="w-full bg-white border border-[#1a1a1a]/10 px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#1a1a1a]/30 transition-colors"
-                  >
-                    <option value="">-- Manter categoria atual --</option>
-                    {currentCategories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] mb-1.5 font-semibold">
-                    NOVO LOCAL / SUBTÍTULO
+                  <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] mb-2 font-semibold">
+                    NOVO TÍTULO
                   </label>
                   <input 
-                    type="text"
-                    value={bulkSubtitle}
-                    onChange={e => setBulkSubtitle(e.target.value)}
-                    placeholder="Deixe em branco para manter original"
-                    className="w-full bg-white border border-[#1a1a1a]/10 px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#1a1a1a]/30 transition-colors placeholder:text-[#8e8a82]/50"
+                    type="text" 
+                    value={bulkTitle}
+                    onChange={e => setBulkTitle(e.target.value)}
+                    className="w-full bg-white border border-[#1a1a1a]/10 px-4 py-3 text-sm focus:outline-none focus:border-[#1a1a1a]/30 transition-colors placeholder:text-[#8e8a82]/50"
+                    placeholder="Deixe em branco para manter títulos originais"
                   />
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] font-semibold">
+                        CATEGORIA
+                      </label>
+                      <button 
+                        type="button"
+                        onClick={() => setShowCategoryManager(!showCategoryManager)}
+                        className="text-[9px] uppercase tracking-wider text-[#8e8a82] hover:text-[#1a1a1a] transition-colors underline underline-offset-2 font-bold"
+                      >
+                        {showCategoryManager ? 'Fechar Gestor' : 'Gerir Categorias'}
+                      </button>
+                    </div>
+                    <select 
+                      value={bulkCategory}
+                      onChange={e => setBulkCategory(e.target.value)}
+                      className="w-full bg-white border border-[#1a1a1a]/10 px-4 py-3 text-sm focus:outline-none focus:border-[#1a1a1a]/30 transition-colors"
+                    >
+                      <option value="">-- Manter categoria atual --</option>
+                      {currentCategories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+
+                    {showCategoryManager && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-3 p-4 bg-white border border-[#1a1a1a]/10 rounded-sm space-y-4 shadow-sm"
+                      >
+                        <div>
+                          <p className="text-[9px] uppercase tracking-wider text-[#8e8a82] font-semibold mb-2">Nova Categoria</p>
+                          <div className="flex gap-2">
+                            <input 
+                              type="text"
+                              placeholder="Nome da categoria"
+                              value={newCategoryName}
+                              onChange={e => setNewCategoryName(e.target.value)}
+                              className="flex-1 bg-white border border-[#1a1a1a]/10 px-3 py-2 text-xs focus:outline-none focus:border-[#1a1a1a]/30 placeholder:text-[#8e8a82]/40"
+                            />
+                            <button 
+                              type="button"
+                              onClick={handleAddCategory}
+                              className="bg-[#1a1a1a] text-white px-4 py-2 text-xs font-bold hover:bg-black transition-colors flex items-center justify-center gap-1"
+                            >
+                              <Plus size={14} /> ADICIONAR
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 max-h-[150px] overflow-y-auto pt-2 border-t border-[#1a1a1a]/5">
+                          <p className="text-[9px] uppercase tracking-wider text-[#8e8a82] font-semibold">Categorias Atuais (clique no X para eliminar)</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {currentCategories.map(cat => (
+                              <div key={cat} className="flex items-center gap-1 bg-[#f5f2ed] border border-[#1a1a1a]/5 px-2.5 py-1 text-xs">
+                                <span className="text-[#4a4a4a]">{cat}</span>
+                                <button 
+                                  type="button"
+                                  onClick={() => handleDeleteCategory(cat)}
+                                  className="text-[#8e8a82] hover:text-red-600 transition-colors p-0.5 ml-1"
+                                  title={`Eliminar categoria ${cat}`}
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] mb-2 font-semibold">
+                      LOCAL / SUBTÍTULO
+                    </label>
+                    <input 
+                      type="text"
+                      value={bulkSubtitle}
+                      onChange={e => setBulkSubtitle(e.target.value)}
+                      placeholder="Deixe em branco para manter original (Ex: Lisboa, Portugal)"
+                      className="w-full bg-white border border-[#1a1a1a]/10 px-4 py-3 text-sm focus:outline-none focus:border-[#1a1a1a]/30 transition-colors placeholder:text-[#8e8a82]/50"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] mb-1.5 font-semibold">
-                    NOVAS DEFINIÇÕES DE CÂMARA
+                  <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] mb-2 font-semibold">
+                    CÂMARA / DEFINIÇÕES
                   </label>
                   <input 
                     type="text"
                     value={bulkCameraSettings}
                     onChange={e => setBulkCameraSettings(e.target.value)}
-                    placeholder="Ex: ISO 100 • f/4 • 1/500s"
-                    className="w-full bg-white border border-[#1a1a1a]/10 px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#1a1a1a]/30 transition-colors placeholder:text-[#8e8a82]/50"
+                    placeholder="Deixe em branco para manter original (Ex: ISO 400 • f/2.8 • 1/250s)"
+                    className="w-full bg-white border border-[#1a1a1a]/10 px-4 py-3 text-sm focus:outline-none focus:border-[#1a1a1a]/30 transition-colors placeholder:text-[#8e8a82]/50"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] mb-1.5 font-semibold">
-                    NOVA DESCRIÇÃO
+                  <label className="block text-[10px] uppercase tracking-widest text-[#1a1a1a] mb-2 font-semibold">
+                    DESCRIÇÃO
                   </label>
                   <textarea 
                     value={bulkDescription}
                     onChange={e => setBulkDescription(e.target.value)}
-                    placeholder="Deixe em branco para manter original"
-                    className="w-full bg-white border border-[#1a1a1a]/10 px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#1a1a1a]/30 transition-colors placeholder:text-[#8e8a82]/50 min-h-[70px] resize-y"
+                    placeholder="Deixe em branco para manter original..."
+                    className="w-full bg-white border border-[#1a1a1a]/10 px-4 py-3 text-sm focus:outline-none focus:border-[#1a1a1a]/30 transition-colors placeholder:text-[#8e8a82]/50 min-h-[100px] resize-y"
                   />
                 </div>
 
-                <div className="flex gap-3 pt-4 border-t border-[#1a1a1a]/10">
+                <div className="flex gap-4 pt-4 border-t border-[#1a1a1a]/10">
                   <button 
                     type="button"
                     onClick={() => setShowBulkEditModal(false)}
                     disabled={isBulkEditing}
-                    className="flex-1 py-3 border border-[#1a1a1a]/10 bg-white text-[#8e8a82] hover:text-[#1a1a1a] transition-colors uppercase tracking-widest text-[10px] font-semibold"
+                    className="flex-1 py-4 border border-[#1a1a1a]/10 bg-white text-[#8e8a82] hover:text-[#1a1a1a] transition-colors uppercase tracking-widest text-[10px] font-semibold"
                   >
-                    Cancelar
+                    CANCELAR
                   </button>
                   <button 
                     type="submit"
                     disabled={isBulkEditing}
-                    className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white transition-colors uppercase tracking-widest text-[10px] font-bold flex items-center justify-center gap-2 shadow-md"
+                    className="flex-1 py-4 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white transition-colors uppercase tracking-widest text-[10px] font-bold flex items-center justify-center gap-2 shadow-md"
                   >
                     {isBulkEditing ? (
                       <>
-                        <Loader2 size={14} className="animate-spin" /> A guardar...
+                        <Loader2 size={16} className="animate-spin" /> A guardar...
                       </>
                     ) : (
                       `Guardar em ${selectedPhotoIds.length} Fotos`

@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import Footer from './Footer';
+import { getFontFamily, getTextStyleProps } from '../utils/fontUtils';
 
 enum OperationType {
   CREATE = 'create',
@@ -154,11 +155,29 @@ export default function Guestbook({ settings, isAdminUnlocked, setActiveView, on
       {/* Dynamic header stats and action */}
       <div className="flex justify-between items-end w-full border-b border-[#4a4a4a]/10 pb-4 mb-10">
         <div>
-          <p className="text-[#7a7a7a] tracking-widest text-[10px] md:text-xs uppercase font-sans mb-1">
-            {signatures.length} {signatures.length === 1 ? 'REGISTO' : 'REGISTOS'}
+          <p 
+            className="uppercase mb-1"
+            style={{
+              fontFamily: getFontFamily(settings?.guestbookSubtitleFont || settings?.globalFont),
+              fontSize: settings?.guestbookSubtitleFontSize ? (settings.guestbookSubtitleFontSize.includes('px') ? settings.guestbookSubtitleFontSize : `${settings.guestbookSubtitleFontSize}px`) : undefined,
+              color: settings?.guestbookSubtitleColor || '#7a7a7a',
+              letterSpacing: settings?.guestbookSubtitleLetterSpacing || '2px',
+              ...getTextStyleProps(settings?.guestbookSubtitleStyle)
+            }}
+          >
+            {signatures.length} {signatures.length === 1 ? 'REGISTO' : 'REGISTOS'} • {settings?.guestbookSectionSubtitle || 'LIVRO DE VISITANTES'}
           </p>
-          <h2 className="font-sans font-medium text-xl md:text-2xl text-[#4a4a4a] tracking-wide">
-            Livro de Visitas
+          <h2 
+            className="font-medium"
+            style={{
+              fontFamily: getFontFamily(settings?.guestbookTitleFont || settings?.globalFont),
+              fontSize: settings?.guestbookTitleFontSize ? (settings.guestbookTitleFontSize.includes('px') ? settings.guestbookTitleFontSize : `${settings.guestbookTitleFontSize}px`) : undefined,
+              color: settings?.guestbookTitleColor || '#4a4a4a',
+              letterSpacing: settings?.guestbookTitleLetterSpacing || '1px',
+              ...getTextStyleProps(settings?.guestbookTitleStyle)
+            }}
+          >
+            {settings?.guestbookSectionTitle || 'Livro de Visitas'}
           </h2>
         </div>
         <button

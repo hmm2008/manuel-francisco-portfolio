@@ -48,6 +48,89 @@ export interface SiteSettings {
   contactEmail: string;
   profilePhoto: string;
   biography: string;
+  publishedWorks?: string;
+  exhibitions?: string;
+
+  // Biography Page Typography & Titles
+  biographySectionTitle?: string;
+  biographySectionSubtitle?: string;
+  biographyTitleFont?: string;
+  biographyTitleFontSize?: string;
+  biographyTitleColor?: string;
+  biographyTitleStyle?: string;
+  biographyTitleLetterSpacing?: string;
+  biographySubtitleFont?: string;
+  biographySubtitleFontSize?: string;
+  biographySubtitleColor?: string;
+  biographySubtitleStyle?: string;
+  biographySubtitleLetterSpacing?: string;
+  biographyFont?: string;
+  biographyFontSize?: string;
+  biographyColor?: string;
+  biographyStyle?: string;
+  biographyLetterSpacing?: string;
+
+  // Published Works Titles & Typography
+  publishedWorksSectionTitle?: string;
+  publishedWorksFont?: string;
+  publishedWorksFontSize?: string;
+  publishedWorksColor?: string;
+  publishedWorksStyle?: string;
+  publishedWorksLetterSpacing?: string;
+
+  // Exhibitions Titles & Typography
+  exhibitionsSectionTitle?: string;
+  exhibitionsFont?: string;
+  exhibitionsFontSize?: string;
+  exhibitionsColor?: string;
+  exhibitionsStyle?: string;
+  exhibitionsLetterSpacing?: string;
+
+  // Contact Page Titles & Typography
+  contactSectionTitle?: string;
+  contactSectionSubtitle?: string;
+  contactTitleFont?: string;
+  contactTitleFontSize?: string;
+  contactTitleColor?: string;
+  contactTitleStyle?: string;
+  contactTitleLetterSpacing?: string;
+  contactSubtitleFont?: string;
+  contactSubtitleFontSize?: string;
+  contactSubtitleColor?: string;
+  contactSubtitleStyle?: string;
+  contactSubtitleLetterSpacing?: string;
+  contactFormLabelFont?: string;
+  contactFormLabelSize?: string;
+  contactFormLabelColor?: string;
+  contactFormLabelLetterSpacing?: string;
+
+  // Guestbook Page Titles & Typography
+  guestbookSectionTitle?: string;
+  guestbookSectionSubtitle?: string;
+  guestbookTitleFont?: string;
+  guestbookTitleFontSize?: string;
+  guestbookTitleColor?: string;
+  guestbookTitleStyle?: string;
+  guestbookTitleLetterSpacing?: string;
+  guestbookSubtitleFont?: string;
+  guestbookSubtitleFontSize?: string;
+  guestbookSubtitleColor?: string;
+  guestbookSubtitleStyle?: string;
+  guestbookSubtitleLetterSpacing?: string;
+
+  // Links Page Titles & Typography
+  linksSectionTitle?: string;
+  linksSectionSubtitle?: string;
+  linksTitleFont?: string;
+  linksTitleFontSize?: string;
+  linksTitleColor?: string;
+  linksTitleStyle?: string;
+  linksTitleLetterSpacing?: string;
+  linksSubtitleFont?: string;
+  linksSubtitleFontSize?: string;
+  linksSubtitleColor?: string;
+  linksSubtitleStyle?: string;
+  linksSubtitleLetterSpacing?: string;
   instagram: string;
   facebook: string;
   twitter: string;
@@ -77,16 +160,38 @@ export interface SiteSettings {
   enablePhotoComparison: boolean;
   footerText: string;
 
-  // Text Styles
+  // Text Styles & Letter Spacing
+  globalLetterSpacing?: string;
+  siteNameLetterSpacing?: string;
+  messageLetterSpacing?: string;
+  menuLetterSpacing?: string;
   siteNameTextStyle?: string;
   messageTextStyle?: string;
   menuTextStyle?: string;
+  showLightboxCategory?: boolean;
+  lightboxCategoryPosition?: string;
+  lightboxCategoryPlacement?: 'inside' | 'outside';
+  lightboxCategoryPadding?: number;
+  lightboxCategoryFont?: string;
+  lightboxCategorySize?: string;
+  lightboxCategoryStyle?: string;
+  lightboxCategoryColor?: string;
+  lightboxCategoryLetterSpacing?: string;
+  enableLightboxCategoryBg?: boolean;
+  lightboxCategoryBgColor?: string;
   lightboxTitleStyle?: string;
+  lightboxTitleLetterSpacing?: string;
   lightboxSubtitleStyle?: string;
+  lightboxSubtitleLetterSpacing?: string;
   slideshowTitleStyle?: string;
+  slideshowTitleLetterSpacing?: string;
   slideshowSubtitleStyle?: string;
+  slideshowSubtitleLetterSpacing?: string;
+  slideshowControlsLetterSpacing?: string;
   rightClickTitleStyle?: string;
+  rightClickTitleLetterSpacing?: string;
   rightClickSubtitleStyle?: string;
+  rightClickSubtitleLetterSpacing?: string;
   enableLightboxTextBg?: boolean;
   lightboxTextBgColor?: string;
   lightboxCaptionPlacement?: 'inside' | 'outside';

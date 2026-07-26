@@ -1,6 +1,7 @@
 import React from 'react';
 import { Bold, Italic, Underline, Type } from 'lucide-react';
 import { SiteSettings } from '../../types';
+import { LETTER_SPACING_OPTIONS } from '../../utils/fontUtils';
 
 interface SettingTextStyleProps {
   label: string;
@@ -202,5 +203,24 @@ export function SettingToggle({ label, name, checked, onChange, description }: S
         <div className="w-11 h-6 bg-[#e5e0d8] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1a1a1a]"></div>
       </label>
     </div>
+  );
+}
+
+interface SettingLetterSpacingProps {
+  label?: string;
+  name: keyof SiteSettings;
+  value?: string;
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+}
+
+export function SettingLetterSpacing({ label = "ESPAÇAMENTO ENTRE LETRAS", name, value = '0px', onChange }: SettingLetterSpacingProps) {
+  return (
+    <SettingSelect
+      label={label}
+      name={name}
+      value={value}
+      options={LETTER_SPACING_OPTIONS}
+      onChange={onChange}
+    />
   );
 }
