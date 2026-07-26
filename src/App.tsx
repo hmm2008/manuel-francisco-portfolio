@@ -1135,7 +1135,7 @@ export default function App() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 h-full relative overflow-hidden bg-[#f0f0f0]">
+      <main className="flex-1 min-h-0 md:h-full relative overflow-hidden bg-[#f0f0f0]">
         {activeView === 'inicio' ? (
           <div 
             className="w-full h-full flex items-center justify-center relative overflow-hidden transition-all duration-300"
@@ -1184,9 +1184,7 @@ export default function App() {
 
                           return (
                             <div className="relative w-full h-full flex items-center justify-center rounded-sm">
-                              <div className={`relative inline-flex items-center justify-center rounded-sm max-w-full max-h-full overflow-hidden ${
-                                effectiveFit === 'Preencher' ? 'w-full h-full' : 'w-auto h-auto'
-                              }`}>
+                              <div className="relative flex items-center justify-center rounded-sm w-full h-full overflow-hidden">
                                 <img
                                   src={currentSlide?.url}
                                   alt={currentSlide?.alt || titleText || 'Fotografia'}
