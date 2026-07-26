@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronLeft, ChevronRight, Cookie, ShieldCheck, Home, Image as ImageIcon, User, BookOpen, Mail, Link as LinkIcon, Settings, ArrowRight, ZoomIn, ZoomOut, Maximize, Menu, Camera, Info, Keyboard, HelpCircle, Sparkles, Play, Download } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Cookie, ShieldCheck, Home, Image as ImageIcon, User, BookOpen, Mail, Link as LinkIcon, Settings, ArrowRight, ZoomIn, ZoomOut, Maximize, Menu, Camera, Info, Keyboard, HelpCircle, Sparkles, Play, Pause, Share2, CheckCircle2, Download, Tv } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import Footer from './components/Footer';
@@ -14,6 +14,7 @@ import GalleryGrid from './components/GalleryGrid';
 import { getFontFamily } from './utils/fontUtils';
 import { getSlideshowVariants, getLightboxVariants } from './utils/transitionUtils';
 import { getWatermarkClasses, getPositionClasses } from './utils/watermarkUtils';
+import { preloadImage, preloadImagesBatch } from './utils/imagePreloader';
 
 const AdminPanel = lazy(() => import('./AdminPanel'));
 const Biography = lazy(() => import('./components/Biography'));
@@ -37,7 +38,7 @@ const fallbackImages = [
   { id: 12, url: 'https://images.unsplash.com/photo-1414609245224-afa02bfb3fda?auto=format&fit=crop&w=1920&q=80', alt: 'Nascer do sol', title: 'Despertar', subtitle: 'Manhã' }
 ];
 
-type View = 'inicio' | 'galeria' | 'biografia' | 'livro' | 'contacto' | 'links' | 'admin';
+import { View, ImageProps, SiteSettings } from './types';
 
 const navItems = [
   { id: 'inicio', label: 'INÍCIO', icon: Home },
@@ -109,15 +110,48 @@ export default function App() {
   const [showExifPanel, setShowExifPanel] = useState<boolean>(false);
   const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
   const [showZenMode, setShowZenMode] = useState<boolean>(false);
+  const [isAutoPlayActive, setIsAutoPlayActive] = useState<boolean>(false);
+  const [slideshowSpeed, setSlideshowSpeed] = useState<number>(4000);
+  const [viewedPhotos, setViewedPhotos] = useState<string[]>(() => {
+    try {
+      const saved = sessionStorage.getItem('gallery_viewed_photos');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const markPhotoAsViewed = useCallback((id: string | number) => {
+    const strId = String(id);
+    setViewedPhotos(prev => {
+      if (prev.includes(strId)) return prev;
+      const next = [...prev, strId];
+      try {
+        sessionStorage.setItem('gallery_viewed_photos', JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+  }, []);
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(prev => (prev === msg ? null : prev));
+    }, 2800);
+  }, []);
   const [swipeHintVisible, setSwipeHintVisible] = useState<boolean>(false);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [touchDelta, setTouchDelta] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [slideIndex, setSlideIndex] = useState(0);
-  const [galleryImages, setGalleryImages] = useState<any[]>([]);
+  const [galleryImages, setGalleryImages] = useState<ImageProps[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('TODAS');
   const [zoomLevel, setZoomLevel] = useState(100);
-  const [siteSettings, setSiteSettings] = useState<any>({
+  const [siteSettings, setSiteSettings] = useState<Partial<SiteSettings>>({
     siteName: 'MANUEL FRANCISCO FOTOGRAFIA',
     siteSubtitle: 'FOTOGRAFIA',
     welcomeMessage: 'Bem vindo a este espaço. Quero que descubra comigo o gosto pela fotografia.',
@@ -156,11 +190,14 @@ export default function App() {
   useEffect(() => {
     const q = query(collection(db, 'images'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedImages: any[] = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        alt: doc.data().title || 'Fotografia',
-      }));
+      const fetchedImages = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          alt: data.title || 'Fotografia',
+        } as ImageProps;
+      });
 
       // Sort by custom position order if present, fallback to createdAt desc
       fetchedImages.sort((a, b) => {
@@ -179,12 +216,8 @@ export default function App() {
       
       // Preload initial batch of images in background for instantaneous navigation
       if (fetchedImages.length > 0) {
-        fetchedImages.slice(0, 12).forEach((img) => {
-          if (img.url) {
-            const imageObj = new Image();
-            imageObj.src = img.url;
-          }
-        });
+        const urlsToPreload = fetchedImages.map(img => img.url).filter(Boolean);
+        preloadImagesBatch(urlsToPreload, 5);
       }
     }, (error) => {
       console.error("Error fetching images:", error);
@@ -205,33 +238,41 @@ export default function App() {
     };
   }, []);
 
-  // Preload adjacent images for slideshow
+  // Preload adjacent images for slideshow using bounded preloader
   useEffect(() => {
     if (activeView === 'inicio' && galleryImages.length > 0) {
       const nextIdx = (slideIndex + 1) % galleryImages.length;
       const prevIdx = (slideIndex - 1 + galleryImages.length) % galleryImages.length;
-      [nextIdx, prevIdx].forEach(idx => {
-        if (galleryImages[idx]?.url) {
-          const img = new Image();
-          img.src = galleryImages[idx].url;
-        }
-      });
+      preloadImage(galleryImages[nextIdx]?.url);
+      preloadImage(galleryImages[prevIdx]?.url);
     }
   }, [slideIndex, galleryImages, activeView]);
 
-  // Preload adjacent images for Lightbox
+  // Preload adjacent images for Lightbox using bounded preloader & mark as viewed
   useEffect(() => {
     if (selectedImageIndex !== null && filteredGallery.length > 0) {
+      const currentImg = filteredGallery[selectedImageIndex];
+      if (currentImg) {
+        markPhotoAsViewed(currentImg.id);
+      }
       const nextIdx = (selectedImageIndex + 1) % filteredGallery.length;
       const prevIdx = (selectedImageIndex - 1 + filteredGallery.length) % filteredGallery.length;
-      [nextIdx, prevIdx].forEach(idx => {
-        if (filteredGallery[idx]?.url) {
-          const img = new Image();
-          img.src = filteredGallery[idx].url;
-        }
-      });
+      preloadImage(filteredGallery[nextIdx]?.url);
+      preloadImage(filteredGallery[prevIdx]?.url);
     }
-  }, [selectedImageIndex, filteredGallery]);
+  }, [selectedImageIndex, filteredGallery, markPhotoAsViewed]);
+
+  // Auto-play slideshow effect inside Lightbox with configurable speed
+  useEffect(() => {
+    if (!isAutoPlayActive || selectedImageIndex === null || filteredGallery.length === 0) return;
+    const timer = setInterval(() => {
+      setSelectedImageIndex(prev => {
+        if (prev === null) return null;
+        return (prev + 1) % filteredGallery.length;
+      });
+    }, slideshowSpeed);
+    return () => clearInterval(timer);
+  }, [isAutoPlayActive, selectedImageIndex, filteredGallery, slideshowSpeed]);
 
   const [showRightClickModal, setShowRightClickModal] = useState(false);
 
@@ -475,12 +516,20 @@ export default function App() {
           setZoomLevel(prev => Math.min(prev + 25, 300));
         } else if (e.key === '-' || e.key === '_') {
           setZoomLevel(prev => Math.max(prev - 25, 50));
+        } else if (e.key === 'p' || e.key === 'P') {
+          setIsAutoPlayActive(prev => !prev);
+        } else if (e.key === 'z' || e.key === 'Z') {
+          setShowZenMode(prev => !prev);
         } else if (e.key === '?' || e.key === 'h' || e.key === 'H') {
           setShowShortcutsModal(prev => !prev);
         }
       } else {
         // Global view navigation shortcuts when modal/lightbox is closed
-        if (e.key === 'g' || e.key === 'G') {
+        if (e.key === '?' || e.key === 'h' || e.key === 'H') {
+          setShowShortcutsModal(prev => !prev);
+        } else if (e.key === 'z' || e.key === 'Z') {
+          setShowZenMode(prev => !prev);
+        } else if (e.key === 'g' || e.key === 'G') {
           setActiveView('galeria');
         } else if (e.key === 'i' || e.key === 'I') {
           setActiveView('inicio');
@@ -1135,11 +1184,11 @@ export default function App() {
                       {siteSettings?.enableZenMode !== false && (
                         <button 
                           onClick={() => setShowZenMode(true)}
-                          className="ml-2 px-3 py-1.5 bg-[#1a1a1a] hover:bg-[#333] text-amber-200 border border-amber-300/30 hover:border-amber-300/70 transition-all text-[9px] tracking-[0.1em] uppercase flex items-center gap-1.5 font-bold rounded-full shadow-sm"
-                          title="Apresentação Zen Fullscreen"
+                          className="ml-2 px-3.5 py-1.5 bg-[#1a1a1a] hover:bg-[#333] text-amber-200 border border-amber-300/40 hover:border-amber-300/80 transition-all text-[9px] tracking-[0.15em] uppercase flex items-center gap-1.5 font-bold rounded-full shadow-xs"
+                          title="Iniciar Modo Exposição em Écrã Inteiro com Efeito Ken Burns e Música de Fundo"
                         >
-                          <Sparkles size={12} className="text-amber-300 animate-pulse" />
-                          <span>Modo Zen</span>
+                          <Tv size={12} className="text-amber-300 animate-pulse" />
+                          <span>Modo Exposição Ambient</span>
                         </button>
                       )}
                     </div>
@@ -1147,6 +1196,8 @@ export default function App() {
                     <GalleryGrid 
                       images={filteredGallery} 
                       onImageClick={openLightbox} 
+                      viewedPhotos={viewedPhotos}
+                      onOpenZenMode={() => setShowZenMode(true)}
                       protectPhotos={siteSettings?.protectPhotos}
                       showCaptions={siteSettings?.showCaptions}
                       captionPosition={siteSettings?.captionPosition}
@@ -1319,6 +1370,72 @@ export default function App() {
                   <ZoomIn size={16} strokeWidth={1.5} />
                 </button>
               </div>
+
+              {/* Auto-Play Presentation Mode Button & Speed Selector */}
+              <div className="flex items-center gap-1 bg-black/40 border border-white/20 p-0.5 rounded-full">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsAutoPlayActive(!isAutoPlayActive);
+                    showToast(!isAutoPlayActive ? `Apresentação Automática Ativada (${slideshowSpeed / 1000}s)` : 'Apresentação Automática Pausada');
+                  }}
+                  className={`px-3 py-1 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 ${
+                    isAutoPlayActive 
+                      ? 'bg-amber-400 text-black font-bold shadow-lg' 
+                      : 'text-white/90 hover:bg-white/10'
+                  }`}
+                  title="Apresentação Automática (Tecla P)"
+                >
+                  {isAutoPlayActive ? <Pause size={13} /> : <Play size={13} />}
+                  <span className="hidden sm:inline">{isAutoPlayActive ? 'Pausar' : 'Apresentação'}</span>
+                </button>
+
+                {isAutoPlayActive && (
+                  <div className="flex items-center gap-0.5 pr-1 border-l border-white/20 pl-1">
+                    {[2000, 4000, 7000, 10000].map(speed => (
+                      <button
+                        key={speed}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSlideshowSpeed(speed);
+                          showToast(`Velocidade: ${speed / 1000}s por foto`);
+                        }}
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-all ${
+                          slideshowSpeed === speed
+                            ? 'bg-white text-black font-bold'
+                            : 'text-white/70 hover:text-white hover:bg-white/10'
+                        }`}
+                        title={`${speed / 1000} segundos por fotografia`}
+                      >
+                        {speed / 1000}s
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Share Photo Button */}
+              {filteredGallery[selectedImageIndex] && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const img = filteredGallery[selectedImageIndex];
+                    if (img) {
+                      const shareUrl = window.location.href.split('#')[0] + `#photo-${img.id}`;
+                      if (navigator.clipboard) {
+                        navigator.clipboard.writeText(shareUrl);
+                        showToast('Link da fotografia copiado!');
+                      } else {
+                        showToast(`Fotografia: ${img.title || 'Foto'}`);
+                      }
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 bg-black/40 text-white/90 hover:bg-white hover:text-black border border-white/20"
+                  title="Partilhar ou Copiar Link da Foto"
+                >
+                  <Share2 size={14} /> <span className="hidden sm:inline">Partilhar</span>
+                </button>
+              )}
 
               {siteSettings?.enablePhotoDownload && filteredGallery[selectedImageIndex] && (
                 <a 
@@ -1584,6 +1701,14 @@ export default function App() {
                           <span className="text-white/80">Zoom</span>
                         </div>
                         <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">P</kbd>
+                          <span className="text-white/80">Apresentação</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">Z</kbd>
+                          <span className="text-white/80">Modo Zen</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
                           <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">?</kbd>
                           <span className="text-white/80">Ajuda</span>
                         </div>
@@ -1771,6 +1896,102 @@ export default function App() {
               </p>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Toast Notification Overlay */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="fixed bottom-6 right-6 z-[500] bg-black/90 backdrop-blur-md text-white px-4 py-2.5 rounded-full border border-white/20 shadow-2xl flex items-center gap-2 text-xs font-sans tracking-wide pointer-events-none"
+          >
+            <CheckCircle2 size={15} className="text-amber-400" />
+            <span>{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Global Standalone Keyboard Shortcuts Modal */}
+      <AnimatePresence>
+        {selectedImageIndex === null && showShortcutsModal && (
+          <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowShortcutsModal(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative z-[410] bg-black/90 backdrop-blur-xl text-white p-6 rounded-2xl border border-white/20 max-w-sm w-full shadow-2xl space-y-4"
+            >
+              <div className="flex justify-between items-center pb-3 border-b border-white/15">
+                <span className="text-xs uppercase tracking-widest font-bold text-white flex items-center gap-2">
+                  <Keyboard size={18} className="text-amber-400" /> Atalhos do Teclado
+                </span>
+                <button
+                  onClick={() => setShowShortcutsModal(false)}
+                  className="text-white/60 hover:text-white transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-4 text-xs font-sans">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-white/50 mb-2 font-bold">Navegação e Modos</p>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="flex items-center gap-1.5">
+                      <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">G</kbd>
+                      <span className="text-white/80">Galeria</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">I</kbd>
+                      <span className="text-white/80">Início</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">B</kbd>
+                      <span className="text-white/80">Biografia</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">L</kbd>
+                      <span className="text-white/80">Livro Visitas</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">C</kbd>
+                      <span className="text-white/80">Contacto</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">Z</kbd>
+                      <span className="text-white/80">Modo Zen</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">P</kbd>
+                      <span className="text-white/80">Apresentação</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">?</kbd>
+                      <span className="text-white/80">Guia Atalhos</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-white/10 text-center">
+                  <p className="text-[10px] text-white/60">
+                    Pressione <kbd className="px-1.5 py-0.5 bg-white/20 rounded font-mono text-[10px]">Esc</kbd> ou <kbd className="px-1.5 py-0.5 bg-white/20 rounded font-mono text-[10px]">?</kbd> para fechar.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import SettingsPanel from './components/SettingsPanel';
+import { ImageProps, SiteSettings } from './types';
 
 interface ExifData {
   camera?: string;
@@ -193,7 +194,7 @@ async function compressImage(file: File, maxDimension: number, quality: number, 
   });
 }
 
-export default function AdminPanel({ images, setImages, onLogout }: { images: any[], setImages: any, onLogout?: () => void }) {
+export default function AdminPanel({ images, setImages, onLogout }: { images: ImageProps[], setImages: React.Dispatch<React.SetStateAction<ImageProps[]>>, onLogout?: () => void }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -225,16 +226,16 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
     cursorX: number;
     cursorY: number;
     isDragging: boolean;
-    item: any;
+    item: ImageProps;
   } | null>(null);
 
-  const startPosRef = useRef<{ x: number; y: number; id: string; item: any } | null>(null);
+  const startPosRef = useRef<{ x: number; y: number; id: string; item: ImageProps } | null>(null);
 
   // Reordering & Position UI State
   const [isReorderMode, setIsReorderMode] = useState<boolean>(false);
   const [savingOrder, setSavingOrder] = useState<boolean>(false);
   const [orderNotice, setOrderNotice] = useState<string | null>(null);
-  const [movingPhotoModalImg, setMovingPhotoModalImg] = useState<any | null>(null);
+  const [movingPhotoModalImg, setMovingPhotoModalImg] = useState<ImageProps | null>(null);
   const [targetPositionInput, setTargetPositionInput] = useState<string>('1');
   
   // Form State
@@ -314,7 +315,7 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
     });
   };
 
-  const updatePendingPhotoField = (id: string, field: keyof PendingPhoto, value: any) => {
+  const updatePendingPhotoField = (id: string, field: keyof PendingPhoto, value: string | boolean) => {
     setPendingPhotos(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
   };
 
@@ -340,7 +341,7 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
     return pendingPhotos.find(p => p.id === selectedPendingId) || null;
   }, [pendingPhotos, selectedPendingId]);
 
-  const [siteSettings, setSiteSettings] = useState<any>(null);
+  const [siteSettings, setSiteSettings] = useState<Partial<SiteSettings> | null>(null);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
 
@@ -427,7 +428,7 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
   }, [images, selectedCategory]);
 
   // Reordering & Position Swapping Helper Functions
-  const saveImagePositions = async (reorderedList: any[]) => {
+  const saveImagePositions = async (reorderedList: ImageProps[]) => {
     setSavingOrder(true);
     try {
       const batch = writeBatch(db);
@@ -640,7 +641,7 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
       let updatedCount = 0;
       for (const id of selectedPhotoIds) {
         const imgRef = doc(db, 'images', id);
-        const updates: any = {};
+        const updates: Partial<ImageProps> = {};
         if (bulkCategory) updates.category = bulkCategory;
         if (bulkSubtitle) updates.subtitle = bulkSubtitle;
         if (bulkCameraSettings) updates.cameraSettings = bulkCameraSettings;
@@ -708,7 +709,7 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
     setShowUploadModal(true);
   };
 
-  const openEditPhotoModal = (img: any) => {
+  const openEditPhotoModal = (img: ImageProps) => {
     setEditingId(img.id);
     setTitle(img.title || '');
     setSubtitle(img.subtitle || '');
@@ -735,7 +736,7 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: an
       if (editingId) {
         // Edit mode (single photo)
         const imgRef = doc(db, 'images', editingId);
-        const updates: any = {
+        const updates: Partial<ImageProps> = {
           title: title || 'Sem título',
           subtitle: subtitle || '',
           category: category || '',

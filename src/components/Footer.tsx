@@ -7,7 +7,7 @@ interface FooterProps {
   onOpenTerms: () => void;
 }
 
-export default function Footer({ activeView, setActiveView, settings, onOpenTerms }: FooterProps) {
+function Footer({ activeView, setActiveView, settings, onOpenTerms }: FooterProps) {
   const [isMobileLandscape, setIsMobileLandscape] = useState(false);
 
   useEffect(() => {
@@ -78,3 +78,6 @@ export default function Footer({ activeView, setActiveView, settings, onOpenTerm
     </footer>
   );
 }
+
+export default React.memo(Footer);
+

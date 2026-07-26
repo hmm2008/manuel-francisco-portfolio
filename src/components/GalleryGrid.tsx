@@ -1,28 +1,265 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ChevronLeft, ChevronRight, Search, Heart, SlidersHorizontal, 
-  X, Columns, Camera, Check 
+  X, Columns, Camera, Check, Eye, RectangleHorizontal, RectangleVertical, Square, Tv
 } from 'lucide-react';
 import { getWatermarkClasses } from '../utils/watermarkUtils';
+import { ImageProps } from '../types';
 
-interface ImageType {
-  id: string | number;
-  url: string;
-  alt: string;
-  title: string;
-  subtitle?: string;
-  category?: string;
-  cameraModel?: string;
-  lens?: string;
-  iso?: string;
-  aperture?: string;
-  shutterSpeed?: string;
+interface GalleryCardProps {
+  image: ImageProps;
+  index: number;
+  isMobile: boolean;
+  isMonochrome: boolean;
+  isViewed?: boolean;
+  protectPhotos?: boolean;
+  enableWatermark?: boolean;
+  watermarkPosition?: string;
+  watermarkText?: string;
+  enablePhotoLikes?: boolean;
+  enableFavorites?: boolean;
+  enablePhotoComparison?: boolean;
+  showCaptions?: string;
+  captionPosition?: string;
+  isFav: boolean;
+  isComp: boolean;
+  isLiked: boolean;
+  likesCount: number;
+  itemSize?: number;
+  itemsPerPage?: number;
+  onImageClick: (idx: number) => void;
+  onToggleLike: (e: React.MouseEvent, id: string | number) => void;
+  onToggleFavorite: (e: React.MouseEvent, id: string | number) => void;
+  onToggleComparison: (e: React.MouseEvent, id: string | number) => void;
 }
 
+const GalleryCard = React.memo(function GalleryCard({
+  image,
+  index,
+  isMobile,
+  isMonochrome,
+  isViewed,
+  protectPhotos,
+  enableWatermark,
+  watermarkPosition = 'bottom-left',
+  watermarkText = '© Manuel Francisco',
+  enablePhotoLikes = true,
+  enableFavorites = true,
+  enablePhotoComparison = true,
+  showCaptions,
+  captionPosition,
+  isFav,
+  isComp,
+  isLiked,
+  likesCount,
+  itemSize,
+  itemsPerPage = 8,
+  onImageClick,
+  onToggleLike,
+  onToggleFavorite,
+  onToggleComparison,
+}: GalleryCardProps) {
+  const handleCardClick = () => {
+    onImageClick(index);
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (protectPhotos) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
+  if (isMobile) {
+    return (
+      <motion.div
+        key={image.id}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, delay: Math.min(index * 0.02, 0.2) }}
+        className="bg-[#dcd7cf]/40 border border-[#1a1a1a]/5 hover:border-[#1a1a1a]/20 cursor-pointer relative group overflow-hidden rounded-sm aspect-square flex items-center justify-center"
+        onContextMenu={handleContextMenu}
+        onClick={handleCardClick}
+      >
+        <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-105 flex items-center justify-center p-0">
+          <img
+            src={image.url}
+            alt={image.alt || image.title || 'Fotografia'}
+            loading={index < 6 ? "eager" : "lazy"}
+            decoding="async"
+            style={{ filter: isMonochrome ? 'grayscale(100%) contrast(108%)' : 'none' }}
+            className={`w-full h-full object-cover ${
+              protectPhotos ? 'pointer-events-none select-none' : ''
+            }`}
+            onContextMenu={handleContextMenu}
+            referrerPolicy="no-referrer"
+          />
+          {enableWatermark && (
+            <div className={getWatermarkClasses(watermarkPosition, false)}>
+              {watermarkText}
+            </div>
+          )}
+        </div>
+
+        {/* Viewed Indicator */}
+        {isViewed && (
+          <div className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded-full bg-black/60 text-amber-300 text-[8px] font-mono flex items-center gap-0.5 backdrop-blur-xs">
+            <Eye size={9} />
+          </div>
+        )}
+
+        {/* Action Icons (Favorite, Comparison, Likes) */}
+        <div className="absolute top-1.5 right-1.5 flex items-center gap-1 z-10">
+          {enablePhotoLikes && (
+            <button 
+              onClick={(e) => onToggleLike(e, image.id)}
+              className={`px-1.5 py-1 rounded-full text-[9px] font-mono flex items-center gap-1 transition-all backdrop-blur-md ${
+                isLiked ? 'bg-amber-500 text-black font-bold' : 'bg-black/40 text-white/90 hover:bg-black/70'
+              }`}
+              title="Gosto nesta foto"
+            >
+              <Heart size={10} className={isLiked ? 'fill-black' : ''} />
+              <span>{likesCount}</span>
+            </button>
+          )}
+
+          {enableFavorites && (
+            <button 
+              onClick={(e) => onToggleFavorite(e, image.id)}
+              className={`p-1.5 rounded-full transition-all backdrop-blur-md ${
+                isFav ? 'bg-rose-600 text-white' : 'bg-black/30 text-white/80 hover:bg-black/60'
+              }`}
+              title="Guardar nos Favoritos"
+            >
+              <Heart size={11} className={isFav ? 'fill-white' : ''} />
+            </button>
+          )}
+
+          {enablePhotoComparison && (
+            <button 
+              onClick={(e) => onToggleComparison(e, image.id)}
+              className={`p-1.5 rounded-full transition-all backdrop-blur-md ${
+                isComp ? 'bg-amber-500 text-black font-bold' : 'bg-black/30 text-white/80 hover:bg-black/60'
+              }`}
+              title="Selecionar para Comparação Lado a Lado"
+            >
+              <Columns size={11} />
+            </button>
+          )}
+        </div>
+
+        {showCaptions !== 'Oculto' && (
+          <div className={`${getWatermarkClasses(captionPosition || 'bottom-center', false)} flex flex-col transition-opacity ${
+            showCaptions === 'Sempre' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          }`}>
+            <span className="font-bold">{image.title}</span>
+            {image.subtitle && <span className="text-[0.8em] opacity-80 mt-0.5">{image.subtitle}</span>}
+          </div>
+        )}
+      </motion.div>
+    );
+  }
+
+  // DESKTOP CARD
+  return (
+    <motion.div
+      key={image.id}
+      initial={{ opacity: 0, scale: 0.92 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.92 }}
+      transition={{ duration: 0.2 }}
+      style={{ width: `${itemSize}px`, height: `${itemSize}px` }}
+      className="bg-[#dcd7cf]/40 border border-[#1a1a1a]/5 hover:border-[#1a1a1a]/20 cursor-zoom-in relative group overflow-hidden rounded-sm flex items-center justify-center transition-colors"
+      onContextMenu={handleContextMenu}
+      onClick={handleCardClick}
+      title={`${image.title || ''}${image.subtitle ? ` - ${image.subtitle}` : ''}`}
+    >
+      <div className="absolute inset-0 transition-transform duration-400 ease-out group-hover:scale-105 flex items-center justify-center p-0">
+        <img
+          src={image.url}
+          alt={image.alt || image.title || 'Fotografia'}
+          loading={index < itemsPerPage ? "eager" : "lazy"}
+          decoding="async"
+          style={{ filter: isMonochrome ? 'grayscale(100%) contrast(108%)' : 'none' }}
+          className={`w-full h-full object-cover ${
+            protectPhotos ? 'pointer-events-none select-none' : ''
+          }`}
+          onContextMenu={handleContextMenu}
+          referrerPolicy="no-referrer"
+        />
+        {enableWatermark && (
+          <div className={getWatermarkClasses(watermarkPosition, false)}>
+            {watermarkText}
+          </div>
+        )}
+      </div>
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300 pointer-events-none" />
+
+      {/* Viewed Indicator */}
+      {isViewed && (
+        <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-full bg-black/40 text-amber-300 text-[9px] font-mono uppercase tracking-wider flex items-center gap-1 backdrop-blur-xs transition-all" title="Fotografia visualizada nesta sessão">
+          <Eye size={10} />
+          <span className="hidden group-hover:inline text-white/90 text-[8px]">Vista</span>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        {enablePhotoLikes && (
+          <button 
+            onClick={(e) => onToggleLike(e, image.id)}
+            className={`px-2 py-1 rounded-full text-[10px] font-mono flex items-center gap-1 transition-all backdrop-blur-md shadow-sm ${
+              isLiked ? 'bg-amber-400 text-black font-bold' : 'bg-black/40 text-white/90 hover:bg-black/70'
+            }`}
+            title="Gosto nesta foto"
+          >
+            <Heart size={11} className={isLiked ? 'fill-black' : ''} />
+            <span>{likesCount}</span>
+          </button>
+        )}
+
+        {enableFavorites && (
+          <button 
+            onClick={(e) => onToggleFavorite(e, image.id)}
+            className={`p-1.5 rounded-full transition-all backdrop-blur-md shadow-sm ${
+              isFav ? 'bg-rose-600 text-white opacity-100' : 'bg-black/40 text-white/90 hover:bg-rose-600 hover:text-white'
+            }`}
+            title={isFav ? "Remover dos Favoritos" : "Guardar nos Favoritos"}
+          >
+            <Heart size={12} className={isFav ? 'fill-white' : ''} />
+          </button>
+        )}
+
+        {enablePhotoComparison && (
+          <button 
+            onClick={(e) => onToggleComparison(e, image.id)}
+            className={`p-1.5 rounded-full transition-all backdrop-blur-md shadow-sm ${
+              isComp ? 'bg-amber-400 text-black font-bold opacity-100' : 'bg-black/40 text-white/90 hover:bg-amber-400 hover:text-black'
+            }`}
+            title="Comparar Fotografias Lado a Lado"
+          >
+            <Columns size={12} />
+          </button>
+        )}
+      </div>
+
+      {showCaptions !== 'Oculto' && (
+        <div className={`${getWatermarkClasses(captionPosition || 'bottom-center', false)} flex flex-col transition-opacity ${
+          showCaptions === 'Sempre' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        }`}>
+          <span className="font-bold">{image.title}</span>
+          {image.subtitle && <span className="text-[0.8em] opacity-80 mt-0.5">{image.subtitle}</span>}
+        </div>
+      )}
+    </motion.div>
+  );
+});
+
 interface GalleryGridProps {
-  images: ImageType[];
+  images: ImageProps[];
   onImageClick: (filteredIndex: number) => void;
+  viewedPhotos?: string[];
   protectPhotos?: boolean;
   showCaptions?: string;
   captionPosition?: string;
@@ -35,11 +272,13 @@ interface GalleryGridProps {
   enableMonochromeToggle?: boolean;
   enablePhotoLikes?: boolean;
   thumbnailSize?: string;
+  onOpenZenMode?: () => void;
 }
 
-export default function GalleryGrid({ 
+function GalleryGrid({ 
   images, 
   onImageClick, 
+  viewedPhotos = [],
   protectPhotos, 
   showCaptions,
   captionPosition,
@@ -51,15 +290,17 @@ export default function GalleryGrid({
   enablePhotoComparison = true,
   enableMonochromeToggle = true,
   enablePhotoLikes = true,
-  thumbnailSize = '160 px'
+  thumbnailSize = '160 px',
+  onOpenZenMode
 }: GalleryGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [currentPage, setCurrentPage] = useState(0);
 
-  // Search, Sort, Monochrome & Favorites state
+  // Search, Sort, Monochrome, Orientation & Favorites state
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'title-asc' | 'title-desc'>('recent');
+  const [selectedOrientation, setSelectedOrientation] = useState<'all' | 'landscape' | 'portrait' | 'square'>('all');
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [isMonochrome, setIsMonochrome] = useState(false);
   const [photoLikes, setPhotoLikes] = useState<Record<string, number>>({});
@@ -86,7 +327,7 @@ export default function GalleryGrid({
     return [];
   });
 
-  const toggleLike = (e: React.MouseEvent, id: string | number) => {
+  const toggleLike = useCallback((e: React.MouseEvent, id: string | number) => {
     e.stopPropagation();
     const strId = String(id);
     const alreadyLiked = userLikedPhotos.includes(strId);
@@ -103,7 +344,7 @@ export default function GalleryGrid({
       ...prev,
       [strId]: Math.max(0, (prev[strId] || 0) + (alreadyLiked ? -1 : 1))
     }));
-  };
+  }, [userLikedPhotos]);
 
   // Photo Comparison state
   const [comparisonIds, setComparisonIds] = useState<(string | number)[]>([]);
@@ -134,6 +375,19 @@ export default function GalleryGrid({
     };
   }, []);
 
+  // Category and Tag filtering
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  const availableCategories = useMemo(() => {
+    const cats = new Set<string>();
+    images.forEach(img => {
+      if (img.category && img.category.trim()) {
+        cats.add(img.category.trim());
+      }
+    });
+    return Array.from(cats);
+  }, [images]);
+
   // Save favorites to localStorage
   useEffect(() => {
     try {
@@ -143,37 +397,51 @@ export default function GalleryGrid({
     }
   }, [favorites]);
 
-  const toggleFavorite = (e: React.MouseEvent, id: string | number) => {
+  const toggleFavorite = useCallback((e: React.MouseEvent, id: string | number) => {
     e.stopPropagation();
     const strId = String(id);
     setFavorites(prev => 
       prev.includes(strId) ? prev.filter(f => f !== strId) : [...prev, strId]
     );
-  };
+  }, []);
 
-  const toggleComparison = (e: React.MouseEvent, id: string | number) => {
+  const toggleComparison = useCallback((e: React.MouseEvent, id: string | number) => {
     e.stopPropagation();
     setComparisonIds(prev => {
       if (prev.includes(id)) {
         return prev.filter(i => i !== id);
       }
       if (prev.length >= 2) {
-        return [prev[1], id]; // keep last and add new
+        return [prev[1], id];
       }
       return [...prev, id];
     });
-  };
+  }, []);
 
   // Filter and Sort Images
   const processedImages = useMemo(() => {
     let result = [...images];
 
-    // Filter by Favorites
     if (showOnlyFavorites) {
       result = result.filter(img => favorites.includes(String(img.id)));
     }
 
-    // Filter by Search Query
+    if (selectedCategory) {
+      result = result.filter(img => img.category?.trim().toLowerCase() === selectedCategory.trim().toLowerCase());
+    }
+
+    if (selectedOrientation !== 'all') {
+      result = result.filter(img => {
+        if (img.orientation) return img.orientation === selectedOrientation;
+        const isPortrait = img.url.includes('portrait') || (img.title && img.title.toLowerCase().includes('vertical'));
+        const isSquare = img.url.includes('square') || (img.title && img.title.toLowerCase().includes('quadrado'));
+        if (selectedOrientation === 'portrait') return isPortrait;
+        if (selectedOrientation === 'square') return isSquare;
+        if (selectedOrientation === 'landscape') return !isPortrait && !isSquare;
+        return true;
+      });
+    }
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       result = result.filter(img => 
@@ -184,18 +452,17 @@ export default function GalleryGrid({
       );
     }
 
-    // Sort Images
     result.sort((a, b) => {
       if (sortBy === 'title-asc') return (a.title || '').localeCompare(b.title || '');
       if (sortBy === 'title-desc') return (b.title || '').localeCompare(a.title || '');
       if (sortBy === 'oldest') return Number(a.id) - Number(b.id);
-      return Number(b.id) - Number(a.id); // 'recent'
+      return Number(b.id) - Number(a.id);
     });
 
     return result;
-  }, [images, searchQuery, sortBy, showOnlyFavorites, favorites]);
+  }, [images, searchQuery, sortBy, showOnlyFavorites, selectedCategory, selectedOrientation, favorites]);
 
-  // Monitor container size for pixel-perfect layout on desktop
+  // Monitor container size
   useEffect(() => {
     if (!containerRef.current || isMobile) return;
     
@@ -220,7 +487,6 @@ export default function GalleryGrid({
       setDimensions({ width: rect.width, height: rect.height });
     }
 
-    // Schedule additional measurements to guarantee dimensions are updated after transition animations finish
     const timer1 = setTimeout(() => {
       if (containerRef.current) {
         const r = containerRef.current.getBoundingClientRect();
@@ -230,31 +496,19 @@ export default function GalleryGrid({
       }
     }, 150);
 
-    const timer2 = setTimeout(() => {
-      if (containerRef.current) {
-        const r = containerRef.current.getBoundingClientRect();
-        if (r.width > 0 && r.height > 0) {
-          setDimensions({ width: r.width, height: r.height });
-        }
-      }
-    }, 450);
-
     return () => {
       clearTimeout(timeoutId);
       clearTimeout(timer1);
-      clearTimeout(timer2);
       resizeObserver.disconnect();
     };
   }, [isMobile]);
 
-  // Reset to first page when filtered images change
   useEffect(() => {
     setCurrentPage(0);
   }, [searchQuery, sortBy, showOnlyFavorites, images]);
 
   const gap = 16;
 
-  // Extract pixel value from thumbnailSize prop (e.g. "160 px" -> 160)
   const targetSize = useMemo(() => {
     if (thumbnailSize) {
       const parsed = parseInt(thumbnailSize, 10);
@@ -263,7 +517,6 @@ export default function GalleryGrid({
     return 160;
   }, [thumbnailSize]);
 
-  // Calculate dynamic grid size on desktop
   const { cols, itemSize, rows, itemsPerPage } = useMemo(() => {
     const width = dimensions.width || (containerRef.current?.clientWidth ?? 800);
 
@@ -271,14 +524,10 @@ export default function GalleryGrid({
       return { cols: 4, itemSize: 180, rows: 2, itemsPerPage: 8 };
     }
     
-    // Calculate final cols based on target size fitting in width
     let finalCols = Math.max(1, Math.floor((width + gap) / (targetSize + gap)));
-    
-    // Guard rails to prevent too many/few columns on key breakpoints
     if (width < 500 && finalCols > 2) finalCols = 2;
     if (width < 350 && finalCols > 1) finalCols = 1;
 
-    // We allow itemSize to vary around targetSize slightly to fill width cleanly
     const minItemSize = Math.max(80, targetSize - 40);
     const maxItemSize = Math.min(500, targetSize + 60);
 
@@ -286,7 +535,6 @@ export default function GalleryGrid({
     let widthBasedItemSize = Math.floor((width - totalGapsWidth) / finalCols);
     let finalItemSize = Math.max(minItemSize, Math.min(maxItemSize, widthBasedItemSize));
 
-    // Determine rows deterministically based on window height to avoid layout jump
     const viewHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
     let rows = 2;
     if (viewHeight < 550) {
@@ -308,7 +556,6 @@ export default function GalleryGrid({
   const totalPages = Math.ceil(processedImages.length / itemsPerPage);
   const validPage = Math.min(Math.max(0, currentPage), Math.max(0, totalPages - 1));
 
-  // Current page images (desktop)
   const pageImages = useMemo(() => {
     const start = validPage * itemsPerPage;
     return processedImages.slice(start, start + itemsPerPage);
@@ -322,105 +569,169 @@ export default function GalleryGrid({
     if (validPage < totalPages - 1) setCurrentPage(validPage + 1);
   };
 
-  // Find objects for comparison modal
   const comparisonPhotos = useMemo(() => {
-    return comparisonIds.map(id => images.find(img => String(img.id) === String(id))).filter(Boolean) as ImageType[];
+    return comparisonIds.map(id => images.find(img => String(img.id) === String(id))).filter(Boolean) as ImageProps[];
   }, [comparisonIds, images]);
+
+  const handleImageCardClick = useCallback((indexInList: number) => {
+    const imgObj = isMobile ? processedImages[indexInList] : pageImages[indexInList];
+    if (imgObj) {
+      const originalIdx = images.findIndex(i => i.id === imgObj.id);
+      onImageClick(originalIdx >= 0 ? originalIdx : indexInList);
+    }
+  }, [isMobile, processedImages, pageImages, images, onImageClick]);
 
   return (
     <div id="gallery-grid-wrapper" className="w-full flex flex-col relative">
       
-      {/* --- Top Utility Bar (Search, Sort, Favorites, Comparison) --- */}
-      {(enableGallerySearch || enableFavorites || enablePhotoComparison) && (
-        <div className="w-full flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-[#4a4a4a]/10 text-xs font-sans">
+      {/* Top Utility Bar */}
+      {(enableGallerySearch || enableFavorites || enablePhotoComparison || availableCategories.length > 0) && (
+        <div className="w-full flex flex-col gap-2.5 mb-4 pb-3 border-b border-[#4a4a4a]/10 text-xs font-sans">
           
-          {/* Left: Search Bar */}
-          {enableGallerySearch && (
-            <div className="relative flex-1 min-w-[200px] max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8e8a82]" size={14} />
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Pesquisar por título ou tema..."
-                className="w-full pl-8 pr-8 py-1.5 bg-white/60 border border-[#e2ddd5] rounded-full text-xs text-[#1a1a1a] placeholder-[#8e8a82] focus:outline-none focus:border-[#1a1a1a] focus:bg-white transition-all"
-              />
-              {searchQuery && (
-                <button 
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8e8a82] hover:text-[#1a1a1a]"
-                >
-                  <X size={12} />
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Right: Sort & Favorites & Comparison Controls */}
-          <div className="flex items-center gap-2 flex-wrap ml-auto">
-            
-            {/* Monochrome / B&W View Toggle */}
-            {enableMonochromeToggle && (
-              <button
-                onClick={() => setIsMonochrome(!isMonochrome)}
-                className={`px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-semibold transition-all flex items-center gap-1.5 ${
-                  isMonochrome 
-                    ? 'bg-[#1a1a1a] text-white border border-black shadow-sm' 
-                    : 'bg-white/60 border border-[#e2ddd5] text-[#4a4a4a] hover:bg-white'
-                }`}
-                title="Ativar/Desativar Exibição Monocromática (Preto & Branco)"
-              >
-                <span>P&B</span>
-              </button>
-            )}
-
-            {/* Favorites Toggle */}
-            {enableFavorites && (
-              <button
-                onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
-                className={`px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-semibold transition-all flex items-center gap-1.5 ${
-                  showOnlyFavorites 
-                    ? 'bg-rose-600 text-white shadow-sm' 
-                    : 'bg-white/60 border border-[#e2ddd5] text-[#4a4a4a] hover:bg-white'
-                }`}
-              >
-                <Heart size={12} className={showOnlyFavorites ? 'fill-white' : 'text-rose-500'} />
-                <span>Favoritos ({favorites.length})</span>
-              </button>
-            )}
-
-            {/* Sort Selector */}
+          <div className="w-full flex flex-wrap items-center justify-between gap-3">
+            {/* Search Bar */}
             {enableGallerySearch && (
-              <div className="flex items-center gap-1 bg-white/60 border border-[#e2ddd5] px-2 py-1 rounded-full text-[10px]">
-                <SlidersHorizontal size={12} className="text-[#8e8a82]" />
-                <select 
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="bg-transparent text-[#1a1a1a] font-sans font-medium focus:outline-none cursor-pointer uppercase tracking-wider text-[9px]"
-                >
-                  <option value="recent">Mais Recentes</option>
-                  <option value="oldest">Mais Antigas</option>
-                  <option value="title-asc">Título (A - Z)</option>
-                  <option value="title-desc">Título (Z - A)</option>
-                </select>
+              <div className="relative flex-1 min-w-[200px] max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8e8a82]" size={14} />
+                <input 
+                  type="text" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Pesquisar por título ou tema..."
+                  className="w-full pl-8 pr-8 py-1.5 bg-white/60 border border-[#e2ddd5] rounded-full text-xs text-[#1a1a1a] placeholder-[#8e8a82] focus:outline-none focus:border-[#1a1a1a] focus:bg-white transition-all"
+                />
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8e8a82] hover:text-[#1a1a1a]"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
               </div>
             )}
 
-            {/* Comparison Trigger Button */}
-            {enablePhotoComparison && comparisonIds.length > 0 && (
-              <button
-                onClick={() => setShowComparisonModal(true)}
-                className="px-3 py-1.5 bg-[#1a1a1a] text-white rounded-full text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1.5 shadow-md hover:bg-black transition-all animate-bounce"
-              >
-                <Columns size={12} />
-                <span>Comparar ({comparisonIds.length}/2)</span>
-              </button>
-            )}
+            {/* Controls */}
+            <div className="flex items-center gap-2 flex-wrap ml-auto">
+              {onOpenZenMode && (
+                <button
+                  onClick={onOpenZenMode}
+                  className="px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-[#1a1a1a] text-amber-200 border border-amber-300/40 hover:bg-[#2e2e2e] transition-all flex items-center gap-1.5 shadow-2xs"
+                  title="Modo Exposição Ambient em Écrã Inteiro com Música e Efeito Ken Burns"
+                >
+                  <Tv size={12} className="text-amber-300 animate-pulse" />
+                  <span>Modo Exposição</span>
+                </button>
+              )}
+
+              {enableMonochromeToggle && (
+                <button
+                  onClick={() => setIsMonochrome(!isMonochrome)}
+                  className={`px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-semibold transition-all flex items-center gap-1.5 ${
+                    isMonochrome 
+                      ? 'bg-[#1a1a1a] text-white border border-black shadow-sm' 
+                      : 'bg-white/60 border border-[#e2ddd5] text-[#4a4a4a] hover:bg-white'
+                  }`}
+                  title="Exibição Monocromática (Preto & Branco)"
+                >
+                  <span>P&B</span>
+                </button>
+              )}
+
+              {enableFavorites && (
+                <button
+                  onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
+                  className={`px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-semibold transition-all flex items-center gap-1.5 ${
+                    showOnlyFavorites 
+                      ? 'bg-rose-600 text-white shadow-sm' 
+                      : 'bg-white/60 border border-[#e2ddd5] text-[#4a4a4a] hover:bg-white'
+                  }`}
+                >
+                  <Heart size={12} className={showOnlyFavorites ? 'fill-white' : 'text-rose-500'} />
+                  <span>Favoritos ({favorites.length})</span>
+                </button>
+              )}
+
+              {enableGallerySearch && (
+                <>
+                  <div className="flex items-center gap-1 bg-white/60 border border-[#e2ddd5] px-2.5 py-1 rounded-full text-[10px]" title="Filtrar por Formato de Fotografia">
+                    <select 
+                      value={selectedOrientation}
+                      onChange={(e) => setSelectedOrientation(e.target.value as any)}
+                      className="bg-transparent text-[#1a1a1a] font-sans font-medium focus:outline-none cursor-pointer uppercase tracking-wider text-[9px]"
+                    >
+                      <option value="all">Formato: Todos</option>
+                      <option value="landscape">Horizontal (Paisagem)</option>
+                      <option value="portrait">Vertical (Retrato)</option>
+                      <option value="square">Quadrado</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-1 bg-white/60 border border-[#e2ddd5] px-2 py-1 rounded-full text-[10px]">
+                    <SlidersHorizontal size={12} className="text-[#8e8a82]" />
+                    <select 
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as any)}
+                      className="bg-transparent text-[#1a1a1a] font-sans font-medium focus:outline-none cursor-pointer uppercase tracking-wider text-[9px]"
+                    >
+                      <option value="recent">Mais Recentes</option>
+                      <option value="oldest">Mais Antigas</option>
+                      <option value="title-asc">Título (A - Z)</option>
+                      <option value="title-desc">Título (Z - A)</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {enablePhotoComparison && comparisonIds.length > 0 && (
+                <button
+                  onClick={() => setShowComparisonModal(true)}
+                  className="px-3 py-1.5 bg-[#1a1a1a] text-white rounded-full text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1.5 shadow-md hover:bg-black transition-all animate-bounce"
+                >
+                  <Columns size={12} />
+                  <span>Comparar ({comparisonIds.length}/2)</span>
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Category Pills Bar */}
+          {availableCategories.length > 0 && (
+            <div className="w-full flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 no-scrollbar text-[10px] font-sans uppercase tracking-wider">
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className={`px-3 py-1 rounded-full font-medium transition-all whitespace-nowrap ${
+                  selectedCategory === null 
+                    ? 'bg-[#1a1a1a] text-white' 
+                    : 'bg-white/50 border border-[#e2ddd5] text-[#5a5a5a] hover:bg-white'
+                }`}
+              >
+                Todas ({images.length})
+              </button>
+              {availableCategories.map(cat => {
+                const count = images.filter(i => i.category?.trim().toLowerCase() === cat.toLowerCase()).length;
+                const isSelected = selectedCategory?.toLowerCase() === cat.toLowerCase();
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(isSelected ? null : cat)}
+                    className={`px-3 py-1 rounded-full font-medium transition-all whitespace-nowrap ${
+                      isSelected 
+                        ? 'bg-[#1a1a1a] text-white' 
+                        : 'bg-white/50 border border-[#e2ddd5] text-[#5a5a5a] hover:bg-white'
+                    }`}
+                  >
+                    {cat} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
         </div>
       )}
 
-      {/* --- Main Gallery Container --- */}
+      {/* Main Gallery Grid */}
       <div 
         ref={containerRef} 
         className="w-full min-h-[200px] flex items-center justify-center relative my-3"
@@ -445,99 +756,33 @@ export default function GalleryGrid({
               gridTemplateColumns: `repeat(auto-fill, minmax(${Math.min(180, targetSize)}px, 1fr))`
             }}
           >
-            {processedImages.map((image, index) => {
-              const isFav = favorites.includes(String(image.id));
-              const isComp = comparisonIds.includes(image.id);
-
-              return (
-                <motion.div
-                  key={image.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: Math.min(index * 0.03, 0.3) }}
-                  className="bg-[#dcd7cf]/40 border border-[#1a1a1a]/5 hover:border-[#1a1a1a]/20 cursor-pointer relative group overflow-hidden rounded-sm aspect-square flex items-center justify-center"
-                  onContextMenu={(e) => {
-                    if (protectPhotos) {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }
-                  }}
-                  onClick={() => {
-                    const originalIdx = images.findIndex(img => img.id === image.id);
-                    onImageClick(originalIdx >= 0 ? originalIdx : index);
-                  }}
-                >
-                  <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-105 flex items-center justify-center p-0">
-                    <img
-                      src={image.url}
-                      alt={image.alt}
-                      loading={index < 6 ? "eager" : "lazy"}
-                      decoding="async"
-                      style={{ filter: isMonochrome ? 'grayscale(100%) contrast(108%)' : 'none' }}
-                      className={`w-full h-full object-cover ${
-                        protectPhotos ? 'pointer-events-none select-none' : ''
-                      }`}
-                      onContextMenu={(e) => { if (protectPhotos) e.preventDefault(); }}
-                    />
-                    {/* Watermark Overlay */}
-                    {enableWatermark && (
-                      <div className={getWatermarkClasses(watermarkPosition, false)}>
-                        {watermarkText}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action Icons (Favorite, Comparison, Likes) */}
-                  <div className="absolute top-1.5 right-1.5 flex items-center gap-1 z-10">
-                    {enablePhotoLikes && (
-                      <button 
-                        onClick={(e) => toggleLike(e, image.id)}
-                        className={`px-1.5 py-1 rounded-full text-[9px] font-mono flex items-center gap-1 transition-all backdrop-blur-md ${
-                          userLikedPhotos.includes(String(image.id)) ? 'bg-amber-500 text-black font-bold' : 'bg-black/40 text-white/90 hover:bg-black/70'
-                        }`}
-                        title="Gosto nesta foto"
-                      >
-                        <Heart size={10} className={userLikedPhotos.includes(String(image.id)) ? 'fill-black' : ''} />
-                        <span>{photoLikes[String(image.id)] || 0}</span>
-                      </button>
-                    )}
-
-                    {enableFavorites && (
-                      <button 
-                        onClick={(e) => toggleFavorite(e, image.id)}
-                        className={`p-1.5 rounded-full transition-all backdrop-blur-md ${
-                          isFav ? 'bg-rose-600 text-white' : 'bg-black/30 text-white/80 hover:bg-black/60'
-                        }`}
-                        title="Guardar nos Favoritos"
-                      >
-                        <Heart size={11} className={isFav ? 'fill-white' : ''} />
-                      </button>
-                    )}
-
-                    {enablePhotoComparison && (
-                      <button 
-                        onClick={(e) => toggleComparison(e, image.id)}
-                        className={`p-1.5 rounded-full transition-all backdrop-blur-md ${
-                          isComp ? 'bg-amber-500 text-black font-bold' : 'bg-black/30 text-white/80 hover:bg-black/60'
-                        }`}
-                        title="Selecionar para Comparação Lado a Lado"
-                      >
-                        <Columns size={11} />
-                      </button>
-                    )}
-                  </div>
-
-                  {showCaptions !== 'Oculto' && (
-                    <div className={`${getWatermarkClasses(captionPosition || 'bottom-center', false)} flex flex-col transition-opacity ${
-                      showCaptions === 'Sempre' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                    }`}>
-                      <span className="font-bold">{image.title}</span>
-                      {image.subtitle && <span className="text-[0.8em] opacity-80 mt-0.5">{image.subtitle}</span>}
-                    </div>
-                  )}
-                </motion.div>
-              );
-            })}
+            {processedImages.map((image, index) => (
+              <GalleryCard
+                key={image.id}
+                image={image}
+                index={index}
+                isMobile={true}
+                isMonochrome={isMonochrome}
+                isViewed={viewedPhotos.includes(String(image.id))}
+                protectPhotos={protectPhotos}
+                enableWatermark={enableWatermark}
+                watermarkPosition={watermarkPosition}
+                watermarkText={watermarkText}
+                enablePhotoLikes={enablePhotoLikes}
+                enableFavorites={enableFavorites}
+                enablePhotoComparison={enablePhotoComparison}
+                showCaptions={showCaptions}
+                captionPosition={captionPosition}
+                isFav={favorites.includes(String(image.id))}
+                isComp={comparisonIds.includes(image.id)}
+                isLiked={userLikedPhotos.includes(String(image.id))}
+                likesCount={photoLikes[String(image.id)] || 0}
+                onImageClick={handleImageCardClick}
+                onToggleLike={toggleLike}
+                onToggleFavorite={toggleFavorite}
+                onToggleComparison={toggleComparison}
+              />
+            ))}
           </div>
         ) : (
           /* DESKTOP PAGINATED GRID */
@@ -553,110 +798,41 @@ export default function GalleryGrid({
             }}
           >
             <AnimatePresence mode="popLayout">
-              {pageImages.map((image, index) => {
-                const isFav = favorites.includes(String(image.id));
-                const isComp = comparisonIds.includes(image.id);
-
-                return (
-                  <motion.div
-                    key={image.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.25 }}
-                    style={{ width: `${itemSize}px`, height: `${itemSize}px` }}
-                    className="bg-[#dcd7cf]/40 border border-[#1a1a1a]/5 hover:border-[#1a1a1a]/20 cursor-zoom-in relative group overflow-hidden rounded-sm flex items-center justify-center transition-colors"
-                    onContextMenu={(e) => {
-                      if (protectPhotos) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }
-                    }}
-                    onClick={() => {
-                      const originalIdx = images.findIndex(img => img.id === image.id);
-                      onImageClick(originalIdx >= 0 ? originalIdx : index);
-                    }}
-                    title={`${image.title}${image.subtitle ? ` - ${image.subtitle}` : ''}`}
-                  >
-                    <div className="absolute inset-0 transition-transform duration-500 ease-out group-hover:scale-105 flex items-center justify-center p-0">
-                      <img
-                        src={image.url}
-                        alt={image.alt}
-                        loading={index < itemsPerPage ? "eager" : "lazy"}
-                        decoding="async"
-                        style={{ filter: isMonochrome ? 'grayscale(100%) contrast(108%)' : 'none' }}
-                        className={`w-full h-full object-cover ${
-                          protectPhotos ? 'pointer-events-none select-none' : ''
-                        }`}
-                        onContextMenu={(e) => { if (protectPhotos) e.preventDefault(); }}
-                        referrerPolicy="no-referrer"
-                      />
-                      {/* Watermark Overlay */}
-                      {enableWatermark && (
-                        <div className={getWatermarkClasses(watermarkPosition, false)}>
-                          {watermarkText}
-                        </div>
-                      )}
-                    </div>
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300 pointer-events-none" />
-
-                    {/* Top Action Buttons (Likes, Favorite & Comparison) */}
-                    <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                      {enablePhotoLikes && (
-                        <button 
-                          onClick={(e) => toggleLike(e, image.id)}
-                          className={`px-2 py-1 rounded-full text-[10px] font-mono flex items-center gap-1 transition-all backdrop-blur-md shadow-sm ${
-                            userLikedPhotos.includes(String(image.id)) ? 'bg-amber-400 text-black font-bold' : 'bg-black/40 text-white/90 hover:bg-black/70'
-                          }`}
-                          title="Gosto nesta foto"
-                        >
-                          <Heart size={11} className={userLikedPhotos.includes(String(image.id)) ? 'fill-black' : ''} />
-                          <span>{photoLikes[String(image.id)] || 0}</span>
-                        </button>
-                      )}
-
-                      {enableFavorites && (
-                        <button 
-                          onClick={(e) => toggleFavorite(e, image.id)}
-                          className={`p-1.5 rounded-full transition-all backdrop-blur-md shadow-sm ${
-                            isFav ? 'bg-rose-600 text-white opacity-100' : 'bg-black/40 text-white/90 hover:bg-rose-600 hover:text-white'
-                          }`}
-                          title={isFav ? "Remover dos Favoritos" : "Guardar nos Favoritos"}
-                        >
-                          <Heart size={12} className={isFav ? 'fill-white' : ''} />
-                        </button>
-                      )}
-
-                      {enablePhotoComparison && (
-                        <button 
-                          onClick={(e) => toggleComparison(e, image.id)}
-                          className={`p-1.5 rounded-full transition-all backdrop-blur-md shadow-sm ${
-                            isComp ? 'bg-amber-400 text-black font-bold opacity-100' : 'bg-black/40 text-white/90 hover:bg-amber-400 hover:text-black'
-                          }`}
-                          title="Comparar Fotografias Lado a Lado"
-                        >
-                          <Columns size={12} />
-                        </button>
-                      )}
-                    </div>
-
-                    {showCaptions !== 'Oculto' && (
-                      <div className={`${getWatermarkClasses(captionPosition || 'bottom-center', false)} flex flex-col transition-opacity ${
-                        showCaptions === 'Sempre' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                      }`}>
-                        <span className="font-bold">{image.title}</span>
-                        {image.subtitle && <span className="text-[0.8em] opacity-80 mt-0.5">{image.subtitle}</span>}
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })}
+              {pageImages.map((image, index) => (
+                <GalleryCard
+                  key={image.id}
+                  image={image}
+                  index={index}
+                  isMobile={false}
+                  isMonochrome={isMonochrome}
+                  isViewed={viewedPhotos.includes(String(image.id))}
+                  protectPhotos={protectPhotos}
+                  enableWatermark={enableWatermark}
+                  watermarkPosition={watermarkPosition}
+                  watermarkText={watermarkText}
+                  enablePhotoLikes={enablePhotoLikes}
+                  enableFavorites={enableFavorites}
+                  enablePhotoComparison={enablePhotoComparison}
+                  showCaptions={showCaptions}
+                  captionPosition={captionPosition}
+                  isFav={favorites.includes(String(image.id))}
+                  isComp={comparisonIds.includes(image.id)}
+                  isLiked={userLikedPhotos.includes(String(image.id))}
+                  likesCount={photoLikes[String(image.id)] || 0}
+                  itemSize={itemSize}
+                  itemsPerPage={itemsPerPage}
+                  onImageClick={handleImageCardClick}
+                  onToggleLike={toggleLike}
+                  onToggleFavorite={toggleFavorite}
+                  onToggleComparison={toggleComparison}
+                />
+              ))}
             </AnimatePresence>
           </div>
         )}
       </div>
 
-      {/* --- Desktop Pagination --- */}
+      {/* Pagination */}
       {!isMobile && totalPages > 1 && (
         <div className="w-full border-t border-[#4a4a4a]/15 pt-4 mt-6 mb-2 flex items-center justify-between text-[11px] tracking-[0.18em] font-sans font-semibold uppercase text-[#4a4a4a] flex-shrink-0 bg-white/30 backdrop-blur-xs px-4 py-2.5 rounded-lg border border-[#4a4a4a]/10">
           <button
@@ -683,20 +859,19 @@ export default function GalleryGrid({
         </div>
       )}
 
-      {/* --- Side-by-Side Photo Comparison Modal --- */}
+      {/* Side-by-Side Comparison Modal */}
       <AnimatePresence>
         {showComparisonModal && comparisonPhotos.length > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black/95 text-white flex flex-col p-4 md:p-8 backdrop-blur-lg overflow-y-auto"
+            className="fixed inset-0 z-[200] bg-black/95 text-white flex flex-col p-4 md:p-8 backdrop-blur-lg max-h-screen overflow-y-auto"
           >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-white/20 pb-4 mb-6">
-              <div className="flex items-center gap-2 font-serif text-lg md:text-xl text-amber-200">
-                <Columns size={20} />
-                <span>Comparador de Fotografias Lado a Lado</span>
+            <div className="flex items-center justify-between border-b border-white/20 pb-4 mb-4 flex-shrink-0">
+              <div className="flex items-center gap-2 font-serif text-base md:text-xl text-amber-200">
+                <Columns size={18} />
+                <span>Comparador de Fotografias</span>
               </div>
               <button 
                 onClick={() => setShowComparisonModal(false)}
@@ -706,10 +881,9 @@ export default function GalleryGrid({
               </button>
             </div>
 
-            {/* Comparison Grid */}
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 items-center justify-center">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 items-center justify-center overflow-y-auto">
               {comparisonPhotos.map((photo, idx) => (
-                <div key={photo.id} className="flex flex-col items-center bg-white/5 border border-white/10 p-4 rounded-lg relative">
+                <div key={photo.id} className="flex flex-col items-center bg-white/5 border border-white/10 p-3 rounded-lg relative">
                   <div className="absolute top-2 left-2 bg-black/60 text-amber-300 text-[10px] font-mono px-2 py-0.5 rounded uppercase tracking-wider">
                     Foto #{idx + 1}
                   </div>
@@ -721,7 +895,7 @@ export default function GalleryGrid({
                     <X size={14} />
                   </button>
 
-                  <div className="w-full h-[350px] md:h-[450px] flex items-center justify-center overflow-hidden my-2">
+                  <div className="w-full h-[280px] md:h-[400px] flex items-center justify-center overflow-hidden my-2">
                     <img 
                       src={photo.url} 
                       alt={photo.title}
@@ -729,13 +903,12 @@ export default function GalleryGrid({
                     />
                   </div>
 
-                  <div className="w-full text-center space-y-1 mt-2 border-t border-white/10 pt-3">
-                    <h3 className="font-serif text-base text-white">{photo.title}</h3>
+                  <div className="w-full text-center space-y-1 mt-1 border-t border-white/10 pt-2">
+                    <h3 className="font-serif text-sm md:text-base text-white">{photo.title}</h3>
                     {photo.subtitle && <p className="text-xs text-white/60 font-sans">{photo.subtitle}</p>}
                     
-                    {/* EXIF Quick Snippet if available */}
                     {(photo.cameraModel || photo.lens || photo.iso) && (
-                      <div className="flex flex-wrap items-center justify-center gap-3 text-[10px] font-mono text-amber-200/80 pt-2">
+                      <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] font-mono text-amber-200/80 pt-1">
                         {photo.cameraModel && <span>📷 {photo.cameraModel}</span>}
                         {photo.lens && <span>🔍 {photo.lens}</span>}
                         {photo.aperture && <span>{photo.aperture}</span>}
@@ -748,7 +921,7 @@ export default function GalleryGrid({
               ))}
 
               {comparisonPhotos.length === 1 && (
-                <div className="flex flex-col items-center justify-center h-[350px] md:h-[450px] border-2 border-dashed border-white/20 rounded-lg p-6 text-center text-white/40">
+                <div className="flex flex-col items-center justify-center h-[280px] md:h-[400px] border-2 border-dashed border-white/20 rounded-lg p-6 text-center text-white/40">
                   <Camera size={32} className="mb-2" />
                   <p className="text-xs uppercase tracking-widest">Selecione uma segunda fotografia na galeria para comparar</p>
                 </div>
@@ -761,3 +934,6 @@ export default function GalleryGrid({
     </div>
   );
 }
+
+export default React.memo(GalleryGrid);
+
