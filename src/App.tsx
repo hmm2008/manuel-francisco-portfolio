@@ -1145,7 +1145,9 @@ export default function App() {
           >
             <div 
               className={`relative w-full h-full max-w-full max-h-full flex transition-colors duration-500 overflow-hidden ${
-                siteSettings?.slideshowControlsPosition === 'top' ? 'flex-col-reverse' : 'flex-col'
+                isMobileLandscape 
+                  ? 'flex-row' 
+                  : siteSettings?.slideshowControlsPosition === 'top' ? 'flex-col-reverse' : 'flex-col'
               }`}
               style={{ 
                 backgroundColor: siteSettings?.slideshowBgColor || '#1a1a1a',
@@ -1195,7 +1197,7 @@ export default function App() {
                                       ? 'w-full h-full object-cover object-center' 
                                       : 'max-w-full max-h-full object-contain object-center'
                                   }`}
-                                  style={siteSettings?.slideshowFit === 'Preencher' ? {} : { height: 'auto', width: 'auto', maxHeight: 'calc(100vh - 140px)', maxWidth: '100%' }}
+                                  style={siteSettings?.slideshowFit === 'Preencher' ? {} : { height: 'auto', width: 'auto', maxHeight: isMobileLandscape ? '100%' : 'calc(100vh - 140px)', maxWidth: '100%' }}
                                 />
 
                                 {siteSettings?.enableWatermark && siteSettings?.showWatermarkInSlideshow !== false && (
@@ -1214,7 +1216,9 @@ export default function App() {
                                         className="mb-1 sm:mb-2 tracking-wide font-light drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
                                         style={{
                                           fontFamily: getFontFamily(siteSettings?.slideshowTitleFont),
-                                          fontSize: (siteSettings?.slideshowTitleSize || '48px').replace(/\s+/g, ''),
+                                          fontSize: isMobileLandscape 
+                                            ? `calc(${(siteSettings?.slideshowTitleSize || '48px').replace(/\s+/g, '')} * 0.5)`
+                                            : (siteSettings?.slideshowTitleSize || '48px').replace(/\s+/g, ''),
                                           color: siteSettings?.slideshowTextColor || '#ffffff'
                                         }}
                                       >
@@ -1229,7 +1233,9 @@ export default function App() {
                                         className="tracking-widest uppercase opacity-95 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
                                         style={{
                                           fontFamily: getFontFamily(siteSettings?.slideshowSubtitleFont),
-                                          fontSize: (siteSettings?.slideshowSubtitleSize || '12px').replace(/\s+/g, ''),
+                                          fontSize: isMobileLandscape
+                                            ? `calc(${(siteSettings?.slideshowSubtitleSize || '12px').replace(/\s+/g, '')} * 0.8)`
+                                            : (siteSettings?.slideshowSubtitleSize || '12px').replace(/\s+/g, ''),
                                           color: siteSettings?.slideshowTextColor || '#ffffff'
                                         }}
                                       >
@@ -1250,10 +1256,14 @@ export default function App() {
                 
                 {/* Controls Area (Outside Photo) */}
                 <div 
-                  className={`shrink-0 p-4 sm:p-6 lg:px-8 lg:py-6 flex flex-col gap-3 z-20 ${
-                    siteSettings?.slideshowControlsAlign === 'left' ? 'items-start text-left' :
-                    siteSettings?.slideshowControlsAlign === 'right' ? 'items-end text-right' :
-                    'items-center text-center'
+                  className={`shrink-0 flex flex-col gap-2 z-20 justify-center ${
+                    isMobileLandscape 
+                      ? 'w-[180px] border-l border-white/10 p-3 h-full text-center items-center' 
+                      : `p-4 sm:p-6 lg:px-8 lg:py-6 ${
+                          siteSettings?.slideshowControlsAlign === 'left' ? 'items-start text-left' :
+                          siteSettings?.slideshowControlsAlign === 'right' ? 'items-end text-right' :
+                          'items-center text-center'
+                        }`
                   }`}
                   style={{ backgroundColor: siteSettings?.slideshowBgColor || '#1a1a1a' }}
                 >
@@ -1270,7 +1280,7 @@ export default function App() {
                   </div>
                   
                   {galleryImages.length > 1 && (
-                    <div className="flex gap-2 mb-2">
+                    <div className="flex flex-wrap justify-center gap-2 mb-2 max-w-full px-1">
                       {galleryImages.map((_, i) => (
                         <button 
                           key={i} 
@@ -1286,10 +1296,12 @@ export default function App() {
                     </div>
                   )}
                   
-                  <div className={`flex items-center gap-4 ${
-                    siteSettings?.slideshowControlsAlign === 'left' ? 'justify-start' :
-                    siteSettings?.slideshowControlsAlign === 'right' ? 'justify-end' :
-                    'justify-center'
+                  <div className={`flex ${isMobileLandscape ? 'flex-col gap-3' : 'flex-row gap-4'} items-center ${
+                    isMobileLandscape
+                      ? 'justify-center'
+                      : siteSettings?.slideshowControlsAlign === 'left' ? 'justify-start' :
+                        siteSettings?.slideshowControlsAlign === 'right' ? 'justify-end' :
+                        'justify-center'
                   } w-full`}>
                     <button 
                       onClick={() => setActiveView('galeria')}
