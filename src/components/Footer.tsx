@@ -5,9 +5,10 @@ interface FooterProps {
   setActiveView: (view: any) => void;
   settings: any;
   onOpenTerms: () => void;
+  onOpenInstallPWA?: () => void;
 }
 
-function Footer({ activeView, setActiveView, settings, onOpenTerms }: FooterProps) {
+function Footer({ activeView, setActiveView, settings, onOpenTerms, onOpenInstallPWA }: FooterProps) {
   const [isMobileLandscape, setIsMobileLandscape] = useState(false);
 
   useEffect(() => {
@@ -58,7 +59,7 @@ function Footer({ activeView, setActiveView, settings, onOpenTerms }: FooterProp
             {item.label}
           </button>
         ))}
-        {/* Always show TERMOS link in the footer */}
+        {/* Always show TERMOS & INSTALAR APP link in the footer */}
         <button
           onClick={onOpenTerms}
           className={`font-sans uppercase font-medium text-[#7a7a7a]/70 hover:text-[#4a4a4a] transition-colors duration-200 cursor-pointer ${
@@ -67,6 +68,16 @@ function Footer({ activeView, setActiveView, settings, onOpenTerms }: FooterProp
         >
           TERMOS
         </button>
+        {onOpenInstallPWA && (
+          <button
+            onClick={onOpenInstallPWA}
+            className={`font-sans uppercase font-medium text-[#7a7a7a]/70 hover:text-[#4a4a4a] transition-colors duration-200 cursor-pointer flex items-center gap-1 ${
+              isMobileLandscape ? 'text-[10px] tracking-[0.15em]' : 'text-[11px] tracking-[0.2em]'
+            }`}
+          >
+            INSTALAR APP
+          </button>
+        )}
       </div>
     </footer>
   );

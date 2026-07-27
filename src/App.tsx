@@ -9,6 +9,7 @@ import { X, ChevronLeft, ChevronRight, Cookie, ShieldCheck, Home, Image as Image
 import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import Footer from './components/Footer';
+import { InstallPWAModal } from './components/InstallPWAModal';
 import AdminPasswordPrompt from './components/AdminPasswordPrompt';
 import GalleryGrid from './components/GalleryGrid';
 import { getFontFamily, getTextStyleProps } from './utils/fontUtils';
@@ -103,6 +104,7 @@ export default function App() {
   }, []);
 
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
+  const [showInstallPWAModal, setShowInstallPWAModal] = useState<boolean>(false);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(() => {
     return sessionStorage.getItem('admin_unlocked') === 'true';
   });
@@ -1586,6 +1588,7 @@ export default function App() {
                   setActiveView={setActiveView} 
                   settings={siteSettings} 
                   onOpenTerms={() => setShowTermsModal(true)} 
+                  onOpenInstallPWA={() => setShowInstallPWAModal(true)}
                 />
               </div>
             </div>
@@ -1649,6 +1652,7 @@ export default function App() {
                   setActiveView={setActiveView} 
                   settings={siteSettings} 
                   onOpenTerms={() => setShowTermsModal(true)} 
+                  onOpenInstallPWA={() => setShowInstallPWAModal(true)}
                 />
               </div>
             </div>
@@ -1659,6 +1663,7 @@ export default function App() {
               settings={siteSettings} 
               setActiveView={setActiveView} 
               onOpenTerms={() => setShowTermsModal(true)} 
+              onOpenInstallPWA={() => setShowInstallPWAModal(true)}
             />
           </Suspense>
         ) : activeView === 'livro' ? (
@@ -1668,6 +1673,7 @@ export default function App() {
               isAdminUnlocked={isAdminUnlocked} 
               setActiveView={setActiveView} 
               onOpenTerms={() => setShowTermsModal(true)} 
+              onOpenInstallPWA={() => setShowInstallPWAModal(true)}
             />
           </Suspense>
         ) : activeView === 'contacto' ? (
@@ -1676,6 +1682,7 @@ export default function App() {
               settings={siteSettings} 
               setActiveView={setActiveView} 
               onOpenTerms={() => setShowTermsModal(true)} 
+              onOpenInstallPWA={() => setShowInstallPWAModal(true)}
             />
           </Suspense>
         ) : activeView === 'links' ? (
@@ -1685,6 +1692,7 @@ export default function App() {
               isAdminUnlocked={isAdminUnlocked}
               setActiveView={setActiveView} 
               onOpenTerms={() => setShowTermsModal(true)} 
+              onOpenInstallPWA={() => setShowInstallPWAModal(true)}
             />
           </Suspense>
         ) : activeView === 'admin' ? (
@@ -1724,6 +1732,7 @@ export default function App() {
               setActiveView={setActiveView} 
               settings={siteSettings} 
               onOpenTerms={() => setShowTermsModal(true)} 
+              onOpenInstallPWA={() => setShowInstallPWAModal(true)}
             />
           </div>
         )}
@@ -2208,6 +2217,12 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Install PWA Modal */}
+      <InstallPWAModal 
+        isOpen={showInstallPWAModal} 
+        onClose={() => setShowInstallPWAModal(false)} 
+      />
 
       {/* Terms & Privacy Modal */}
       <AnimatePresence>

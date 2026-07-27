@@ -1,0 +1,25 @@
+{
+  "short_name": "MF Fotografia",
+  "name": "Manuel Francisco — Portfólio de Fotografia",
+  "description": "Portfólio fotográfico elegante e minimalista de Manuel Francisco.",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0d0d0d",
+  "theme_color": "#0d0d0d",
+  "display": "standalone",
+  "orientation": "any",
+  "categories": ["photography", "portfolio"]
+}
