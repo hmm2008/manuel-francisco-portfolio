@@ -276,14 +276,35 @@ export default function App() {
         )}
         
         {/* Title and utility controls row */}
-        <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#4a4a4a]/10 pb-3 mb-4">
-          <div className="text-left flex items-baseline flex-wrap gap-x-3">
-            <h2 className="font-sans font-medium text-xl md:text-2xl text-[#4a4a4a] tracking-wide">
-              Galeria
+        <div className="w-full flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#4a4a4a]/10 pb-3 mb-4">
+          <div className="text-left">
+            <h2 
+              className="font-normal"
+              style={{
+                fontFamily: getFontFamily(siteSettings?.pageTitleFont || siteSettings?.globalFont),
+                fontSize: siteSettings?.pageTitleFontSize ? (siteSettings.pageTitleFontSize.includes('px') ? siteSettings.pageTitleFontSize : `${siteSettings.pageTitleFontSize}px`) : undefined,
+                color: siteSettings?.pageTitleColor || '#4a4a4a',
+                letterSpacing: siteSettings?.pageTitleLetterSpacing || '1px',
+                marginBottom: siteSettings?.pageTitleSubtitleSpacing !== undefined ? `${siteSettings.pageTitleSubtitleSpacing}px` : '4px',
+                ...getTextStyleProps(siteSettings?.pageTitleStyle)
+              }}
+            >
+              {siteSettings?.gallerySectionTitle || 'Galeria'}
             </h2>
-            <span className="font-sans text-xs md:text-sm text-[#7a7a7a]/50 tracking-[0.2em] uppercase font-light">
-              — {filteredGallery.length} {filteredGallery.length === 1 ? 'FOTOGRAFIA' : 'FOTOGRAFIAS'}
-            </span>
+            <p 
+              className="uppercase"
+              style={{
+                fontFamily: getFontFamily(siteSettings?.pageSubtitleFont || siteSettings?.globalFont),
+                fontSize: siteSettings?.pageSubtitleFontSize ? (siteSettings.pageSubtitleFontSize.includes('px') ? siteSettings.pageSubtitleFontSize : `${siteSettings.pageSubtitleFontSize}px`) : undefined,
+                color: siteSettings?.pageSubtitleColor || '#7a7a7a',
+                letterSpacing: siteSettings?.pageSubtitleLetterSpacing || '2px',
+                ...getTextStyleProps(siteSettings?.pageSubtitleStyle)
+              }}
+            >
+              {siteSettings?.gallerySectionSubtitle 
+                ? siteSettings.gallerySectionSubtitle 
+                : `${filteredGallery.length} ${filteredGallery.length === 1 ? 'FOTOGRAFIA' : 'FOTOGRAFIAS'}`}
+            </p>
           </div>
 
           {/* Utilities (Modo Exposição, P&B, Favoritos) aligned to the right */}

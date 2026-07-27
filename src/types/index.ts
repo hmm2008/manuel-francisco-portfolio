@@ -23,6 +23,20 @@ export interface ImageProps {
 }
 
 export interface SiteSettings {
+  // Global Page Titles & Subtitles (Applies to all main sections)
+  pageTitleFont?: string;
+  pageTitleFontSize?: string;
+  pageTitleColor?: string;
+  pageTitleLetterSpacing?: string;
+  pageTitleStyle?: string;
+  pageTitleSubtitleSpacing?: number;
+
+  pageSubtitleFont?: string;
+  pageSubtitleFontSize?: string;
+  pageSubtitleColor?: string;
+  pageSubtitleLetterSpacing?: string;
+  pageSubtitleStyle?: string;
+
   siteName: string;
   siteSubtitle?: string;
   siteNameFont: string;
@@ -52,6 +66,8 @@ export interface SiteSettings {
   exhibitions?: string;
 
   // Biography Page Typography & Titles
+  gallerySectionTitle?: string;
+  gallerySectionSubtitle?: string;
   biographySectionTitle?: string;
   biographySectionSubtitle?: string;
   biographyTitleFont?: string;
@@ -70,6 +86,7 @@ export interface SiteSettings {
   biographyStyle?: string;
   biographyLetterSpacing?: string;
 
+  biographyTitleSubtitleSpacing?: number;
   // Published Works Titles & Typography
   publishedWorksSectionTitle?: string;
   publishedWorksFont?: string;
@@ -103,10 +120,12 @@ export interface SiteSettings {
   contactFormLabelSize?: string;
   contactFormLabelColor?: string;
   contactFormLabelLetterSpacing?: string;
+  contactTitleSubtitleSpacing?: number;
 
   // Guestbook Page Titles & Typography
   guestbookSectionTitle?: string;
   guestbookSectionSubtitle?: string;
+  guestbookSubtitleMode?: 'subtitle_only' | 'count_only' | 'both';
   guestbookTitleFont?: string;
   guestbookTitleFontSize?: string;
   guestbookTitleColor?: string;
@@ -117,6 +136,7 @@ export interface SiteSettings {
   guestbookSubtitleColor?: string;
   guestbookSubtitleStyle?: string;
   guestbookSubtitleLetterSpacing?: string;
+  guestbookTitleSubtitleSpacing?: number;
 
   // Links Page Titles & Typography
   linksSectionTitle?: string;
@@ -131,6 +151,7 @@ export interface SiteSettings {
   linksSubtitleColor?: string;
   linksSubtitleStyle?: string;
   linksSubtitleLetterSpacing?: string;
+  linksTitleSubtitleSpacing?: number;
   instagram: string;
   facebook: string;
   twitter: string;

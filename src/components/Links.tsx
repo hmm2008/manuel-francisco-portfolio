@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ExternalLink, Plus, X } from 'lucide-react';
-import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ExternalLink, Plus, X, Trash2, Edit2 } from 'lucide-react';
+import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import Footer from './Footer';
 import { getFontFamily, getTextStyleProps } from '../utils/fontUtils';
@@ -28,6 +28,7 @@ export default function Links({ settings, isAdminUnlocked, setActiveView, onOpen
   const [newUrl, setNewUrl] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'links'), orderBy('createdAt', 'desc'));
@@ -59,22 +60,54 @@ export default function Links({ settings, isAdminUnlocked, setActiveView, onOpen
 
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, 'links'), {
-        title: newTitle.trim(),
-        url: formattedUrl,
-        description: newDescription.trim(),
-        createdAt: serverTimestamp()
-      });
+      if (editingLinkId) {
+        await updateDoc(doc(db, 'links', editingLinkId), {
+          title: newTitle.trim(),
+          url: formattedUrl,
+          description: newDescription.trim()
+        });
+      } else {
+        await addDoc(collection(db, 'links'), {
+          title: newTitle.trim(),
+          url: formattedUrl,
+          description: newDescription.trim(),
+          createdAt: serverTimestamp()
+        });
+      }
       setNewTitle('');
       setNewUrl('');
       setNewDescription('');
       setShowAddForm(false);
+      setEditingLinkId(null);
     } catch (error) {
-      console.error("Error adding link:", error);
-      alert("Ocorreu um erro ao adicionar o link.");
+      console.error("Error saving link:", error);
+      alert("Ocorreu um erro ao guardar o link.");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleDeleteLink = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm('Tem a certeza que deseja eliminar este link?')) return;
+    
+    try {
+      await deleteDoc(doc(db, 'links', id));
+    } catch (error) {
+      console.error("Error deleting link:", error);
+      alert("Ocorreu um erro ao eliminar o link.");
+    }
+  };
+
+  const openEditForm = (link: LinkItem, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setNewTitle(link.title);
+    setNewUrl(link.url);
+    setNewDescription(link.description || '');
+    setEditingLinkId(link.id);
+    setShowAddForm(true);
   };
 
   const mainContent = (
@@ -99,35 +132,42 @@ export default function Links({ settings, isAdminUnlocked, setActiveView, onOpen
       <div className="w-full max-w-[600px] mx-auto flex-1 pb-8 pt-4">
         <div className="mb-10 text-left flex justify-between items-end">
           <div>
-            <p 
-              className="uppercase mb-3"
-              style={{
-                fontFamily: getFontFamily(settings?.linksSubtitleFont || settings?.globalFont),
-                fontSize: settings?.linksSubtitleFontSize ? (settings.linksSubtitleFontSize.includes('px') ? settings.linksSubtitleFontSize : `${settings.linksSubtitleFontSize}px`) : undefined,
-                color: settings?.linksSubtitleColor || '#7a7a7a',
-                letterSpacing: settings?.linksSubtitleLetterSpacing || '2px',
-                ...getTextStyleProps(settings?.linksSubtitleStyle)
-              }}
-            >
-              {settings?.linksSectionSubtitle || 'RECURSOS'}
-            </p>
             <h2 
-              className="font-light"
+              className="font-normal"
               style={{
-                fontFamily: getFontFamily(settings?.linksTitleFont || settings?.globalFont),
-                fontSize: settings?.linksTitleFontSize ? (settings.linksTitleFontSize.includes('px') ? settings.linksTitleFontSize : `${settings.linksTitleFontSize}px`) : undefined,
-                color: settings?.linksTitleColor || '#4a4a4a',
-                letterSpacing: settings?.linksTitleLetterSpacing || '0px',
-                ...getTextStyleProps(settings?.linksTitleStyle)
+                fontFamily: getFontFamily(settings?.pageTitleFont || settings?.globalFont),
+                fontSize: settings?.pageTitleFontSize ? (settings.pageTitleFontSize.includes('px') ? settings.pageTitleFontSize : `${settings.pageTitleFontSize}px`) : undefined,
+                color: settings?.pageTitleColor || '#4a4a4a',
+                letterSpacing: settings?.pageTitleLetterSpacing || '0px',
+                marginBottom: settings?.pageTitleSubtitleSpacing !== undefined ? `${settings.pageTitleSubtitleSpacing}px` : '12px',
+                ...getTextStyleProps(settings?.pageTitleStyle)
               }}
             >
               {settings?.linksSectionTitle || 'Links'}
             </h2>
+            <p 
+              className="uppercase"
+              style={{
+                fontFamily: getFontFamily(settings?.pageSubtitleFont || settings?.globalFont),
+                fontSize: settings?.pageSubtitleFontSize ? (settings.pageSubtitleFontSize.includes('px') ? settings.pageSubtitleFontSize : `${settings.pageSubtitleFontSize}px`) : undefined,
+                color: settings?.pageSubtitleColor || '#7a7a7a',
+                letterSpacing: settings?.pageSubtitleLetterSpacing || '2px',
+                ...getTextStyleProps(settings?.pageSubtitleStyle)
+              }}
+            >
+              {settings?.linksSectionSubtitle || 'RECURSOS'}
+            </p>
           </div>
           
           {isAdminUnlocked && (
             <button 
-              onClick={() => setShowAddForm(true)}
+              onClick={() => {
+                setNewTitle('');
+                setNewUrl('');
+                setNewDescription('');
+                setEditingLinkId(null);
+                setShowAddForm(true);
+              }}
               className="flex items-center gap-2 px-4 py-2 border border-[#4a4a4a]/20 hover:border-[#4a4a4a]/50 text-[#4a4a4a] transition-colors text-[10px] tracking-widest uppercase font-sans bg-transparent"
             >
               <Plus size={14} />
@@ -143,26 +183,45 @@ export default function Links({ settings, isAdminUnlocked, setActiveView, onOpen
         ) : links.length > 0 ? (
           <div className="space-y-4">
             {links.map((link) => (
-              <a
+              <div
                 key={link.id}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block p-6 border border-[#4a4a4a]/10 hover:border-[#4a4a4a]/30 transition-colors bg-white/50 group"
+                className="block p-6 border border-[#4a4a4a]/10 hover:border-[#4a4a4a]/30 transition-colors bg-white/50 group relative"
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-lg text-[#4a4a4a] font-sans group-hover:text-black transition-colors font-light">{link.title}</h3>
-                  <ExternalLink size={14} className="text-[#7a7a7a] group-hover:text-[#4a4a4a] transition-colors" />
+                <div className="absolute top-4 right-4 flex items-center gap-2">
+                  {isAdminUnlocked && (
+                    <>
+                      <button
+                        onClick={(e) => openEditForm(link, e)}
+                        className="text-[#7a7a7a]/60 hover:text-[#4a4a4a] transition-colors p-1"
+                        title="Editar link"
+                      >
+                        <Edit2 className="w-4 h-4" strokeWidth={1.5} />
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteLink(link.id, e)}
+                        className="text-[#7a7a7a]/60 hover:text-red-500 transition-colors p-1"
+                        title="Eliminar link"
+                      >
+                        <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                      </button>
+                    </>
+                  )}
                 </div>
-                <p className="text-[#7a7a7a] text-xs font-sans tracking-wide">
-                  {link.url}
-                </p>
-                {link.description && (
-                  <p className="text-[#4a4a4a]/80 text-sm font-sans mt-3">
-                    {link.description}
+                <a href={link.url} target="_blank" rel="noopener noreferrer" className="block w-full">
+                  <div className="flex items-center gap-2 mb-2 pr-16">
+                    <h3 className="text-lg text-[#4a4a4a] font-sans group-hover:text-black transition-colors font-light">{link.title}</h3>
+                    <ExternalLink size={14} className="text-[#7a7a7a] group-hover:text-[#4a4a4a] transition-colors" />
+                  </div>
+                  <p className="text-[#7a7a7a] text-xs font-sans tracking-wide pr-16 break-all">
+                    {link.url}
                   </p>
-                )}
-              </a>
+                  {link.description && (
+                    <p className="text-[#4a4a4a]/80 text-sm font-sans mt-3 pr-16">
+                      {link.description}
+                    </p>
+                  )}
+                </a>
+              </div>
             ))}
           </div>
         ) : (
@@ -220,13 +279,19 @@ export default function Links({ settings, isAdminUnlocked, setActiveView, onOpen
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6">
           <div 
             className="absolute inset-0 bg-[#2a2a2a]/80 backdrop-blur-sm transition-opacity" 
-            onClick={() => setShowAddForm(false)}
+            onClick={() => {
+              setShowAddForm(false);
+              setEditingLinkId(null);
+            }}
           ></div>
           <div className="relative w-full max-w-md bg-[#f4f4f4] border border-[#4a4a4a]/10 shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between p-8 border-b border-[#4a4a4a]/10">
-              <h2 className="font-serif text-3xl text-[#4a4a4a] font-light">Novo Link</h2>
+              <h2 className="font-serif text-3xl text-[#4a4a4a] font-light">{editingLinkId ? 'Editar Link' : 'Novo Link'}</h2>
               <button 
-                onClick={() => setShowAddForm(false)} 
+                onClick={() => {
+                  setShowAddForm(false);
+                  setEditingLinkId(null);
+                }} 
                 className="text-[#7a7a7a] hover:text-[#1a1a1a] transition-colors"
               >
                 <X size={24} strokeWidth={1.5} />
@@ -281,7 +346,10 @@ export default function Links({ settings, isAdminUnlocked, setActiveView, onOpen
             <div className="p-8 border-t border-[#4a4a4a]/10 grid grid-cols-2 gap-4">
               <button
                 type="button"
-                onClick={() => setShowAddForm(false)}
+                onClick={() => {
+                  setShowAddForm(false);
+                  setEditingLinkId(null);
+                }}
                 className="w-full py-4 text-[10px] uppercase tracking-[0.2em] text-[#4a4a4a] border border-[#4a4a4a]/20 bg-[#fafafa] hover:border-[#4a4a4a]/50 transition-colors font-semibold"
               >
                 CANCELAR
@@ -292,7 +360,7 @@ export default function Links({ settings, isAdminUnlocked, setActiveView, onOpen
                 disabled={isSubmitting}
                 className="w-full bg-[#1a1a1a] text-white py-4 text-[10px] uppercase tracking-[0.2em] hover:bg-[#333] transition-colors disabled:opacity-50 font-semibold"
               >
-                {isSubmitting ? 'A ADICIONAR...' : 'ADICIONAR'}
+                {isSubmitting ? 'A GUARDAR...' : 'GUARDAR'}
               </button>
             </div>
           </div>

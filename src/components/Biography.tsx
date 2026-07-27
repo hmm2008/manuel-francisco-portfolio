@@ -41,29 +41,30 @@ export default function Biography({ settings, setActiveView, onOpenTerms }: Biog
         {/* Title: On mobile appears first, on desktop sits in column 2, row 1 above the bio text */}
         <div className="lg:col-start-2 lg:row-start-1 text-left">
           <h2 
-            className="font-medium text-xl md:text-2xl text-[#4a4a4a] mb-1"
+            className="font-normal"
             style={{
-              fontFamily: getFontFamily(settings?.biographyTitleFont || settings?.biographyFont || settings?.globalFont),
-              fontSize: settings?.biographyTitleFontSize
-                ? (settings.biographyTitleFontSize.includes('px') || settings.biographyTitleFontSize.includes('rem') ? settings.biographyTitleFontSize : `${settings.biographyTitleFontSize}px`)
+              fontFamily: getFontFamily(settings?.pageTitleFont || settings?.globalFont),
+              fontSize: settings?.pageTitleFontSize
+                ? (settings.pageTitleFontSize.includes('px') || settings.pageTitleFontSize.includes('rem') ? settings.pageTitleFontSize : `${settings.pageTitleFontSize}px`)
                 : undefined,
-              color: settings?.biographyTitleColor || '#4a4a4a',
-              letterSpacing: settings?.biographyTitleLetterSpacing || '1px',
-              ...getTextStyleProps(settings?.biographyTitleStyle)
+              color: settings?.pageTitleColor || '#4a4a4a',
+              letterSpacing: settings?.pageTitleLetterSpacing || '1px',
+              marginBottom: settings?.pageTitleSubtitleSpacing !== undefined ? `${settings.pageTitleSubtitleSpacing}px` : '4px',
+              ...getTextStyleProps(settings?.pageTitleStyle)
             }}
           >
             {settings?.biographySectionTitle || 'Biografia'}
           </h2>
           <p 
-            className="uppercase font-light"
+            className="uppercase"
             style={{
-              fontFamily: getFontFamily(settings?.biographySubtitleFont || settings?.biographyFont || settings?.globalFont),
-              fontSize: settings?.biographySubtitleFontSize
-                ? (settings.biographySubtitleFontSize.includes('px') || settings.biographySubtitleFontSize.includes('rem') ? settings.biographySubtitleFontSize : `${settings.biographySubtitleFontSize}px`)
+              fontFamily: getFontFamily(settings?.pageSubtitleFont || settings?.globalFont),
+              fontSize: settings?.pageSubtitleFontSize
+                ? (settings.pageSubtitleFontSize.includes('px') || settings.pageSubtitleFontSize.includes('rem') ? settings.pageSubtitleFontSize : `${settings.pageSubtitleFontSize}px`)
                 : undefined,
-              color: settings?.biographySubtitleColor || '#7a7a7a',
-              letterSpacing: settings?.biographySubtitleLetterSpacing || '2px',
-              ...getTextStyleProps(settings?.biographySubtitleStyle)
+              color: settings?.pageSubtitleColor || '#7a7a7a',
+              letterSpacing: settings?.pageSubtitleLetterSpacing || '2px',
+              ...getTextStyleProps(settings?.pageSubtitleStyle)
             }}
           >
             {settings?.biographySectionSubtitle || 'Sobre o Fotógrafo'}

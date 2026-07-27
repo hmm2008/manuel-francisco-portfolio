@@ -155,30 +155,39 @@ export default function Guestbook({ settings, isAdminUnlocked, setActiveView, on
       {/* Dynamic header stats and action */}
       <div className="flex justify-between items-end w-full border-b border-[#4a4a4a]/10 pb-4 mb-10">
         <div>
-          <p 
-            className="uppercase mb-1"
-            style={{
-              fontFamily: getFontFamily(settings?.guestbookSubtitleFont || settings?.globalFont),
-              fontSize: settings?.guestbookSubtitleFontSize ? (settings.guestbookSubtitleFontSize.includes('px') ? settings.guestbookSubtitleFontSize : `${settings.guestbookSubtitleFontSize}px`) : undefined,
-              color: settings?.guestbookSubtitleColor || '#7a7a7a',
-              letterSpacing: settings?.guestbookSubtitleLetterSpacing || '2px',
-              ...getTextStyleProps(settings?.guestbookSubtitleStyle)
-            }}
-          >
-            {signatures.length} {signatures.length === 1 ? 'REGISTO' : 'REGISTOS'} • {settings?.guestbookSectionSubtitle || 'LIVRO DE VISITANTES'}
-          </p>
           <h2 
-            className="font-medium"
+            className="font-normal"
             style={{
-              fontFamily: getFontFamily(settings?.guestbookTitleFont || settings?.globalFont),
-              fontSize: settings?.guestbookTitleFontSize ? (settings.guestbookTitleFontSize.includes('px') ? settings.guestbookTitleFontSize : `${settings.guestbookTitleFontSize}px`) : undefined,
-              color: settings?.guestbookTitleColor || '#4a4a4a',
-              letterSpacing: settings?.guestbookTitleLetterSpacing || '1px',
-              ...getTextStyleProps(settings?.guestbookTitleStyle)
+              fontFamily: getFontFamily(settings?.pageTitleFont || settings?.globalFont),
+              fontSize: settings?.pageTitleFontSize ? (settings.pageTitleFontSize.includes('px') ? settings.pageTitleFontSize : `${settings.pageTitleFontSize}px`) : undefined,
+              color: settings?.pageTitleColor || '#4a4a4a',
+              letterSpacing: settings?.pageTitleLetterSpacing || '1px',
+              marginBottom: settings?.pageTitleSubtitleSpacing !== undefined ? `${settings.pageTitleSubtitleSpacing}px` : '4px',
+              ...getTextStyleProps(settings?.pageTitleStyle)
             }}
           >
             {settings?.guestbookSectionTitle || 'Livro de Visitas'}
           </h2>
+          <p 
+            className="uppercase"
+            style={{
+              fontFamily: getFontFamily(settings?.pageSubtitleFont || settings?.globalFont),
+              fontSize: settings?.pageSubtitleFontSize ? (settings.pageSubtitleFontSize.includes('px') ? settings.pageSubtitleFontSize : `${settings.pageSubtitleFontSize}px`) : undefined,
+              color: settings?.pageSubtitleColor || '#7a7a7a',
+              letterSpacing: settings?.pageSubtitleLetterSpacing || '2px',
+              ...getTextStyleProps(settings?.pageSubtitleStyle)
+            }}
+          >
+            {(!settings?.guestbookSubtitleMode || settings.guestbookSubtitleMode === 'both') && (
+              <>{settings?.guestbookSectionSubtitle || 'Visitantes'} - {signatures.length} {signatures.length === 1 ? 'registo' : 'registos'}</>
+            )}
+            {settings?.guestbookSubtitleMode === 'subtitle_only' && (
+              <>{settings?.guestbookSectionSubtitle || 'Visitantes'}</>
+            )}
+            {settings?.guestbookSubtitleMode === 'count_only' && (
+              <>{signatures.length} {signatures.length === 1 ? 'registo' : 'registos'}</>
+            )}
+          </p>
         </div>
         <button
           onClick={() => setIsOpen(true)}

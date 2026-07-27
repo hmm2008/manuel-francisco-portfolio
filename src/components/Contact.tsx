@@ -83,30 +83,31 @@ export default function Contact({ settings, setActiveView, onOpenTerms }: Contac
       {/* Form Container */}
       <div className="w-full max-w-[600px] mx-auto flex-1 pb-8 pt-4">
         <div className="mb-10 text-left">
-          <p 
-            className="mb-3 uppercase"
-            style={{
-              fontFamily: getFontFamily(settings?.contactSubtitleFont || settings?.globalFont),
-              fontSize: settings?.contactSubtitleFontSize ? (settings.contactSubtitleFontSize.includes('px') ? settings.contactSubtitleFontSize : `${settings.contactSubtitleFontSize}px`) : undefined,
-              color: settings?.contactSubtitleColor || '#7a7a7a',
-              letterSpacing: settings?.contactSubtitleLetterSpacing || '2px',
-              ...getTextStyleProps(settings?.contactSubtitleStyle)
-            }}
-          >
-            {settings?.contactSectionSubtitle || 'ENTRE EM CONTACTO'}
-          </p>
           <h2 
-            className="font-light"
+            className="font-normal"
             style={{
-              fontFamily: getFontFamily(settings?.contactTitleFont || settings?.globalFont),
-              fontSize: settings?.contactTitleFontSize ? (settings.contactTitleFontSize.includes('px') ? settings.contactTitleFontSize : `${settings.contactTitleFontSize}px`) : undefined,
-              color: settings?.contactTitleColor || '#4a4a4a',
-              letterSpacing: settings?.contactTitleLetterSpacing || '0px',
-              ...getTextStyleProps(settings?.contactTitleStyle)
+              fontFamily: getFontFamily(settings?.pageTitleFont || settings?.globalFont),
+              fontSize: settings?.pageTitleFontSize ? (settings.pageTitleFontSize.includes('px') ? settings.pageTitleFontSize : `${settings.pageTitleFontSize}px`) : undefined,
+              color: settings?.pageTitleColor || '#4a4a4a',
+              letterSpacing: settings?.pageTitleLetterSpacing || '0px',
+              marginBottom: settings?.pageTitleSubtitleSpacing !== undefined ? `${settings.pageTitleSubtitleSpacing}px` : '12px',
+              ...getTextStyleProps(settings?.pageTitleStyle)
             }}
           >
             {settings?.contactSectionTitle || 'Contacto'}
           </h2>
+          <p 
+            className="uppercase"
+            style={{
+              fontFamily: getFontFamily(settings?.pageSubtitleFont || settings?.globalFont),
+              fontSize: settings?.pageSubtitleFontSize ? (settings.pageSubtitleFontSize.includes('px') ? settings.pageSubtitleFontSize : `${settings.pageSubtitleFontSize}px`) : undefined,
+              color: settings?.pageSubtitleColor || '#7a7a7a',
+              letterSpacing: settings?.pageSubtitleLetterSpacing || '2px',
+              ...getTextStyleProps(settings?.pageSubtitleStyle)
+            }}
+          >
+            {settings?.contactSectionSubtitle || 'ENTRE EM CONTACTO'}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6 text-left">

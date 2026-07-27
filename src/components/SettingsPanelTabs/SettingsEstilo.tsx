@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Type, LayoutDashboard, User, Mail, BookOpen, Link, Sliders, Heading } from 'lucide-react';
+import { Type, LayoutDashboard, User, Mail, BookOpen, Link, Sliders, Heading, Image } from 'lucide-react';
 import { SiteSettings } from '../../types';
 import { FONT_OPTIONS } from '../../utils/fontUtils';
 import { SettingRow, RangeSlider, SettingSelect, SettingTextStyle, SettingLetterSpacing } from './SharedComponents';
@@ -12,7 +12,7 @@ interface SettingsEstiloProps {
 }
 
 export default function SettingsEstilo({ settings, handleChange, handleRangeChange }: SettingsEstiloProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'geral' | 'biografia' | 'contactos' | 'livro' | 'links' | 'cabecalho' | 'espacamento'>('biografia');
+  const [activeSubTab, setActiveSubTab] = useState<'geral' | 'titulos' | 'biografia' | 'galeria' | 'contactos' | 'livro' | 'links' | 'cabecalho' | 'espacamento'>('geral');
   const fontOptions = FONT_OPTIONS.map(f => ({ label: f, value: f }));
 
   return (
@@ -33,6 +33,17 @@ export default function SettingsEstilo({ settings, handleChange, handleRangeChan
             }`}
           >
             <User size={14} /> Biografia
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('galeria')}
+            className={`px-3 py-2 text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              activeSubTab === 'galeria'
+                ? 'bg-[#1a1a1a] text-white shadow-sm'
+                : 'bg-[#f8f7f5] text-[#4a4a4a] hover:bg-[#e8e4dc]'
+            }`}
+          >
+            <Image size={14} /> Galeria
           </button>
           <button
             type="button"
@@ -91,6 +102,17 @@ export default function SettingsEstilo({ settings, handleChange, handleRangeChan
           </button>
           <button
             type="button"
+            onClick={() => setActiveSubTab('titulos')}
+            className={`px-3 py-2 text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              activeSubTab === 'titulos'
+                ? 'bg-[#1a1a1a] text-white shadow-sm'
+                : 'bg-[#f8f7f5] text-[#4a4a4a] hover:bg-[#e8e4dc]'
+            }`}
+          >
+            <Heading size={14} /> Títulos Globais
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveSubTab('espacamento')}
             className={`px-3 py-2 text-xs font-medium transition-colors flex items-center gap-1.5 ${
               activeSubTab === 'espacamento'
@@ -118,89 +140,28 @@ export default function SettingsEstilo({ settings, handleChange, handleRangeChan
             {/* Título da Página Biografia */}
             <div className="bg-[#fcfbf9] border border-[#f0ece5] p-5 space-y-4">
               <span className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">1. Título Principal da Página (ex: Biografia)</span>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <SettingSelect
-                  label="FONTE DO TÍTULO"
-                  name="biographyTitleFont"
-                  value={settings.biographyTitleFont || settings.biographyFont || settings.globalFont}
-                  options={fontOptions}
-                  onChange={handleChange}
-                />
-                <SettingRow
-                  label="TAMANHO DO TÍTULO"
-                  name="biographyTitleFontSize"
-                  value={settings.biographyTitleFontSize || '24px'}
-                  onChange={handleChange}
-                  placeholder="ex: 24px"
-                />
-                <SettingRow
-                  label="COR DO TÍTULO"
-                  name="biographyTitleColor"
-                  type="color"
-                  value={settings.biographyTitleColor || '#4a4a4a'}
-                  onChange={handleChange}
-                />
-                <SettingTextStyle
-                  label="ESTILO DO TÍTULO"
-                  name="biographyTitleStyle"
-                  value={settings.biographyTitleStyle || ''}
-                  onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
-                />
-                <div className="md:col-span-2">
-                  <SettingLetterSpacing
-                    label="ESPAÇAMENTO ENTRE LETRAS DO TÍTULO"
-                    name="biographyTitleLetterSpacing"
-                    value={settings.biographyTitleLetterSpacing || '1px'}
-                    onChange={handleChange}
-                  />
-                </div>
+              <SettingRow
+                label="TEXTO DO TÍTULO"
+                name="biographySectionTitle"
+                value={settings.biographySectionTitle || 'Biografia'}
+                onChange={handleChange}
+                placeholder="ex: Biografia"
+              />
               </div>
-            </div>
-
             {/* Subtítulo da Página Biografia */}
             <div className="bg-[#fcfbf9] border border-[#f0ece5] p-5 space-y-4">
               <span className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">2. Subtítulo da Página (ex: Sobre o Fotógrafo)</span>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <SettingSelect
-                  label="FONTE DO SUBTÍTULO"
-                  name="biographySubtitleFont"
-                  value={settings.biographySubtitleFont || settings.biographyFont || settings.globalFont}
-                  options={fontOptions}
-                  onChange={handleChange}
-                />
-                <SettingRow
-                  label="TAMANHO DO SUBTÍTULO"
-                  name="biographySubtitleFontSize"
-                  value={settings.biographySubtitleFontSize || '12px'}
-                  onChange={handleChange}
-                  placeholder="ex: 12px"
-                />
-                <SettingRow
-                  label="COR DO SUBTÍTULO"
-                  name="biographySubtitleColor"
-                  type="color"
-                  value={settings.biographySubtitleColor || '#7a7a7a'}
-                  onChange={handleChange}
-                />
-                <SettingTextStyle
-                  label="ESTILO DO SUBTÍTULO"
-                  name="biographySubtitleStyle"
-                  value={settings.biographySubtitleStyle || ''}
-                  onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
-                />
-                <div className="md:col-span-2">
-                  <SettingLetterSpacing
-                    label="ESPAÇAMENTO ENTRE LETRAS DO SUBTÍTULO"
-                    name="biographySubtitleLetterSpacing"
-                    value={settings.biographySubtitleLetterSpacing || '2px'}
-                    onChange={handleChange}
-                  />
-                </div>
+              <SettingRow
+                label="TEXTO DO SUBTÍTULO"
+                name="biographySectionSubtitle"
+                value={settings.biographySectionSubtitle || 'Sobre o Fotógrafo'}
+                onChange={handleChange}
+                placeholder="ex: Sobre o Fotógrafo"
+              />
               </div>
-            </div>
-          </div>
+        </div>
 
-          {/* Texto Biográfico, Trabalhos Publicados & Exposições */}
+        {/* Texto Biográfico, Trabalhos Publicados & Exposições */}
           <div className="bg-white border border-[#e8e4dc] p-6 md:p-8 space-y-6 shadow-sm">
             <div className="border-b border-[#f0ece5] pb-4">
               <h2 className="font-serif text-xl text-[#1a1a1a]">Tipografia do Conteúdo Biográfico</h2>
@@ -210,6 +171,14 @@ export default function SettingsEstilo({ settings, handleChange, handleRangeChan
             {/* Texto Biográfico */}
             <div className="bg-[#fcfbf9] border border-[#f0ece5] p-5 space-y-4">
               <span className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">3. Texto Biográfico Principal</span>
+              <SettingRow
+                label="TEXTO BIOGRÁFICO"
+                name="biography"
+                type="textarea"
+                value={settings.biography || ''}
+                onChange={handleChange}
+                rows={6}
+              />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <SettingSelect
                   label="FONTE DO TEXTO BIOGRÁFICO"
@@ -252,6 +221,21 @@ export default function SettingsEstilo({ settings, handleChange, handleRangeChan
             {/* Trabalhos Publicados */}
             <div className="bg-[#fcfbf9] border border-[#f0ece5] p-5 space-y-4">
               <span className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">4. Secção Trabalhos Publicados</span>
+              <SettingRow
+                label="TÍTULO DA SECÇÃO"
+                name="publishedWorksSectionTitle"
+                value={settings.publishedWorksSectionTitle || 'Trabalhos Publicados'}
+                onChange={handleChange}
+                placeholder="ex: Trabalhos Publicados"
+              />
+              <SettingRow
+                label="CONTEÚDO DA SECÇÃO"
+                name="publishedWorks"
+                type="textarea"
+                value={settings.publishedWorks ?? ''}
+                onChange={handleChange}
+                rows={5}
+              />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <SettingSelect
                   label="FONTE (TRABALHOS PUBLICADOS)"
@@ -294,6 +278,21 @@ export default function SettingsEstilo({ settings, handleChange, handleRangeChan
             {/* Exposições */}
             <div className="bg-[#fcfbf9] border border-[#f0ece5] p-5 space-y-4">
               <span className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">5. Secção Exposições</span>
+              <SettingRow
+                label="TÍTULO DA SECÇÃO"
+                name="exhibitionsSectionTitle"
+                value={settings.exhibitionsSectionTitle || 'Exposições'}
+                onChange={handleChange}
+                placeholder="ex: Exposições"
+              />
+              <SettingRow
+                label="CONTEÚDO DA SECÇÃO"
+                name="exhibitions"
+                type="textarea"
+                value={settings.exhibitions ?? ''}
+                onChange={handleChange}
+                rows={7}
+              />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <SettingSelect
                   label="FONTE (EXPOSIÇÕES)"
@@ -336,6 +335,42 @@ export default function SettingsEstilo({ settings, handleChange, handleRangeChan
         </div>
       )}
 
+      {/* PÁGINA: GALERIA */}
+      {activeSubTab === 'galeria' && (
+        <div className="bg-white border border-[#e8e4dc] p-6 md:p-8 space-y-6 shadow-sm">
+          <div className="border-b border-[#f0ece5] pb-4">
+            <h2 className="font-serif text-xl text-[#1a1a1a] flex items-center gap-2">
+              <Image size={20} className="text-[#8e8a82]" /> Estilos da Página Galeria
+            </h2>
+            <p className="text-xs text-[#8e8a82] font-sans mt-1">Configure o título ("Galeria") e o subtítulo ("X FOTOGRAFIAS").</p>
+          </div>
+
+          {/* Título Principal */}
+          <div className="bg-[#fcfbf9] border border-[#f0ece5] p-5 space-y-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">1. Título Principal (ex: Galeria)</span>
+            <SettingRow
+              label="TEXTO DO TÍTULO"
+              name="gallerySectionTitle"
+              value={settings.gallerySectionTitle || 'Galeria'}
+              onChange={handleChange}
+              placeholder="ex: Galeria"
+            />
+          </div>
+
+          {/* Subtítulo */}
+          <div className="bg-[#fcfbf9] border border-[#f0ece5] p-5 space-y-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">2. Subtítulo / Contador (ex: X FOTOGRAFIAS)</span>
+            <SettingRow
+              label="TEXTO DO SUBTÍTULO (DEIXE EM BRANCO PARA MOSTRAR A CONTAGEM PADRÃO)"
+              name="gallerySectionSubtitle"
+              value={settings.gallerySectionSubtitle || ''}
+              onChange={handleChange}
+              placeholder="ex: Ver portfólio completo (ou deixe vazio para contagem)"
+            />
+          </div>
+        </div>
+      )}
+
       {/* PÁGINA: CONTACTOS */}
       {activeSubTab === 'contactos' && (
         <div className="bg-white border border-[#e8e4dc] p-6 md:p-8 space-y-6 shadow-sm">
@@ -349,86 +384,25 @@ export default function SettingsEstilo({ settings, handleChange, handleRangeChan
           {/* Título Principal de Contacto */}
           <div className="bg-[#fcfbf9] border border-[#f0ece5] p-5 space-y-4">
             <span className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">1. Título Principal (ex: Contacto)</span>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <SettingSelect
-                label="FONTE DO TÍTULO"
-                name="contactTitleFont"
-                value={settings.contactTitleFont || settings.globalFont}
-                options={fontOptions}
-                onChange={handleChange}
-              />
-              <SettingRow
-                label="TAMANHO DO TÍTULO"
-                name="contactTitleFontSize"
-                value={settings.contactTitleFontSize || '36px'}
-                onChange={handleChange}
-                placeholder="ex: 36px"
-              />
-              <SettingRow
-                label="COR DO TÍTULO"
-                name="contactTitleColor"
-                type="color"
-                value={settings.contactTitleColor || '#4a4a4a'}
-                onChange={handleChange}
-              />
-              <SettingTextStyle
-                label="ESTILO DO TÍTULO"
-                name="contactTitleStyle"
-                value={settings.contactTitleStyle || ''}
-                onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
-              />
-              <div className="md:col-span-2">
-                <SettingLetterSpacing
-                  label="ESPAÇAMENTO ENTRE LETRAS DO TÍTULO"
-                  name="contactTitleLetterSpacing"
-                  value={settings.contactTitleLetterSpacing || '0px'}
-                  onChange={handleChange}
-                />
-              </div>
+            <SettingRow
+              label="TEXTO DO TÍTULO"
+              name="contactSectionTitle"
+              value={settings.contactSectionTitle || 'Contacto'}
+              onChange={handleChange}
+              placeholder="ex: Contacto"
+            />
             </div>
-          </div>
-
           {/* Subtítulo de Contacto */}
           <div className="bg-[#fcfbf9] border border-[#f0ece5] p-5 space-y-4">
             <span className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">2. Subtítulo (ex: ENTRE EM CONTACTO)</span>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <SettingSelect
-                label="FONTE DO SUBTÍTULO"
-                name="contactSubtitleFont"
-                value={settings.contactSubtitleFont || settings.globalFont}
-                options={fontOptions}
-                onChange={handleChange}
-              />
-              <SettingRow
-                label="TAMANHO DO SUBTÍTULO"
-                name="contactSubtitleFontSize"
-                value={settings.contactSubtitleFontSize || '10px'}
-                onChange={handleChange}
-                placeholder="ex: 10px"
-              />
-              <SettingRow
-                label="COR DO SUBTÍTULO"
-                name="contactSubtitleColor"
-                type="color"
-                value={settings.contactSubtitleColor || '#7a7a7a'}
-                onChange={handleChange}
-              />
-              <SettingTextStyle
-                label="ESTILO DO SUBTÍTULO"
-                name="contactSubtitleStyle"
-                value={settings.contactSubtitleStyle || ''}
-                onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
-              />
-              <div className="md:col-span-2">
-                <SettingLetterSpacing
-                  label="ESPAÇAMENTO ENTRE LETRAS DO SUBTÍTULO"
-                  name="contactSubtitleLetterSpacing"
-                  value={settings.contactSubtitleLetterSpacing || '2px'}
-                  onChange={handleChange}
-                />
-              </div>
+            <SettingRow
+              label="TEXTO DO SUBTÍTULO"
+              name="contactSectionSubtitle"
+              value={settings.contactSectionSubtitle || 'ENTRE EM CONTACTO'}
+              onChange={handleChange}
+              placeholder="ex: ENTRE EM CONTACTO"
+            />
             </div>
-          </div>
 
           {/* Etiquetas do Formulário */}
           <div className="bg-[#fcfbf9] border border-[#f0ece5] p-5 space-y-4">
@@ -475,93 +449,73 @@ export default function SettingsEstilo({ settings, handleChange, handleRangeChan
             </h2>
             <p className="text-xs text-[#8e8a82] font-sans mt-1">Configure o título ("Livro de Visitas") e o subtítulo/contador ("REGISTOS DE VISITANTES").</p>
           </div>
-
           {/* Título Principal */}
           <div className="bg-[#fcfbf9] border border-[#f0ece5] p-5 space-y-4">
             <span className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">1. Título Principal (ex: Livro de Visitas)</span>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <SettingSelect
-                label="FONTE DO TÍTULO"
-                name="guestbookTitleFont"
-                value={settings.guestbookTitleFont || settings.globalFont}
-                options={fontOptions}
-                onChange={handleChange}
-              />
-              <SettingRow
-                label="TAMANHO DO TÍTULO"
-                name="guestbookTitleFontSize"
-                value={settings.guestbookTitleFontSize || '24px'}
-                onChange={handleChange}
-                placeholder="ex: 24px"
-              />
-              <SettingRow
-                label="COR DO TÍTULO"
-                name="guestbookTitleColor"
-                type="color"
-                value={settings.guestbookTitleColor || '#4a4a4a'}
-                onChange={handleChange}
-              />
-              <SettingTextStyle
-                label="ESTILO DO TÍTULO"
-                name="guestbookTitleStyle"
-                value={settings.guestbookTitleStyle || ''}
-                onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
-              />
-              <div className="md:col-span-2">
-                <SettingLetterSpacing
-                  label="ESPAÇAMENTO ENTRE LETRAS DO TÍTULO"
-                  name="guestbookTitleLetterSpacing"
-                  value={settings.guestbookTitleLetterSpacing || '1px'}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
+            <SettingRow
+              label="TEXTO DO TÍTULO"
+              name="guestbookSectionTitle"
+              value={settings.guestbookSectionTitle || 'Livro de Visitas'}
+              onChange={handleChange}
+              placeholder="ex: Livro de Visitas"
+            />
           </div>
-
           {/* Subtítulo */}
           <div className="bg-[#fcfbf9] border border-[#f0ece5] p-5 space-y-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">2. Subtítulo / Estatística (ex: REGISTOS DE VISITANTES)</span>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <SettingSelect
-                label="FONTE DO SUBTÍTULO"
-                name="guestbookSubtitleFont"
-                value={settings.guestbookSubtitleFont || settings.globalFont}
-                options={fontOptions}
-                onChange={handleChange}
-              />
-              <SettingRow
-                label="TAMANHO DO SUBTÍTULO"
-                name="guestbookSubtitleFontSize"
-                value={settings.guestbookSubtitleFontSize || '10px'}
-                onChange={handleChange}
-                placeholder="ex: 10px"
-              />
-              <SettingRow
-                label="COR DO SUBTÍTULO"
-                name="guestbookSubtitleColor"
-                type="color"
-                value={settings.guestbookSubtitleColor || '#7a7a7a'}
-                onChange={handleChange}
-              />
-              <SettingTextStyle
-                label="ESTILO DO SUBTÍTULO"
-                name="guestbookSubtitleStyle"
-                value={settings.guestbookSubtitleStyle || ''}
-                onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
-              />
-              <div className="md:col-span-2">
-                <SettingLetterSpacing
-                  label="ESPAÇAMENTO ENTRE LETRAS DO SUBTÍTULO"
-                  name="guestbookSubtitleLetterSpacing"
-                  value={settings.guestbookSubtitleLetterSpacing || '2px'}
-                  onChange={handleChange}
-                />
+            <span className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">2. Subtítulo / Estatística</span>
+            
+            <div className="space-y-3 pb-3">
+              <label className="text-[10px] uppercase font-bold text-[#4a4a4a] block mb-2 tracking-wider">MODO DE EXIBIÇÃO</label>
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 text-xs text-[#4a4a4a] cursor-pointer">
+                  <input
+                    type="radio"
+                    name="guestbookSubtitleMode"
+                    value="both"
+                    checked={!settings.guestbookSubtitleMode || settings.guestbookSubtitleMode === 'both'}
+                    onChange={handleChange as any}
+                    className="accent-[#1a1a1a]"
+                  />
+                  Mostrar Subtítulo + Contador de Mensagens (ex: VISITANTES - 4 registos)
+                </label>
+                <label className="flex items-center gap-2 text-xs text-[#4a4a4a] cursor-pointer">
+                  <input
+                    type="radio"
+                    name="guestbookSubtitleMode"
+                    value="subtitle_only"
+                    checked={settings.guestbookSubtitleMode === 'subtitle_only'}
+                    onChange={handleChange as any}
+                    className="accent-[#1a1a1a]"
+                  />
+                  Mostrar Apenas Subtítulo (ex: VISITANTES)
+                </label>
+                <label className="flex items-center gap-2 text-xs text-[#4a4a4a] cursor-pointer">
+                  <input
+                    type="radio"
+                    name="guestbookSubtitleMode"
+                    value="count_only"
+                    checked={settings.guestbookSubtitleMode === 'count_only'}
+                    onChange={handleChange as any}
+                    className="accent-[#1a1a1a]"
+                  />
+                  Mostrar Apenas Contador de Mensagens (ex: 4 registos)
+                </label>
               </div>
             </div>
+
+            {(!settings.guestbookSubtitleMode || settings.guestbookSubtitleMode !== 'count_only') && (
+              <SettingRow
+                label="TEXTO DO SUBTÍTULO"
+                name="guestbookSectionSubtitle"
+                value={settings.guestbookSectionSubtitle || 'REGISTOS DE VISITANTES'}
+                onChange={handleChange}
+                placeholder="ex: REGISTOS DE VISITANTES"
+              />
+            )}
           </div>
         </div>
       )}
-
+      
       {/* PÁGINA: LINKS / RECURSOS */}
       {activeSubTab === 'links' && (
         <div className="bg-white border border-[#e8e4dc] p-6 md:p-8 space-y-6 shadow-sm">
@@ -571,93 +525,31 @@ export default function SettingsEstilo({ settings, handleChange, handleRangeChan
             </h2>
             <p className="text-xs text-[#8e8a82] font-sans mt-1">Configure o título ("Links") e o subtítulo ("RECURSOS").</p>
           </div>
-
           {/* Título Principal */}
           <div className="bg-[#fcfbf9] border border-[#f0ece5] p-5 space-y-4">
             <span className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">1. Título Principal (ex: Links)</span>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <SettingSelect
-                label="FONTE DO TÍTULO"
-                name="linksTitleFont"
-                value={settings.linksTitleFont || settings.globalFont}
-                options={fontOptions}
-                onChange={handleChange}
-              />
-              <SettingRow
-                label="TAMANHO DO TÍTULO"
-                name="linksTitleFontSize"
-                value={settings.linksTitleFontSize || '36px'}
-                onChange={handleChange}
-                placeholder="ex: 36px"
-              />
-              <SettingRow
-                label="COR DO TÍTULO"
-                name="linksTitleColor"
-                type="color"
-                value={settings.linksTitleColor || '#4a4a4a'}
-                onChange={handleChange}
-              />
-              <SettingTextStyle
-                label="ESTILO DO TÍTULO"
-                name="linksTitleStyle"
-                value={settings.linksTitleStyle || ''}
-                onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
-              />
-              <div className="md:col-span-2">
-                <SettingLetterSpacing
-                  label="ESPAÇAMENTO ENTRE LETRAS DO TÍTULO"
-                  name="linksTitleLetterSpacing"
-                  value={settings.linksTitleLetterSpacing || '0px'}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
+            <SettingRow
+              label="TEXTO DO TÍTULO"
+              name="linksSectionTitle"
+              value={settings.linksSectionTitle || 'Links'}
+              onChange={handleChange}
+              placeholder="ex: Links"
+            />
           </div>
-
           {/* Subtítulo */}
           <div className="bg-[#fcfbf9] border border-[#f0ece5] p-5 space-y-4">
             <span className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">2. Subtítulo (ex: RECURSOS)</span>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <SettingSelect
-                label="FONTE DO SUBTÍTULO"
-                name="linksSubtitleFont"
-                value={settings.linksSubtitleFont || settings.globalFont}
-                options={fontOptions}
-                onChange={handleChange}
-              />
-              <SettingRow
-                label="TAMANHO DO SUBTÍTULO"
-                name="linksSubtitleFontSize"
-                value={settings.linksSubtitleFontSize || '10px'}
-                onChange={handleChange}
-                placeholder="ex: 10px"
-              />
-              <SettingRow
-                label="COR DO SUBTÍTULO"
-                name="linksSubtitleColor"
-                type="color"
-                value={settings.linksSubtitleColor || '#7a7a7a'}
-                onChange={handleChange}
-              />
-              <SettingTextStyle
-                label="ESTILO DO SUBTÍTULO"
-                name="linksSubtitleStyle"
-                value={settings.linksSubtitleStyle || ''}
-                onChange={(name, val) => handleChange({ target: { name, value: val } } as any)}
-              />
-              <div className="md:col-span-2">
-                <SettingLetterSpacing
-                  label="ESPAÇAMENTO ENTRE LETRAS DO SUBTÍTULO"
-                  name="linksSubtitleLetterSpacing"
-                  value={settings.linksSubtitleLetterSpacing || '2px'}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
+            <SettingRow
+              label="TEXTO DO SUBTÍTULO"
+              name="linksSectionSubtitle"
+              value={settings.linksSectionSubtitle || 'RECURSOS'}
+              onChange={handleChange}
+              placeholder="ex: RECURSOS"
+            />
           </div>
         </div>
       )}
-
+      
       {/* CABEÇALHOS & NOME DO SITE */}
       {activeSubTab === 'cabecalho' && (
         <div className="bg-white border border-[#e8e4dc] p-6 md:p-8 space-y-6 shadow-sm">
@@ -860,6 +752,110 @@ export default function SettingsEstilo({ settings, handleChange, handleRangeChan
           </div>
         </div>
       )}
+
+      {/* PÁGINA: TÍTULOS GLOBAIS */}
+      {activeSubTab === 'titulos' && (
+        <div className="bg-white border border-[#e8e4dc] p-6 md:p-8 space-y-6 shadow-sm">
+          <div className="border-b border-[#f0ece5] pb-4">
+            <h2 className="font-serif text-xl text-[#1a1a1a] flex items-center gap-2">
+              <Heading size={20} className="text-[#8e8a82]" /> Títulos Globais das Páginas
+            </h2>
+            <p className="text-xs text-[#8e8a82] font-sans mt-1">Defina a fonte, tamanho, cor e espaçamento para todos os títulos e subtítulos das várias páginas (Galeria, Biografia, Livro de Visitas, Contactos, Links).</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Título Principal */}
+            <div className="space-y-6 bg-[#fcfbf9] border border-[#f0ece5] p-5">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a] block mb-2">Título Principal</span>
+              <RangeSlider
+                label="DISTÂNCIA ENTRE TÍTULO E SUBTÍTULO"
+                name="pageTitleSubtitleSpacing"
+                value={settings.pageTitleSubtitleSpacing !== undefined ? Number(settings.pageTitleSubtitleSpacing) : 12}
+                min={0}
+                max={100}
+                step={1}
+                unit="px"
+                onChange={handleRangeChange}
+              />
+              <SettingSelect
+                label="FONTE DO TÍTULO"
+                name="pageTitleFont"
+                value={settings.pageTitleFont || settings.globalFont}
+                options={fontOptions}
+                onChange={handleChange}
+              />
+              <SettingSelect
+                label="ESTILO (PESO)"
+                name="pageTitleStyle"
+                value={settings.pageTitleStyle}
+                options={[{label: "Normal", value: "normal"}, {label: "Negrito", value: "bold"}, {label: "Leve", value: "light"}]}
+                onChange={handleChange}
+              />
+              <SettingRow
+                label="TAMANHO DA FONTE"
+                name="pageTitleFontSize"
+                value={settings.pageTitleFontSize}
+                onChange={handleChange}
+                placeholder="ex: 24px, 2rem"
+              />
+              <SettingRow
+                label="COR DO TEXTO"
+                name="pageTitleColor"
+                type="color"
+                value={settings.pageTitleColor || '#1a1a1a'}
+                onChange={handleChange}
+              />
+              <SettingLetterSpacing
+                label="ESPAÇAMENTO ENTRE LETRAS"
+                name="pageTitleLetterSpacing"
+                value={settings.pageTitleLetterSpacing || '0px'}
+                onChange={handleChange}
+              />
+            </div>
+
+            
+          {/* Subtítulo */}
+            <div className="space-y-6 bg-[#fcfbf9] border border-[#f0ece5] p-5">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a] block mb-2">Subtítulo</span>
+              <SettingSelect
+                label="FONTE DO SUBTÍTULO"
+                name="pageSubtitleFont"
+                value={settings.pageSubtitleFont || settings.globalFont}
+                options={fontOptions}
+                onChange={handleChange}
+              />
+              <SettingSelect
+                label="ESTILO (PESO E CAIXA)"
+                name="pageSubtitleStyle"
+                value={settings.pageSubtitleStyle}
+                options={[{label: "Normal", value: "normal"}, {label: "Maiúsculas (Uppercase)", value: "uppercase"}, {label: "Negrito", value: "bold"}]}
+                onChange={handleChange}
+              />
+              <SettingRow
+                label="TAMANHO DA FONTE"
+                name="pageSubtitleFontSize"
+                value={settings.pageSubtitleFontSize}
+                onChange={handleChange}
+                placeholder="ex: 12px, 0.8rem"
+              />
+              <SettingRow
+                label="COR DO TEXTO"
+                name="pageSubtitleColor"
+                type="color"
+                value={settings.pageSubtitleColor || '#7a7a7a'}
+                onChange={handleChange}
+              />
+              <SettingLetterSpacing
+                label="ESPAÇAMENTO ENTRE LETRAS"
+                name="pageSubtitleLetterSpacing"
+                value={settings.pageSubtitleLetterSpacing || '2px'}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
     </motion.div>
   );
 }
