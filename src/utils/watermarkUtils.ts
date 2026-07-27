@@ -5,13 +5,13 @@ export function getPositionClasses(position: string = 'bottom-left', isLightbox:
   
   if (placement === 'outside') {
     if (pos.includes('right') || pos.includes('dto') || pos.includes('direito') || pos.includes('dir')) {
-      if (pos.includes('top') || pos.includes('superior')) {
+      if (pos.includes('top') || pos.includes('superior') || pos.includes('cima')) {
         return "bottom-full right-0";
       }
       return "top-full right-0";
     }
-    if (pos.includes('center') || pos.includes('centro') || pos.includes('centrado')) {
-      if (pos.includes('top') || pos.includes('superior')) {
+    if (pos.includes('center') || pos.includes('centro') || pos.includes('centrado') || pos.includes('meio')) {
+      if (pos.includes('top') || pos.includes('superior') || pos.includes('cima')) {
         return "bottom-full left-1/2 -translate-x-1/2";
       }
       if (pos === 'center' || pos === 'ao centro') {
@@ -19,7 +19,7 @@ export function getPositionClasses(position: string = 'bottom-left', isLightbox:
       }
       return "top-full left-1/2 -translate-x-1/2";
     }
-    if (pos.includes('top') || pos.includes('superior')) {
+    if (pos.includes('top') || pos.includes('superior') || pos.includes('cima')) {
       return "bottom-full left-0";
     }
     return "top-full left-0";
@@ -27,13 +27,13 @@ export function getPositionClasses(position: string = 'bottom-left', isLightbox:
 
   // Inside placement
   if (pos.includes('right') || pos.includes('dto') || pos.includes('direito') || pos.includes('dir')) {
-    if (pos.includes('top') || pos.includes('superior')) {
+    if (pos.includes('top') || pos.includes('superior') || pos.includes('cima')) {
       return "top-0 right-0";
     }
     return "bottom-0 right-0";
   }
-  if (pos.includes('center') || pos.includes('centro') || pos.includes('centrado')) {
-    if (pos.includes('top') || pos.includes('superior')) {
+  if (pos.includes('center') || pos.includes('centro') || pos.includes('centrado') || pos.includes('meio')) {
+    if (pos.includes('top') || pos.includes('superior') || pos.includes('cima')) {
       return "top-0 left-1/2 -translate-x-1/2";
     }
     if (pos === 'center' || pos === 'ao centro') {
@@ -41,7 +41,7 @@ export function getPositionClasses(position: string = 'bottom-left', isLightbox:
     }
     return "bottom-0 left-1/2 -translate-x-1/2";
   }
-  if (pos.includes('top') || pos.includes('superior')) {
+  if (pos.includes('top') || pos.includes('superior') || pos.includes('cima')) {
     return "top-0 left-0";
   }
   return "bottom-0 left-0";
@@ -54,20 +54,20 @@ export function getWatermarkClasses(position: string = 'bottom-left', isLightbox
   
   let positionClasses = "";
   if (pos.includes('right') || pos.includes('dto') || pos.includes('direito') || pos.includes('dir')) {
-    if (pos.includes('top') || pos.includes('superior')) {
+    if (pos.includes('top') || pos.includes('superior') || pos.includes('cima')) {
       positionClasses = isLightbox ? "top-4 right-4" : "top-4 right-4 md:top-6 md:right-6";
     } else {
       positionClasses = isLightbox ? "bottom-4 right-4" : "bottom-4 right-4 md:bottom-6 md:right-6";
     }
-  } else if (pos.includes('center') || pos.includes('centro') || pos.includes('centrado')) {
-    if (pos.includes('top') || pos.includes('superior')) {
+  } else if (pos.includes('center') || pos.includes('centro') || pos.includes('centrado') || pos.includes('meio')) {
+    if (pos.includes('top') || pos.includes('superior') || pos.includes('cima')) {
       positionClasses = isLightbox ? "top-4 left-1/2 -translate-x-1/2" : "top-4 left-1/2 -translate-x-1/2 md:top-6";
     } else if (pos === 'center' || pos === 'ao centro') {
       positionClasses = "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2";
     } else {
       positionClasses = isLightbox ? "bottom-4 left-1/2 -translate-x-1/2" : "bottom-4 left-1/2 -translate-x-1/2 md:bottom-6";
     }
-  } else if (pos.includes('top') || pos.includes('superior')) {
+  } else if (pos.includes('top') || pos.includes('superior') || pos.includes('cima')) {
     positionClasses = isLightbox ? "top-4 left-4" : "top-4 left-4 md:top-6 md:left-6";
   } else {
     positionClasses = isLightbox ? "bottom-4 left-4" : "bottom-4 left-4 md:bottom-6 md:left-6";
@@ -83,7 +83,7 @@ export function getCaptionOffsetStyle(position: string = 'bottom-left', placemen
   }
   
   // Outside placement
-  if (pos.includes('top') || pos.includes('superior')) {
+  if (pos.includes('top') || pos.includes('superior') || pos.includes('cima')) {
     return { marginBottom: `${padding}px` };
   }
   if (pos === 'center' || pos === 'ao centro') {

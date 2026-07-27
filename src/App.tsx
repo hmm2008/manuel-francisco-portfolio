@@ -1956,8 +1956,8 @@ export default function App() {
                       (siteSettings?.lightboxCategoryPosition || 'canto inferior esq') !== 'Não mostrar' && (
                       <div 
                         className={`absolute pointer-events-none select-none flex flex-col ${getPositionClasses(siteSettings?.lightboxCategoryPosition || 'canto inferior esq', true, (siteSettings?.lightboxCategoryPlacement || 'inside') as 'inside' | 'outside')} ${
-                          (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('right') ? 'items-end text-right' :
-                          (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('center') || (siteSettings?.lightboxCategoryPosition || 'canto inferior esq') === 'centrado em baixo' ? 'items-center text-center' :
+                          (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('right') || (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('dir') || (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('direito') ? 'items-end text-right' :
+                          (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('center') || (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('centro') || (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('centrado') || (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('meio') ? 'items-center text-center' :
                           'items-start text-left'
                         }`}
                         style={getCaptionOffsetStyle(siteSettings?.lightboxCategoryPosition || 'canto inferior esq', (siteSettings?.lightboxCategoryPlacement || 'inside') as 'inside' | 'outside', siteSettings?.lightboxCategoryPadding ?? 16)}
@@ -1984,8 +1984,8 @@ export default function App() {
                       (filteredGallery[selectedImageIndex]?.title || filteredGallery[selectedImageIndex]?.subtitle) && (
                       <div 
                         className={`absolute pointer-events-none select-none flex flex-col ${getPositionClasses(siteSettings?.lightboxTextPosition || 'canto inferior dir', true, (siteSettings?.lightboxCaptionPlacement || 'inside') as 'inside' | 'outside')} ${
-                          (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('right') ? 'items-end text-right' :
-                          (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('center') || (siteSettings?.lightboxTextPosition || 'canto inferior dir') === 'centrado em baixo' ? 'items-center text-center' :
+                          (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('right') || (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('dir') || (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('direito') ? 'items-end text-right' :
+                          (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('center') || (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('centro') || (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('centrado') || (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('meio') ? 'items-center text-center' :
                           'items-start text-left'
                         }`}
                         style={getCaptionOffsetStyle(siteSettings?.lightboxTextPosition || 'canto inferior dir', (siteSettings?.lightboxCaptionPlacement || 'inside') as 'inside' | 'outside', siteSettings?.lightboxCaptionPadding ?? 16)}
