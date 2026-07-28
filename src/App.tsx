@@ -103,6 +103,28 @@ export default function App() {
 
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
   const [showInstallPWAModal, setShowInstallPWAModal] = useState<boolean>(false);
+
+  // Auto-detect mobile devices (Android & iOS) and automatically prompt PWA installation if not installed
+  useEffect(() => {
+    const isStandaloneMode = 
+      window.matchMedia('(display-mode: standalone)').matches || 
+      (window.navigator as any).standalone === true;
+
+    if (isStandaloneMode) return;
+
+    const isDismissed = sessionStorage.getItem('pwa_prompt_dismissed') === 'true';
+    if (isDismissed) return;
+
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isMobile = /iphone|ipad|ipod|android|mobile/.test(userAgent);
+
+    if (isMobile) {
+      const timer = setTimeout(() => {
+        setShowInstallPWAModal(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(() => {
     return sessionStorage.getItem('admin_unlocked') === 'true';
   });
