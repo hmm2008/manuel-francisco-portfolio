@@ -105,6 +105,13 @@ export default function SettingsGaleria({ settings, handleChange, handleRangeCha
             ]}
             onChange={handleChange}
           />
+          <SettingToggle
+            label="EXIBIR FILTRO PARA FOTOS 'SEM CATEGORIA'"
+            name="showUncategorizedFilter"
+            checked={settings.showUncategorizedFilter ?? true}
+            onChange={handleChange}
+            description="Exibe o botão de filtro 'Sem Categoria' para encontrar rapidamente fotografias sem categoria atribuída."
+          />
           <SettingSelect
             label="LEGENDA NO GRID"
             name="showCaptions"

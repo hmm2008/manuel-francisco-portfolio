@@ -677,8 +677,19 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
     }
   };
 
+  const uncategorizedCount = useMemo(() => {
+    return images.filter(i => !i.category || !i.category.trim() || i.category.toLowerCase() === 'sem categoria').length;
+  }, [images]);
+
   const filteredImages = useMemo(() => {
-    let list = selectedCategory === 'TODAS' ? [...images] : images.filter(img => img.category === selectedCategory);
+    let list = images;
+    if (selectedCategory === 'TODAS') {
+      list = [...images];
+    } else if (selectedCategory === 'SEM_CATEGORIA' || selectedCategory === 'Sem Categoria') {
+      list = images.filter(img => !img.category || !img.category.trim() || img.category.toLowerCase() === 'sem categoria');
+    } else {
+      list = images.filter(img => img.category === selectedCategory);
+    }
     return list.sort((a, b) => {
       const orderA = a.order !== undefined && a.order !== null ? Number(a.order) : Infinity;
       const orderB = b.order !== undefined && b.order !== null ? Number(b.order) : Infinity;
@@ -1266,6 +1277,18 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                 >
                   TODAS ({images.length})
                 </button>
+                {uncategorizedCount > 0 && (
+                  <button 
+                    onClick={() => {
+                      setSelectedCategory('SEM_CATEGORIA');
+                      setSelectedPhotoIds([]);
+                      setIsSelectionMode(false);
+                    }}
+                    className={`px-4 py-2 border transition-colors text-[10px] tracking-[0.1em] uppercase font-medium ${selectedCategory === 'SEM_CATEGORIA' || selectedCategory === 'Sem Categoria' ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'}`}
+                  >
+                    SEM CATEGORIA ({uncategorizedCount})
+                  </button>
+                )}
                 {allCategories.map(cat => {
                   const count = images.filter(i => i.category === cat).length;
                   return (

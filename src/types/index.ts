@@ -278,6 +278,7 @@ export interface SiteSettings {
   slideshowTextPosition?: string;
   slideshowTextColor?: string;
   seoTitle?: string;
+  showUncategorizedFilter?: boolean;
   seoDescription?: string;
   seoKeywords?: string;
   googleAnalyticsId?: string;

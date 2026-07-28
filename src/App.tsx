@@ -259,9 +259,16 @@ export default function App() {
     return unique.filter(Boolean);
   }, [galleryImages, siteSettings]);
 
+  const uncategorizedCount = React.useMemo(() => {
+    return galleryImages.filter(img => !img.category || !img.category.trim() || img.category.toLowerCase() === 'sem categoria').length;
+  }, [galleryImages]);
+
   const filteredGallery = React.useMemo(() => {
     if (activeView !== 'galeria' && activeView !== 'inicio') return galleryImages;
     if (selectedCategory === 'TODAS') return galleryImages;
+    if (selectedCategory === 'SEM_CATEGORIA' || selectedCategory === 'Sem Categoria') {
+      return galleryImages.filter(img => !img.category || !img.category.trim() || img.category.toLowerCase() === 'sem categoria');
+    }
     return galleryImages.filter(img => img.category === selectedCategory);
   }, [galleryImages, selectedCategory, activeView]);
 
@@ -372,6 +379,19 @@ export default function App() {
         >
           TODAS ({galleryImages.length})
         </button>
+
+        {(siteSettings?.showUncategorizedFilter ?? true) && uncategorizedCount > 0 && (
+          <button 
+            onClick={() => setSelectedCategory('SEM_CATEGORIA')}
+            className={`px-3 py-1.5 border transition-colors text-[9px] tracking-[0.1em] uppercase font-bold rounded-sm ${
+              selectedCategory === 'SEM_CATEGORIA' || selectedCategory === 'Sem Categoria'
+                ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' 
+                : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'
+            }`}
+          >
+            SEM CATEGORIA ({uncategorizedCount})
+          </button>
+        )}
         {allCategories.map(cat => {
           const count = galleryImages.filter(img => img.category?.trim().toLowerCase() === cat.trim().toLowerCase()).length;
           return (
