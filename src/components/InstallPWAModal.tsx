@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Download, Smartphone, Share, PlusSquare, X, Check, Globe, ArrowDown, Sparkles } from 'lucide-react';
+import { Download, Smartphone, Share, PlusSquare, X, Check, Globe, Sparkles, Copy, Info } from 'lucide-react';
 
 interface InstallPWAModalProps {
   isOpen: boolean;
@@ -21,9 +21,11 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
   const [isStandalone, setIsStandalone] = useState(false);
   const [installedSuccess, setInstalledSuccess] = useState(false);
   const [showIOSPointer, setShowIOSPointer] = useState(false);
+  const [showManualSteps, setShowManualSteps] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
-    // Check if already running in standalone mode (PWA installed & opened)
+    // Check if running as standalone PWA
     const isStandaloneMode = 
       window.matchMedia('(display-mode: standalone)').matches || 
       (window.navigator as any).standalone === true;
@@ -37,12 +39,10 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
     setIsIOS(isIosDevice);
     setIsAndroid(isAndroidDevice);
 
-    // Check window global deferred prompt if already captured
     if (window.deferredPWAInstallPrompt) {
       setDeferredPrompt(window.deferredPWAInstallPrompt);
     }
 
-    // Listen for beforeinstallprompt (Android / Chrome / Edge)
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       window.deferredPWAInstallPrompt = e;
@@ -52,6 +52,7 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
     const handleAppInstalled = () => {
       setInstalledSuccess(true);
       setDeferredPrompt(null);
+      window.deferredPWAInstallPrompt = null;
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -65,24 +66,54 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
 
   const handleInstallClick = async () => {
     const promptEvent = deferredPrompt || window.deferredPWAInstallPrompt;
+    
     if (promptEvent) {
       try {
-        promptEvent.prompt();
+        await promptEvent.prompt();
         const choiceResult = await promptEvent.userChoice;
-        if (choiceResult.outcome === 'accepted') {
+        if (choiceResult && choiceResult.outcome === 'accepted') {
           setInstalledSuccess(true);
+          setDeferredPrompt(null);
+          window.deferredPWAInstallPrompt = null;
+          return;
         }
       } catch (err) {
         console.warn('PWA install prompt error:', err);
       }
-      setDeferredPrompt(null);
-      window.deferredPWAInstallPrompt = null;
+    }
+    
+    // If native prompt is unavailable or rejected, expand step-by-step guidance immediately so the user always receives response
+    setShowManualSteps(true);
+  };
+
+  const handleCopyLink = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(window.location.href);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 3000);
+    }
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Manuel Francisco — Portfólio',
+          text: 'Instale a aplicação do portfólio de fotografia de Manuel Francisco.',
+          url: window.location.href,
+        });
+      } catch (err) {
+        handleCopyLink();
+      }
+    } else {
+      handleCopyLink();
     }
   };
 
   const handleDismiss = () => {
     sessionStorage.setItem('pwa_prompt_dismissed', 'true');
     setShowIOSPointer(false);
+    setShowManualSteps(false);
     onClose();
   };
 
@@ -98,9 +129,9 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: 15 }}
               transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-[#121212] border border-[#2d2d2d] text-[#f0ece5] rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl relative overflow-hidden"
+              className="bg-[#121212] border border-[#2d2d2d] text-[#f0ece5] rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl relative overflow-hidden max-h-[90vh] overflow-y-auto"
             >
-              {/* Header Gradient Accent */}
+              {/* Header Accent */}
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-600 via-amber-400 to-amber-600" />
 
               {/* Close button */}
@@ -113,7 +144,7 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
               </button>
 
               {/* App Header & Icon */}
-              <div className="flex items-center gap-4 mb-6 border-b border-[#222222] pb-5 pt-1">
+              <div className="flex items-center gap-4 mb-5 border-b border-[#222222] pb-5 pt-1">
                 <img
                   src="/icon-192.png"
                   alt="MF Fotografia Ícone"
@@ -142,7 +173,7 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
                   </div>
                   <h4 className="text-lg font-bold text-white">Aplicação Instalada com Sucesso!</h4>
                   <p className="text-xs text-[#a09c94] leading-relaxed max-w-xs mx-auto">
-                    O portfólio já está disponível no seu ecrã principal para um acesso instantâneo, em ecrã total e sem barras do browser.
+                    O portfólio já está disponível no seu ecrã principal para um acesso instantâneo, em ecrã total.
                   </p>
                   <button
                     onClick={onClose}
@@ -152,55 +183,83 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
                   </button>
                 </div>
               ) : (
-                <div className="space-y-5">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-white/90">
-                      Instale a aplicação no seu dispositivo móvel para uma experiência otimizada em ecrã inteiro.
-                    </p>
-                  </div>
+                <div className="space-y-4">
+                  <p className="text-xs font-medium text-white/90">
+                    Instale a aplicação no seu dispositivo móvel para uma experiência otimizada em ecrã inteiro.
+                  </p>
 
-                  {/* Android / Native Prompt Option */}
-                  {(deferredPrompt || isAndroid) && (
+                  {/* Android / Direct Button */}
+                  {(!isIOS || isAndroid) && (
                     <div className="bg-[#1a1a1a] border border-amber-500/30 p-4 rounded-xl space-y-3">
-                      <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs uppercase tracking-wider">
-                        <Smartphone size={16} /> Instalação Rápida (Android / Chrome)
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs uppercase tracking-wider">
+                          <Smartphone size={16} /> Instalação no Dispositivo
+                        </div>
+                        {(deferredPrompt || window.deferredPWAInstallPrompt) && (
+                          <span className="text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-800/50 px-2 py-0.5 rounded-full font-mono">
+                            Atalho Direto
+                          </span>
+                        )}
                       </div>
-                      <p className="text-[11px] text-[#b8b4ac] leading-relaxed">
-                        Detetámos um browser compatível. Pode instalar a aplicação diretamente na sua página inicial com um toque:
-                      </p>
+
                       <button
                         onClick={handleInstallClick}
-                        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold text-xs uppercase tracking-wider py-3.5 px-4 rounded-xl shadow-lg transition-all active:scale-[0.98]"
+                        type="button"
+                        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-400 text-white font-bold text-xs uppercase tracking-wider py-3.5 px-4 rounded-xl shadow-lg transition-all active:scale-[0.98] cursor-pointer"
                       >
                         <Download size={16} /> Instalar Aplicação Agora
                       </button>
+
+                      {/* Manual Steps when prompt isn't directly triggered by browser or after click */}
+                      {showManualSteps && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          className="pt-2 border-t border-[#333] space-y-2.5"
+                        >
+                          <div className="flex items-start gap-2 text-amber-300 text-[11px] font-medium bg-amber-950/40 p-2.5 rounded-lg border border-amber-800/30">
+                            <Info size={15} className="shrink-0 mt-0.5" />
+                            <span>Siga estes 2 passos simples no menu do seu browser Chrome / Android:</span>
+                          </div>
+                          <ol className="text-xs text-[#c4c0b8] space-y-2 pl-1">
+                            <li className="flex items-start gap-2.5">
+                              <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</span>
+                              <span>Toque no botão <strong className="text-white">Menu (três pontos ⋮)</strong> no canto superior direito do browser.</span>
+                            </li>
+                            <li className="flex items-start gap-2.5">
+                              <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
+                              <span>Selecione <strong className="text-white">"Instalar Aplicação"</strong> ou <strong className="text-white">"Adicionar ao Ecrã Principal"</strong>.</span>
+                            </li>
+                          </ol>
+                        </motion.div>
+                      )}
                     </div>
                   )}
 
-                  {/* iOS Instructions */}
+                  {/* iOS Section */}
                   {isIOS && (
                     <div className="bg-[#1a1a1a] border border-amber-500/20 p-4 rounded-xl space-y-3">
                       <div className="flex items-center justify-between text-amber-400 font-semibold text-xs uppercase tracking-wider">
                         <span className="flex items-center gap-2">
-                          <Smartphone size={16} /> Instalação no iPhone / iPad
+                          <Smartphone size={16} /> iPhone / iPad (Safari)
                         </span>
                         <span className="text-[10px] bg-amber-950/60 border border-amber-800/40 px-2 py-0.5 rounded text-amber-300">
                           Safari
                         </span>
                       </div>
                       
-                      <ol className="text-xs text-[#c4c0b8] space-y-3 pt-1">
-                        <li className="flex items-start gap-3 bg-[#222] p-2.5 rounded-lg border border-[#333]">
-                          <span className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center text-xs font-bold shrink-0">1</span>
-                          <span className="pt-0.5">Toque no botão <strong className="text-white">Partilhar</strong> <Share size={14} className="inline mx-1 text-amber-400" /> na barra inferior do Safari.</span>
+                      <ol className="text-xs text-[#c4c0b8] space-y-2.5 pt-1">
+                        <li className="flex items-start gap-2.5 bg-[#222] p-2.5 rounded-lg border border-[#333]">
+                          <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</span>
+                          <span>Toque no botão <strong className="text-white">Partilhar</strong> <Share size={13} className="inline mx-1 text-amber-400" /> na barra inferior do Safari.</span>
                         </li>
-                        <li className="flex items-start gap-3 bg-[#222] p-2.5 rounded-lg border border-[#333]">
-                          <span className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center text-xs font-bold shrink-0">2</span>
-                          <span className="pt-0.5">Deslize a lista e toque em <strong className="text-white">"Adicionar ao Ecrã Principal"</strong> <PlusSquare size={14} className="inline mx-1 text-amber-400" />.</span>
+                        <li className="flex items-start gap-2.5 bg-[#222] p-2.5 rounded-lg border border-[#333]">
+                          <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
+                          <span>Selecione <strong className="text-white">"Adicionar ao Ecrã Principal"</strong> <PlusSquare size={13} className="inline mx-1 text-amber-400" />.</span>
                         </li>
-                        <li className="flex items-start gap-3 bg-[#222] p-2.5 rounded-lg border border-[#333]">
-                          <span className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center text-xs font-bold shrink-0">3</span>
-                          <span className="pt-0.5">Toque em <strong className="text-white">"Adicionar"</strong> no canto superior direito.</span>
+                        <li className="flex items-start gap-2.5 bg-[#222] p-2.5 rounded-lg border border-[#333]">
+                          <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</span>
+                          <span>Toque em <strong className="text-white">"Adicionar"</strong> no canto superior direito.</span>
                         </li>
                       </ol>
 
@@ -209,47 +268,33 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
                           setShowIOSPointer(true);
                           onClose();
                         }}
-                        className="w-full text-center text-xs text-amber-400 underline pt-1 font-medium hover:text-amber-300"
+                        type="button"
+                        className="w-full text-center text-xs text-amber-400 underline pt-1 font-medium hover:text-amber-300 cursor-pointer"
                       >
                         Mostrar onde fica o botão Partilhar ↓
                       </button>
                     </div>
                   )}
 
-                  {/* General Browsers Fallback if neither iOS nor direct Android prompt */}
-                  {!isIOS && !deferredPrompt && !isAndroid && (
-                    <div className="bg-[#1a1a1a] border border-[#2a2a2a] p-4 rounded-xl space-y-3">
-                      <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs uppercase tracking-wider">
-                        <Globe size={16} /> Instalação no Browser
-                      </div>
-                      <ol className="text-xs text-[#b8b4ac] space-y-2.5">
-                        <li className="flex items-start gap-2.5">
-                          <span className="w-5 h-5 rounded-full bg-[#2a2a2a] text-white flex items-center justify-center text-[10px] font-mono shrink-0 mt-0.5">1</span>
-                          <span>Abra o menu do seu browser (três pontos no topo/fundo).</span>
-                        </li>
-                        <li className="flex items-start gap-2.5">
-                          <span className="w-5 h-5 rounded-full bg-[#2a2a2a] text-white flex items-center justify-center text-[10px] font-mono shrink-0 mt-0.5">2</span>
-                          <span>Selecione <strong className="text-white">"Instalar Aplicação"</strong> ou <strong className="text-white">"Adicionar ao Ecrã Principal"</strong>.</span>
-                        </li>
-                      </ol>
-                    </div>
-                  )}
+                  {/* Share / Copy Link Helper */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      onClick={handleShare}
+                      type="button"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#333] text-xs font-medium text-white/80 rounded-xl transition-colors cursor-pointer"
+                    >
+                      <Share size={14} /> {copiedLink ? 'Link Copiado!' : 'Partilhar / Copiar Link'}
+                    </button>
+                  </div>
 
                   <div className="flex items-center justify-between pt-2">
                     <button
                       onClick={handleDismiss}
-                      className="px-4 py-2 text-xs font-medium text-[#8e8a82] hover:text-white transition-colors"
+                      type="button"
+                      className="px-4 py-2 text-xs font-medium text-[#8e8a82] hover:text-white transition-colors cursor-pointer"
                     >
                       Agora Não
                     </button>
-                    {deferredPrompt && (
-                      <button
-                        onClick={handleInstallClick}
-                        className="px-5 py-2.5 bg-white text-black text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-neutral-200 transition-colors"
-                      >
-                        Instalar
-                      </button>
-                    )}
                   </div>
                 </div>
               )}
@@ -258,7 +303,7 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
         )}
       </AnimatePresence>
 
-      {/* Floating iOS Pointer Helper at bottom of screen */}
+      {/* Floating iOS Pointer Helper */}
       <AnimatePresence>
         {showIOSPointer && (
           <motion.div
@@ -275,7 +320,7 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
             </div>
             <button
               onClick={() => setShowIOSPointer(false)}
-              className="bg-black/20 hover:bg-black/30 text-black p-1 rounded-full shrink-0"
+              className="bg-black/20 hover:bg-black/30 text-black p-1 rounded-full shrink-0 cursor-pointer"
             >
               <X size={16} />
             </button>
@@ -285,4 +330,5 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
     </>
   );
 }
+
 
