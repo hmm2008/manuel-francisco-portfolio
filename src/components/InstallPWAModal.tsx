@@ -86,9 +86,15 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
     setShowManualSteps(true);
   };
 
-  const handleCopyLink = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
+  const handleCopyLink = async () => {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(window.location.href);
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 3000);
+      }
+    } catch (err) {
+      // Fallback: show the link directly if clipboard API fails
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 3000);
     }
@@ -277,14 +283,27 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
                   )}
 
                   {/* Share / Copy Link Helper */}
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex flex-col gap-2 pt-1">
                     <button
                       onClick={handleShare}
                       type="button"
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#333] text-xs font-medium text-white/80 rounded-xl transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#333] text-xs font-medium text-white/80 rounded-xl transition-colors cursor-pointer"
                     >
                       <Share size={14} /> {copiedLink ? 'Link Copiado!' : 'Partilhar / Copiar Link'}
                     </button>
+                    
+                    <div className="flex items-center gap-2 bg-[#1a1a1a] p-2 rounded-lg border border-[#333]">
+                       <input 
+                         type="text" 
+                         readOnly 
+                         value={window.location.href} 
+                         className="flex-1 bg-transparent text-[10px] text-white/70 outline-none truncate"
+                         onClick={(e) => (e.target as HTMLInputElement).select()}
+                       />
+                       <button onClick={handleCopyLink} className="p-1.5 bg-[#2a2a2a] hover:bg-[#3a3a3a] rounded text-amber-400 transition-colors">
+                         <Copy size={12} />
+                       </button>
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-2">
