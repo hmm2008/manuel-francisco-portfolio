@@ -119,6 +119,7 @@ export default function App() {
   const [swipeHintVisible, setSwipeHintVisible] = useState<boolean>(false);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [touchDelta, setTouchDelta] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [slideIndex, setSlideIndex] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(100);
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const pinchStartDistRef = useRef<number | null>(null);
