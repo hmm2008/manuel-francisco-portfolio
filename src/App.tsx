@@ -13,6 +13,9 @@ import { InstallPWAModal } from './components/InstallPWAModal';
 import AdminPasswordPrompt from './components/AdminPasswordPrompt';
 import GalleryGrid from './components/GalleryGrid';
 import Lightbox from './components/Lightbox';
+import DesktopSidebar from './components/DesktopSidebar';
+import SlideshowView from './components/SlideshowView';
+
 import { getFontFamily, getTextStyleProps } from './utils/fontUtils';
 import { getSlideshowVariants, getLightboxVariants } from './utils/transitionUtils';
 import { getWatermarkClasses, getPositionClasses, getCaptionOffsetStyle } from './utils/watermarkUtils';
@@ -41,16 +44,10 @@ const fallbackImages = [
 ];
 
 import { View, ImageProps, SiteSettings } from './types';
+import { navItems } from './components/NavigationItems';
 
-const navItems = [
-  { id: 'inicio', label: 'INÍCIO', icon: Home },
-  { id: 'galeria', label: 'GALERIA', icon: ImageIcon },
-  { id: 'biografia', label: 'BIOGRAFIA', icon: User },
-  { id: 'livro', label: 'LIVRO DE VISITAS', icon: BookOpen },
-  { id: 'contacto', label: 'CONTACTO', icon: Mail },
-  { id: 'links', label: 'LINKS', icon: LinkIcon },
-  { id: 'admin', label: 'ADMIN', icon: Settings }
-];
+
+
 
 const menuOverlayVariants = {
   closed: {
@@ -1135,109 +1132,14 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Desktop Sidebar */}
-      <aside className={`w-[340px] flex-shrink-0 h-full bg-[#fafafa] border-r border-[#4a4a4a]/10 flex-col justify-between overflow-y-auto z-30 ${isMobileLandscape ? 'hidden' : 'hidden md:flex'}`}>
-        <div>
-          <div className="text-center typography-site-name-desktop" style={{ 
-            paddingTop: `${siteSettings?.sidebarTitleTopMargin !== undefined ? siteSettings.sidebarTitleTopMargin : 48}px`,
-            paddingBottom: `${siteSettings?.sidebarTitleBottomMargin !== undefined ? siteSettings.sidebarTitleBottomMargin : 32}px`,
-            paddingLeft: `${siteSettings?.sidebarTitleLeftMargin !== undefined ? siteSettings.sidebarTitleLeftMargin : 40}px`,
-            paddingRight: `${siteSettings?.sidebarTitleRightMargin !== undefined ? siteSettings.sidebarTitleRightMargin : 40}px`,
-            color: siteSettings?.siteNameColor || '#4a4a4a',
-            fontFamily: getFontFamily(siteSettings?.siteNameFont),
-            letterSpacing: siteSettings?.siteNameLetterSpacing || '0px',
-            ...getTextStyleProps(siteSettings?.siteNameTextStyle)
-          }}>
-            <h1 className="tracking-widest leading-tight uppercase whitespace-pre-line font-semibold">{siteSettings.siteName}</h1>
-            <p className="text-[#7a7a7a] tracking-widest text-[12px] font-sans mt-2 uppercase">{siteSettings.siteSubtitle}</p>
-          </div>
-          <div 
-            className="px-10 text-xs md:text-sm leading-relaxed mb-8 whitespace-pre-line typography-message"
-            style={{ 
-              marginTop: `${siteSettings?.messageSpacing !== undefined ? siteSettings.messageSpacing : 16}px`,
-              color: siteSettings?.messageColor || '#4a4a4a',
-              textAlign: (siteSettings?.messageAlignment as any) || 'left',
-              fontFamily: getFontFamily(siteSettings?.messageFont),
-              letterSpacing: siteSettings?.messageLetterSpacing || '0px',
-              ...getTextStyleProps(siteSettings?.messageTextStyle)
-            }}
-          >
-            <p>{siteSettings.welcomeMessage}</p>
-          </div>
-          <nav className="flex flex-col border-t border-[#1a1a1a]/5">
-            {navItems.map((item) => {
-              const isActive = activeView === item.id;
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveView(item.id as View)}
-                  style={{
-                    ...menuStyle,
-                    paddingTop: siteSettings?.sidebarButtonSpacing !== undefined ? `${siteSettings.sidebarButtonSpacing}px` : undefined,
-                    paddingBottom: siteSettings?.sidebarButtonSpacing !== undefined ? `${siteSettings.sidebarButtonSpacing}px` : undefined,
-                  }}
-                  className={navItemClass(isActive)}
-                >
-                  {isActive && (
-                    <div className="absolute left-8 top-0 bottom-0 w-[1.5px] bg-[#4a4a4a]" />
-                  )}
-                  <Icon className="w-4 h-4" strokeWidth={1} />
-                  {item.label}
-                </button>
-              )
-            })}
-          </nav>
-        </div>
-        <div 
-          className="px-10 pt-8 text-center text-[#7a7a7a]/60 text-[10px] tracking-[0.05em] font-sans flex flex-col items-center"
-          style={{ paddingBottom: siteSettings?.sidebarFooterBottomMargin !== undefined ? `${siteSettings.sidebarFooterBottomMargin}px` : '32px' }}
-        >
-          {/* Social Network Icons above copyright in sidebar */}
-          {(siteSettings?.instagram || siteSettings?.facebook || siteSettings?.twitter) && (
-            <div className="flex items-center justify-center gap-4 mb-4 text-[#4a4a4a]">
-              {siteSettings?.instagram && (
-                <a 
-                  href={siteSettings.instagram.startsWith('http') ? siteSettings.instagram : `https://${siteSettings.instagram}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="hover:text-[#1a1a1a] hover:scale-110 transition-all p-1" 
-                  title="Instagram"
-                >
-                  <Instagram className="w-4 h-4 stroke-[1.5]" />
-                </a>
-              )}
-              {siteSettings?.facebook && (
-                <a 
-                  href={siteSettings.facebook.startsWith('http') ? siteSettings.facebook : `https://${siteSettings.facebook}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="hover:text-[#1a1a1a] hover:scale-110 transition-all p-1" 
-                  title="Facebook"
-                >
-                  <Facebook className="w-4 h-4 stroke-[1.5]" />
-                </a>
-              )}
-              {siteSettings?.twitter && (
-                <a 
-                  href={siteSettings.twitter.startsWith('http') ? siteSettings.twitter : `https://${siteSettings.twitter}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="hover:text-[#1a1a1a] hover:scale-110 transition-all p-1" 
-                  title="Twitter / X"
-                >
-                  <Twitter className="w-4 h-4 stroke-[1.5]" />
-                </a>
-              )}
-            </div>
-          )}
-
-          <p className="mb-1">{siteSettings.footerText || `© ${new Date().getFullYear()} — Todos os direitos reservados.`}</p>
-          <p>O conteúdo e as imagens não podem ser reproduzidos de qualquer forma sem o consentimento do autor.</p>
-        </div>
-      </aside>
-
+      <DesktopSidebar
+        siteSettings={siteSettings}
+        activeView={activeView}
+        setActiveView={setActiveView}
+        isMobileLandscape={isMobileLandscape}
+        menuStyle={menuStyle}
+        navItemClass={navItemClass}
+      />
       {/* Main Content Area */}
       <main className="flex-1 min-h-0 md:h-full relative overflow-hidden bg-[#f0f0f0]">
         {activeView === 'inicio' ? (
@@ -1247,248 +1149,19 @@ export default function App() {
               padding: `${siteSettings?.slideshowTopMargin !== undefined ? siteSettings.slideshowTopMargin : 0}px` 
             }}
           >
-            <div 
-              className={`relative w-full h-full max-w-full max-h-full flex transition-colors duration-500 overflow-hidden ${
-                isMobileLandscape 
-                  ? 'flex-row' 
-                  : siteSettings?.slideshowControlsPosition === 'top' ? 'flex-col-reverse' : 'flex-col'
-              }`}
-              style={{ 
-                backgroundColor: siteSettings?.slideshowBgColor || '#1a1a1a',
-                borderRadius: siteSettings?.slideshowTopMargin ? '8px' : '0px'
-              }}
-            >
-            {galleryImages.length > 0 ? (
-              <>
-                <div ref={slideshowContainerRef} className="relative flex-1 min-h-0 min-w-0 overflow-hidden grid place-items-center">
-                {(() => {
-                  const slideshowVariants = getSlideshowVariants(siteSettings?.slideshowEffect, Number(siteSettings?.slideshowZoom) || 105, siteSettings?.reduceAnimations);
-                  const photoPadding = isMobileLandscape ? 6 : (siteSettings?.slideshowPhotoPadding !== undefined ? siteSettings.slideshowPhotoPadding : 16);
-                  return (
-                    <AnimatePresence mode="popLayout">
-                      <motion.div
-                        key={slideIndex}
-                        initial={slideshowVariants.initial}
-                        animate={slideshowVariants.animate}
-                        exit={slideshowVariants.exit}
-                        transition={slideshowVariants.transition}
-                        className="[grid-area:1/1] min-h-0 min-w-0 relative flex w-full h-full items-center justify-center"
-                        style={{ padding: `${photoPadding}px` }}
-                      >
-                        {(() => {
-                          const currentSlide = galleryImages[slideIndex];
-                          const currentAspect = currentSlide ? slideshowAspects[currentSlide.id || currentSlide.url] : null;
-                          const titleText = currentSlide?.title || currentSlide?.caption || (currentSlide?.alt !== 'Fotografia' ? currentSlide?.alt : '');
-                          const subtitleText = currentSlide?.subtitle || currentSlide?.description || '';
-                          const textPos = siteSettings?.slideshowTextPosition || 'bottom-left';
-                          const alignClasses = 
-                            textPos.includes('right') || textPos.includes('dto') || textPos.includes('direito') || textPos.includes('dir') ? 'items-end text-right' :
-                            textPos.includes('center') || textPos.includes('centro') || textPos.includes('centrado') || textPos.includes('meio') ? 'items-center text-center' :
-                            'items-start text-left';
-                          const zoomPercent = Number(siteSettings?.slideshowZoom) || 100;
-                          
-                          // Determine maximum multiplier for transition effects to prevent crop/cut-off
-                          let maxMultiplier = 1.05; // default fade transition max scale
-                          const effect = siteSettings?.slideshowEffect || '';
-                          if (effect.includes('Ken Burns')) {
-                            maxMultiplier = 1.2;
-                          } else if (effect.includes('Scale & Blur')) {
-                            maxMultiplier = 1.15;
-                          } else if (effect.includes('Rotate Cinema') || effect.includes('Crossfade Parallax')) {
-                            maxMultiplier = 1.1;
-                          }
-                          
-                          // Calculate base safe percentage to guarantee zero cropping at peak animation zoom
-                          const maxSafePercent = 100 / maxMultiplier;
-                          const safePercent = (zoomPercent / 100) * maxSafePercent;
-
-                          let wrapperStyle: React.CSSProperties = {
-                            width: `${safePercent}%`,
-                            height: `${safePercent}%`,
-                            maxWidth: '100%',
-                            maxHeight: '100%'
-                          };
-
-                          if (slideshowContainerSize && currentAspect) {
-                            const availW = slideshowContainerSize.width - 2 * photoPadding;
-                            const availH = slideshowContainerSize.height - 2 * photoPadding;
-                            
-                            if (availW > 0 && availH > 0) {
-                              const containerAspect = availW / availH;
-                              let w_fit = availW;
-                              let h_fit = availH;
-                              
-                              if (containerAspect > currentAspect) {
-                                // Height is the bottleneck (letterboxing on sides)
-                                h_fit = availH;
-                                w_fit = availH * currentAspect;
-                              } else {
-                                // Width is the bottleneck (letterboxing on top/bottom)
-                                w_fit = availW;
-                                h_fit = availW / currentAspect;
-                              }
-                              
-                              const finalWidth = w_fit * (safePercent / 100);
-                              const finalHeight = h_fit * (safePercent / 100);
-                              
-                              wrapperStyle = {
-                                width: `${finalWidth}px`,
-                                height: `${finalHeight}px`,
-                                maxWidth: '100%',
-                                maxHeight: '100%'
-                              };
-                            }
-                          } else if (currentAspect) {
-                            const isAspectLandscape = currentAspect >= 1;
-                            wrapperStyle = {
-                              width: isAspectLandscape ? `${safePercent}%` : 'auto',
-                              height: isAspectLandscape ? 'auto' : `${safePercent}%`,
-                              maxWidth: '100%',
-                              maxHeight: '100%',
-                              aspectRatio: `${currentAspect}`
-                            };
-                          }
-
-                          return (
-                            <div className="relative min-h-0 min-w-0 w-full h-full flex items-center justify-center rounded-sm">
-                              {/* Centered responsive inner container matching the image aspect ratio exactly */}
-                              <div 
-                                className="relative flex min-h-0 min-w-0 items-center justify-center rounded-sm"
-                                style={wrapperStyle}
-                              >
-                                <img
-                                  src={currentSlide?.url}
-                                  alt={currentSlide?.alt || titleText || 'Fotografia'}
-                                  decoding="async"
-                                  fetchPriority="high"
-                                  referrerPolicy="no-referrer"
-                                  onLoad={(e) => {
-                                    const img = e.currentTarget;
-                                    if (img.naturalWidth && img.naturalHeight && currentSlide) {
-                                      const aspect = img.naturalWidth / img.naturalHeight;
-                                      setSlideshowAspects(prev => ({
-                                        ...prev,
-                                        [currentSlide.id || currentSlide.url]: aspect
-                                      }));
-                                    }
-                                  }}
-                                  className="max-h-full max-w-full block object-contain select-none pointer-events-none"
-                                />
-
-                                {siteSettings?.enableWatermark && siteSettings?.showWatermarkInSlideshow !== false && (
-                                  <div className={`${getWatermarkClasses(siteSettings?.slideshowWatermarkPosition || siteSettings?.watermarkPosition, true)} z-40`}>
-                                    {siteSettings?.watermarkText || '© Manuel Francisco'}
-                                  </div>
-                                )}
-
-                                {/* Slideshow Caption inserida na foto, com os mesmos critérios do lightbox */}
-                                {siteSettings?.showSlideshowCaptions !== false && siteSettings?.slideshowTextPosition !== 'none' && siteSettings?.slideshowTextPosition !== 'Não mostrar' && (titleText || subtitleText) && (
-                                  <div 
-                                    className={`absolute z-50 pointer-events-none select-none flex flex-col ${getPositionClasses(textPos, true, siteSettings?.slideshowCaptionPlacement as 'inside' | 'outside')} ${alignClasses}`}
-                                    style={getCaptionOffsetStyle(textPos, siteSettings?.slideshowCaptionPlacement as 'inside' | 'outside', siteSettings?.slideshowCaptionPadding ?? 16)}
-                                  >
-                                  {titleText && (
-                                    <motion.h2 
-                                      initial={{ opacity: 0, y: 10 }}
-                                      animate={{ opacity: 1, y: 0 }}
-                                      transition={{ delay: 0.2, duration: 0.8 }}
-                                      className="tracking-widest drop-shadow-md w-fit max-w-full"
-                                      style={{
-                                        fontFamily: getFontFamily(siteSettings?.slideshowTitleFont),
-                                        fontSize: isMobileLandscape 
-                                          ? `calc(${(siteSettings?.slideshowTitleSize || '48px').replace(/\s+/g, '')} * 0.5)`
-                                          : (siteSettings?.slideshowTitleSize || '48px').replace(/\s+/g, ''),
-                                        color: siteSettings?.slideshowTextColor || '#ffffff',
-                                        letterSpacing: siteSettings?.slideshowTitleLetterSpacing || '1px',
-                                        backgroundColor: siteSettings?.enableSlideshowTextBg ? (siteSettings?.slideshowTextBgColor || '#000000') : 'transparent',
-                                        padding: siteSettings?.enableSlideshowTextBg ? '0.2em 0.4em' : 0,
-                                        ...getTextStyleProps(siteSettings?.slideshowTitleStyle)
-                                      }}
-                                    >
-                                      {titleText}
-                                    </motion.h2>
-                                  )}
-                                  {subtitleText && (
-                                    <motion.p 
-                                      initial={{ opacity: 0 }}
-                                      animate={{ opacity: 1 }}
-                                      transition={{ delay: 0.4, duration: 0.8 }}
-                                      className="tracking-widest opacity-90 drop-shadow-md mt-1 w-fit max-w-full"
-                                      style={{
-                                        fontFamily: getFontFamily(siteSettings?.slideshowSubtitleFont),
-                                        fontSize: isMobileLandscape
-                                          ? `calc(${(siteSettings?.slideshowSubtitleSize || '12px').replace(/\s+/g, '')} * 0.8)`
-                                          : (siteSettings?.slideshowSubtitleSize || '12px').replace(/\s+/g, ''),
-                                        color: siteSettings?.slideshowTextColor || '#ffffff',
-                                        letterSpacing: siteSettings?.slideshowSubtitleLetterSpacing || '1px',
-                                        backgroundColor: siteSettings?.enableSlideshowTextBg ? (siteSettings?.slideshowTextBgColor || '#000000') : 'transparent',
-                                        padding: siteSettings?.enableSlideshowTextBg ? '0.2em 0.4em' : 0,
-                                        ...getTextStyleProps(siteSettings?.slideshowSubtitleStyle)
-                                      }}
-                                    >
-                                      {subtitleText}
-                                    </motion.p>
-                                  )}
-                                </div>
-                              )}
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </motion.div>
-                    </AnimatePresence>
-                  );
-                })()}
-
-                </div>
-
-                {/* Botão VER GALERIA na barra inferior, nunca se sobrepõe à imagem */}
-                {siteSettings?.showSlideshowGalleryButton !== false && (
-                  <div className={`w-full flex ${
-                    siteSettings?.slideshowGalleryButtonPosition === 'center' 
-                      ? 'justify-center' 
-                      : siteSettings?.slideshowGalleryButtonPosition === 'right' 
-                      ? 'justify-end' 
-                      : 'justify-start'
-                  } shrink-0 px-6 pb-6 md:px-8 md:pb-8 pt-2 z-50 pointer-events-none`}>
-                    <button 
-                      onClick={() => setActiveView('galeria')}
-                      className="pointer-events-auto flex items-center gap-3 py-2 tracking-[0.2em] uppercase hover:opacity-70 transition-all border-b pb-1 w-fit font-semibold drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] typography-slideshow-controls"
-                      style={{
-                        fontFamily: getFontFamily(siteSettings?.slideshowControlsFont),
-                        color: siteSettings?.slideshowControlsColor || '#ffffff',
-                        borderColor: `${siteSettings?.slideshowControlsColor || '#ffffff'}4d`
-                      }}
-                    >
-                      <span>VER GALERIA</span>
-                      <ArrowRight className="w-3 h-3" strokeWidth={1.5} />
-                    </button>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-center p-8 bg-[#1a1a1a]">
-                <div className="max-w-md space-y-4">
-                  <h2 className="font-serif text-2xl md:text-3xl text-white/95 font-light tracking-wide">
-                    Espaço de Fotografia
-                  </h2>
-                  <div className="w-12 h-px bg-white/20 mx-auto"></div>
-                  <p className="text-white/50 text-[10px] md:text-[11px] font-sans tracking-widest uppercase leading-relaxed">
-                    Nenhuma fotografia disponível de momento.
-                  </p>
-                  {isAdminUnlocked ? (
-                    <button 
-                      onClick={() => setActiveView('admin')}
-                      className="mt-6 px-6 py-3 bg-white text-[#1a1a1a] text-[10px] font-sans tracking-widest uppercase hover:bg-white/90 transition-all font-semibold"
-                    >
-                      Adicionar Fotografias
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            )}
+            <SlideshowView 
+              galleryImages={galleryImages}
+              slideIndex={slideIndex}
+              siteSettings={siteSettings}
+              slideshowAspects={slideshowAspects}
+              setSlideshowAspects={setSlideshowAspects}
+              slideshowContainerSize={slideshowContainerSize}
+              slideshowContainerRef={slideshowContainerRef}
+              isMobileLandscape={isMobileLandscape}
+              setActiveView={setActiveView}
+              isAdminUnlocked={isAdminUnlocked}
+            />
           </div>
-        </div>
         ) : activeView === 'galeria' ? (
           siteSettings?.separateFooterDiv ? (
             <div className="w-full h-full flex flex-col overflow-hidden">
