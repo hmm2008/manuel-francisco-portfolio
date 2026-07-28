@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Download, Smartphone, Share, PlusSquare, X, Check, Globe, Sparkles, Copy, Info } from 'lucide-react';
+import { Download, Smartphone, Share, PlusSquare, X, Check, Globe, Sparkles, Copy, Info, AlertTriangle } from 'lucide-react';
 
 interface InstallPWAModalProps {
   isOpen: boolean;
@@ -222,14 +222,14 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
 
                   {/* Android / Direct Button */}
                   {(!isIOS || isAndroid) && (
-                    <div className="bg-[#1a1a1a] border border-amber-500/30 p-4 rounded-xl space-y-3">
+                    <div className="bg-[#1a1a1a] border border-[#2d2d2d] p-4 rounded-xl space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs uppercase tracking-wider">
-                          <Smartphone size={16} /> Instalação no Dispositivo
+                          <Smartphone size={16} /> Instalação no Android
                         </div>
                         {(deferredPrompt || window.deferredPWAInstallPrompt) && (
                           <span className="text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-800/50 px-2 py-0.5 rounded-full font-mono">
-                            Atalho Direto
+                            Suporta App Real
                           </span>
                         )}
                       </div>
@@ -242,6 +242,19 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
                         <Download size={16} /> Instalar Aplicação Agora
                       </button>
 
+                      {/* Explicit warning about the simple "shortcut with browser badge" issue */}
+                      <div className="bg-[#1f140d] border border-amber-500/20 p-3 rounded-lg space-y-2">
+                        <div className="flex items-center gap-1.5 text-amber-400 font-bold text-[10px] uppercase tracking-wider">
+                          <AlertTriangle size={12} /> Evitar "Atalho de Internet"
+                        </div>
+                        <p className="text-[10.5px] text-[#c4c0b8] leading-relaxed">
+                          Se o telemóvel criar um atalho com o símbolo do Chrome por cima, é porque não está a usar o Chrome diretamente ou está dentro de outra app.
+                        </p>
+                        <p className="text-[10.5px] text-[#c4c0b8] leading-relaxed">
+                          <strong className="text-white">Para ter a App Real com o logotipo bonito:</strong> Abra a app <strong className="text-white">Google Chrome</strong> no telemóvel, cole o link lá, e clique em "Instalar" (ou nos 3 pontos ⋮ e escolha <strong className="text-white">"Instalar aplicação"</strong>, NÃO "Adicionar ao ecrã principal" se aparecer atalho).
+                        </p>
+                      </div>
+
                       {/* Manual Steps when prompt isn't directly triggered by browser or after click */}
                       {showManualSteps && (
                         <motion.div 
@@ -251,16 +264,16 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
                         >
                           <div className="flex items-start gap-2 text-amber-300 text-[11px] font-medium bg-amber-950/40 p-2.5 rounded-lg border border-amber-800/30">
                             <Info size={15} className="shrink-0 mt-0.5" />
-                            <span>Siga estes 2 passos simples no menu do seu browser Chrome / Android:</span>
+                            <span>Siga estes passos no menu do Chrome:</span>
                           </div>
                           <ol className="text-xs text-[#c4c0b8] space-y-2 pl-1">
                             <li className="flex items-start gap-2.5">
                               <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</span>
-                              <span>Toque no botão <strong className="text-white">Menu (três pontos ⋮)</strong> no canto superior direito do browser.</span>
+                              <span>Toque nos <strong className="text-white">três pontos (⋮)</strong> no canto superior direito do Chrome.</span>
                             </li>
                             <li className="flex items-start gap-2.5">
                               <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
-                              <span>Selecione <strong className="text-white">"Instalar Aplicação"</strong> ou <strong className="text-white">"Adicionar ao Ecrã Principal"</strong>.</span>
+                              <span>Selecione <strong className="text-white">"Instalar aplicação"</strong>. Se apenas vir "Adicionar ao ecrã principal", certifique-se de que não está num browser de redes sociais.</span>
                             </li>
                           </ol>
                         </motion.div>
@@ -270,20 +283,34 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
 
                   {/* iOS Section */}
                   {isIOS && (
-                    <div className="bg-[#1a1a1a] border border-amber-500/20 p-4 rounded-xl space-y-3">
+                    <div className="bg-[#1a1a1a] border border-[#2d2d2d] p-4 rounded-xl space-y-3">
                       <div className="flex items-center justify-between text-amber-400 font-semibold text-xs uppercase tracking-wider">
                         <span className="flex items-center gap-2">
                           <Smartphone size={16} /> iPhone / iPad (Safari)
                         </span>
                         <span className="text-[10px] bg-amber-950/60 border border-amber-800/40 px-2 py-0.5 rounded text-amber-300">
-                          Safari
+                          Safari Obrigatório
                         </span>
+                      </div>
+
+                      {/* Explicit warning about the simple "shortcut" issue on iOS */}
+                      <div className="bg-[#1f140d] border border-amber-500/20 p-3 rounded-lg space-y-2">
+                        <div className="flex items-center gap-1.5 text-amber-400 font-bold text-[10px] uppercase tracking-wider">
+                          <AlertTriangle size={12} /> Obter Logotipo Oficial Limpo
+                        </div>
+                        <p className="text-[10.5px] text-[#c4c0b8] leading-relaxed">
+                          Para obter o logotipo oficial de Manuel Francisco em alta qualidade (sem ser um simples link de internet):
+                        </p>
+                        <ol className="list-decimal pl-4 text-[10.5px] text-[#c4c0b8] space-y-1">
+                          <li>Tem obrigatoriamente de abrir este site no browser <strong className="text-white">Safari</strong> do iPhone.</li>
+                          <li>Não utilize o Chrome no iPhone nem abra links vindos do Instagram/Facebook.</li>
+                        </ol>
                       </div>
                       
                       <ol className="text-xs text-[#c4c0b8] space-y-2.5 pt-1">
                         <li className="flex items-start gap-2.5 bg-[#222] p-2.5 rounded-lg border border-[#333]">
                           <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</span>
-                          <span>Toque no botão <strong className="text-white">Partilhar</strong> <Share size={13} className="inline mx-1 text-amber-400" /> na barra inferior do Safari.</span>
+                          <span>No Safari, toque no botão <strong className="text-white">Partilhar</strong> <Share size={13} className="inline mx-1 text-amber-400" /> na barra inferior.</span>
                         </li>
                         <li className="flex items-start gap-2.5 bg-[#222] p-2.5 rounded-lg border border-[#333]">
                           <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
@@ -291,7 +318,7 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
                         </li>
                         <li className="flex items-start gap-2.5 bg-[#222] p-2.5 rounded-lg border border-[#333]">
                           <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</span>
-                          <span>Toque em <strong className="text-white">"Adicionar"</strong> no canto superior direito.</span>
+                          <span>Toque em <strong className="text-white">"Adicionar"</strong> para fixar a app no ecrã com o logotipo bonito.</span>
                         </li>
                       </ol>
 
