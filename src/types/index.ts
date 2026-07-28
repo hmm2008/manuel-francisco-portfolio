@@ -20,6 +20,8 @@ export interface ImageProps {
   shutterSpeed?: string;
   createdAt?: any;
   storagePath?: string;
+  likes?: number;
+  views?: number;
 }
 
 export interface SiteSettings {
@@ -235,6 +237,10 @@ export interface SiteSettings {
   showCaptions?: string;
   captionPosition?: string;
   lightboxEffect?: string;
+  lightboxArrowsDesktopLandscape?: string;
+  lightboxArrowsDesktopPortrait?: string;
+  lightboxArrowsMobileLandscape?: string;
+  lightboxArrowsMobilePortrait?: string;
   defaultZoomLevel?: number;
   lightboxBgColor?: string;
   protectPhotos?: boolean;
@@ -274,6 +280,7 @@ export interface SiteSettings {
   slideshowTextPosition?: string;
   slideshowTextColor?: string;
   seoTitle?: string;
+  showUncategorizedFilter?: boolean;
   seoDescription?: string;
   seoKeywords?: string;
   googleAnalyticsId?: string;

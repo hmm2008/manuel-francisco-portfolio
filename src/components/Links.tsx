@@ -10,7 +10,6 @@ interface LinksProps {
   isAdminUnlocked: boolean;
   setActiveView: (view: any) => void;
   onOpenTerms: () => void;
-  onOpenInstallPWA?: () => void;
 }
 
 interface LinkItem {
@@ -21,7 +20,7 @@ interface LinkItem {
   createdAt: any;
 }
 
-export default function Links({ settings, isAdminUnlocked, setActiveView, onOpenTerms, onOpenInstallPWA }: LinksProps) {
+export default function Links({ settings, isAdminUnlocked, setActiveView, onOpenTerms }: LinksProps) {
   const [links, setLinks] = useState<LinkItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -253,7 +252,6 @@ export default function Links({ settings, isAdminUnlocked, setActiveView, onOpen
               setActiveView={setActiveView} 
               settings={settings} 
               onOpenTerms={onOpenTerms} 
-              onOpenInstallPWA={onOpenInstallPWA}
             />
           </div>
         </>
@@ -271,7 +269,6 @@ export default function Links({ settings, isAdminUnlocked, setActiveView, onOpen
               setActiveView={setActiveView} 
               settings={settings} 
               onOpenTerms={onOpenTerms} 
-              onOpenInstallPWA={onOpenInstallPWA}
             />
           </div>
         </div>

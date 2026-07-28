@@ -105,6 +105,13 @@ export default function SettingsGaleria({ settings, handleChange, handleRangeCha
             ]}
             onChange={handleChange}
           />
+          <SettingToggle
+            label="EXIBIR FILTRO PARA FOTOS 'SEM CATEGORIA'"
+            name="showUncategorizedFilter"
+            checked={settings.showUncategorizedFilter ?? true}
+            onChange={handleChange}
+            description="Exibe o botão de filtro 'Sem Categoria' para encontrar rapidamente fotografias sem categoria atribuída."
+          />
           <SettingSelect
             label="LEGENDA NO GRID"
             name="showCaptions"
@@ -139,7 +146,7 @@ export default function SettingsGaleria({ settings, handleChange, handleRangeCha
             label="NÍVEL DE ZOOM PADRÃO DA LIGHTBOX"
             name="defaultZoomLevel"
             value={settings.defaultZoomLevel || 100}
-            min={50} max={200} step={10} unit="%"
+            min={50} max={200} step={5} unit="%"
             onChange={handleRangeChange}
           />
           <SettingRow
@@ -149,6 +156,59 @@ export default function SettingsGaleria({ settings, handleChange, handleRangeCha
             value={settings.lightboxBgColor}
             onChange={handleChange}
           />
+
+          {/* Secção Independente: Posicionamento das Setas de Navegação */}
+          <div className="pt-4 border-t border-[#f0ece5] space-y-4 col-span-1 md:col-span-2">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-[#1a1a1a] flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-600 inline-block"></span> Posicionamento das Setas Anterior / Seguinte
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <SettingSelect
+                label="SETAS DESKTOP (ECRÃ HORIZONTAL)"
+                name="lightboxArrowsDesktopLandscape"
+                value={settings.lightboxArrowsDesktopLandscape || 'sides'}
+                options={[
+                  { label: 'Nas Laterais (Centro)', value: 'sides' },
+                  { label: 'Debaixo da Fotografia (Fundo)', value: 'bottom' },
+                  { label: 'No Topo do Ecrã', value: 'top' },
+                ]}
+                onChange={handleChange}
+              />
+              <SettingSelect
+                label="SETAS DESKTOP (ECRÃ VERTICAL)"
+                name="lightboxArrowsDesktopPortrait"
+                value={settings.lightboxArrowsDesktopPortrait || 'sides'}
+                options={[
+                  { label: 'Nas Laterais (Centro)', value: 'sides' },
+                  { label: 'Debaixo da Fotografia (Fundo)', value: 'bottom' },
+                  { label: 'No Topo do Ecrã', value: 'top' },
+                ]}
+                onChange={handleChange}
+              />
+              <SettingSelect
+                label="SETAS MOBILE (ECRÃ HORIZONTAL)"
+                name="lightboxArrowsMobileLandscape"
+                value={settings.lightboxArrowsMobileLandscape || 'sides'}
+                options={[
+                  { label: 'Nas Laterais (Centro)', value: 'sides' },
+                  { label: 'Debaixo da Fotografia (Fundo)', value: 'bottom' },
+                  { label: 'No Topo do Ecrã', value: 'top' },
+                ]}
+                onChange={handleChange}
+              />
+              <SettingSelect
+                label="SETAS MOBILE (ECRÃ VERTICAL)"
+                name="lightboxArrowsMobilePortrait"
+                value={settings.lightboxArrowsMobilePortrait || 'bottom'}
+                options={[
+                  { label: 'Nas Laterais (Centro)', value: 'sides' },
+                  { label: 'Debaixo da Fotografia (Fundo)', value: 'bottom' },
+                  { label: 'No Topo do Ecrã', value: 'top' },
+                ]}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
 
           {/* Secção Independente: Categoria da Foto na Lightbox */}
           <div className="pt-4 border-t border-[#f0ece5] space-y-4">

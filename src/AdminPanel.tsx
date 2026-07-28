@@ -38,6 +38,15 @@ interface PendingPhoto {
   exif?: ExifData;
   status: 'pending' | 'uploading' | 'success' | 'error';
   error?: string;
+  replaceTargetId?: string;
+  isDuplicate?: boolean;
+  existingTitle?: string;
+  existingUrl?: string;
+}
+
+interface DuplicateDetectItem {
+  pendingPhoto: PendingPhoto;
+  existingImage: ImageProps;
 }
 
 async function extractExifFromFile(file: File): Promise<{ exif: ExifData; cameraSettings: string } | null> {
@@ -278,8 +287,12 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
   const [selectedPendingId, setSelectedPendingId] = useState<string | null>(null);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []) as File[];
+  // Duplicate Detection States
+  const [duplicateItems, setDuplicateItems] = useState<DuplicateDetectItem[]>([]);
+  const [showDuplicateModal, setShowDuplicateModal] = useState<boolean>(false);
+  const [nonDuplicatePhotosQueue, setNonDuplicatePhotosQueue] = useState<PendingPhoto[]>([]);
+
+  const processSelectedFiles = async (selectedFiles: File[]) => {
     if (selectedFiles.length === 0) return;
 
     if (editingId) {
@@ -301,7 +314,22 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
 
         const parsed = await extractExifFromFile(f);
 
-        return {
+        // Check if photo already exists in database
+        const existingMatch = images.find(img => {
+          const imgTitleClean = (img.title || '').toLowerCase().trim();
+          const defTitleClean = defaultTitle.toLowerCase().trim();
+          const fileNameClean = f.name.toLowerCase().trim();
+          const storagePathClean = (img.storagePath || '').toLowerCase();
+          const urlClean = (img.url || '').toLowerCase();
+
+          return (
+            (imgTitleClean && imgTitleClean === defTitleClean) ||
+            (storagePathClean && storagePathClean.endsWith(fileNameClean)) ||
+            (urlClean && urlClean.includes(fileNameClean))
+          );
+        });
+
+        const pendingItem: PendingPhoto = {
           id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           file: f,
           previewUrl: URL.createObjectURL(f),
@@ -311,20 +339,107 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
           cameraSettings: parsed?.cameraSettings || cameraSettings || '',
           description: description || '',
           exif: parsed?.exif || {},
-          status: 'pending' as const
+          status: 'pending' as const,
+          isDuplicate: !!existingMatch,
+          replaceTargetId: existingMatch?.id,
+          existingTitle: existingMatch?.title,
+          existingUrl: existingMatch?.url
         };
+
+        return { pendingItem, existingMatch };
       });
 
-      const newPending = await Promise.all(newPendingProms);
+      const results = await Promise.all(newPendingProms);
+      const newPendingList = results.map(r => r.pendingItem);
+      const duplicates = results
+        .filter(r => r.existingMatch && r.existingMatch.id)
+        .map(r => ({ pendingPhoto: r.pendingItem, existingImage: r.existingMatch! }));
 
-      setPendingPhotos(prev => {
-        const updated = [...prev, ...newPending];
-        if (!selectedPendingId && updated.length > 0) {
-          setSelectedPendingId(updated[0].id);
-        }
-        return updated;
-      });
+      if (duplicates.length > 0) {
+        setDuplicateItems(duplicates);
+        setNonDuplicatePhotosQueue(newPendingList);
+        setShowDuplicateModal(true);
+      } else {
+        setPendingPhotos(prev => {
+          const updated = [...prev, ...newPendingList];
+          if (!selectedPendingId && updated.length > 0) {
+            setSelectedPendingId(updated[0].id);
+          }
+          return updated;
+        });
+      }
     }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []) as File[];
+    await processSelectedFiles(selectedFiles);
+    if (e.target) e.target.value = '';
+  };
+
+  const handleDropFiles = async (e: React.DragEvent) => {
+    e.preventDefault();
+    const selectedFiles = (Array.from(e.dataTransfer.files || []) as File[]).filter(f => f.type.startsWith('image/'));
+    await processSelectedFiles(selectedFiles);
+  };
+
+  // Duplicate Resolution Handlers
+  const handleDuplicateReplace = () => {
+    // Replace existing photos in database with new files
+    setPendingPhotos(prev => {
+      const updated = [...prev, ...nonDuplicatePhotosQueue];
+      if (!selectedPendingId && updated.length > 0) {
+        setSelectedPendingId(updated[0].id);
+      }
+      return updated;
+    });
+    setShowDuplicateModal(false);
+    setDuplicateItems([]);
+    setNonDuplicatePhotosQueue([]);
+  };
+
+  const handleDuplicateOnlyNew = () => {
+    // Import only non-duplicate photos
+    const onlyNew = nonDuplicatePhotosQueue.filter(p => !p.isDuplicate);
+    nonDuplicatePhotosQueue.filter(p => p.isDuplicate).forEach(p => URL.revokeObjectURL(p.previewUrl));
+
+    setPendingPhotos(prev => {
+      const updated = [...prev, ...onlyNew];
+      if (!selectedPendingId && updated.length > 0) {
+        setSelectedPendingId(updated[0].id);
+      }
+      return updated;
+    });
+    setShowDuplicateModal(false);
+    setDuplicateItems([]);
+    setNonDuplicatePhotosQueue([]);
+  };
+
+  const handleDuplicateKeepBoth = () => {
+    // Import all photos as new separate entries
+    const keepBoth = nonDuplicatePhotosQueue.map(p => ({
+      ...p,
+      replaceTargetId: undefined,
+      isDuplicate: false
+    }));
+    setPendingPhotos(prev => {
+      const updated = [...prev, ...keepBoth];
+      if (!selectedPendingId && updated.length > 0) {
+        setSelectedPendingId(updated[0].id);
+      }
+      return updated;
+    });
+    setShowDuplicateModal(false);
+    setDuplicateItems([]);
+    setNonDuplicatePhotosQueue([]);
+  };
+
+  const handleDuplicateCancel = () => {
+    // Cancel import for duplicates/queued files
+    nonDuplicatePhotosQueue.forEach(p => URL.revokeObjectURL(p.previewUrl));
+    setShowDuplicateModal(false);
+    setDuplicateItems([]);
+    setNonDuplicatePhotosQueue([]);
   };
 
   const removePendingPhoto = (id: string) => {
@@ -562,8 +677,19 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
     }
   };
 
+  const uncategorizedCount = useMemo(() => {
+    return images.filter(i => !i.category || !i.category.trim() || i.category.toLowerCase() === 'sem categoria').length;
+  }, [images]);
+
   const filteredImages = useMemo(() => {
-    let list = selectedCategory === 'TODAS' ? [...images] : images.filter(img => img.category === selectedCategory);
+    let list = images;
+    if (selectedCategory === 'TODAS') {
+      list = [...images];
+    } else if (selectedCategory === 'SEM_CATEGORIA' || selectedCategory === 'Sem Categoria') {
+      list = images.filter(img => !img.category || !img.category.trim() || img.category.toLowerCase() === 'sem categoria');
+    } else {
+      list = images.filter(img => img.category === selectedCategory);
+    }
     return list.sort((a, b) => {
       const orderA = a.order !== undefined && a.order !== null ? Number(a.order) : Infinity;
       const orderB = b.order !== undefined && b.order !== null ? Number(b.order) : Infinity;
@@ -984,17 +1110,44 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
             const snapshot = await uploadBytes(storageRef, fileToUpload);
             const downloadURL = await getDownloadURL(snapshot.ref);
 
-            await addDoc(collection(db, 'images'), {
-              url: downloadURL,
-              title: pending.title || 'Sem título',
-              subtitle: pending.subtitle || '',
-              category: pending.category || '',
-              cameraSettings: pending.cameraSettings || '',
-              description: pending.description || '',
-              exif: pending.exif || {},
-              createdAt: serverTimestamp(),
-              storagePath: snapshot.ref.fullPath
-            });
+            if (pending.replaceTargetId) {
+              const targetDocRef = doc(db, 'images', pending.replaceTargetId);
+              const oldImg = images.find(i => i.id === pending.replaceTargetId);
+
+              await updateDoc(targetDocRef, {
+                url: downloadURL,
+                title: pending.title || 'Sem título',
+                subtitle: pending.subtitle || '',
+                category: pending.category || '',
+                cameraSettings: pending.cameraSettings || '',
+                description: pending.description || '',
+                exif: pending.exif || {},
+                updatedAt: serverTimestamp(),
+                storagePath: snapshot.ref.fullPath
+              });
+
+              if (oldImg?.storagePath && oldImg.storagePath !== snapshot.ref.fullPath) {
+                try {
+                  await deleteObject(ref(storage, oldImg.storagePath));
+                } catch (delErr) {
+                  console.warn("Could not delete old storage file:", delErr);
+                }
+              }
+            } else {
+              await addDoc(collection(db, 'images'), {
+                url: downloadURL,
+                title: pending.title || 'Sem título',
+                subtitle: pending.subtitle || '',
+                category: pending.category || '',
+                cameraSettings: pending.cameraSettings || '',
+                description: pending.description || '',
+                exif: pending.exif || {},
+                createdAt: serverTimestamp(),
+                storagePath: snapshot.ref.fullPath,
+                likes: 0,
+                views: 0
+              });
+            }
 
             setPendingPhotos(prev => prev.map(p => p.id === pending.id ? { ...p, status: 'success' } : p));
           } catch (itemError) {
@@ -1126,6 +1279,18 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                 >
                   TODAS ({images.length})
                 </button>
+                {uncategorizedCount > 0 && (
+                  <button 
+                    onClick={() => {
+                      setSelectedCategory('SEM_CATEGORIA');
+                      setSelectedPhotoIds([]);
+                      setIsSelectionMode(false);
+                    }}
+                    className={`px-4 py-2 border transition-colors text-[10px] tracking-[0.1em] uppercase font-medium ${selectedCategory === 'SEM_CATEGORIA' || selectedCategory === 'Sem Categoria' ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'}`}
+                  >
+                    SEM CATEGORIA ({uncategorizedCount})
+                  </button>
+                )}
                 {allCategories.map(cat => {
                   const count = images.filter(i => i.category === cat).length;
                   return (
@@ -1760,6 +1925,8 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                         />
                         <div 
                           onClick={() => fileInputRef.current?.click()}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={handleDropFiles}
                           className="w-full border border-dashed border-[#1a1a1a]/20 bg-white p-16 text-center cursor-pointer hover:bg-[#1a1a1a]/5 transition-colors flex flex-col items-center justify-center gap-4 rounded-sm min-h-[250px]"
                         >
                           <Upload size={36} className="text-[#8e8a82]" strokeWidth={1} />
@@ -1837,9 +2004,16 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                                     />
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] font-semibold text-[#1a1a1a] truncate">
-                                      {photo.title || `Foto ${idx + 1}`}
-                                    </p>
+                                    <div className="flex items-center gap-1">
+                                      <p className="text-[10px] font-semibold text-[#1a1a1a] truncate">
+                                        {photo.title || `Foto ${idx + 1}`}
+                                      </p>
+                                      {photo.replaceTargetId && (
+                                        <span className="text-[8px] bg-amber-500/20 text-amber-800 px-1 py-0.5 rounded font-bold uppercase tracking-wider flex-shrink-0">
+                                          Substituir
+                                        </span>
+                                      )}
+                                    </div>
                                     <p className="text-[8px] text-[#8e8a82] tracking-wider uppercase truncate mt-0.5">
                                       {photo.category || 'Sem categoria'}
                                     </p>
@@ -2074,6 +2248,116 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                   )
                 )}
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Deteção de Duplicados na Importação */}
+      <AnimatePresence>
+        {showDuplicateModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#f5f2ed] p-6 md:p-8 w-full max-w-2xl relative shadow-2xl space-y-6 rounded-sm border border-[#1a1a1a]/10 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between border-b border-[#1a1a1a]/10 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-amber-500/10 text-amber-600 rounded-full">
+                    <AlertCircle size={22} />
+                  </div>
+                  <div>
+                    <h4 className="font-sans text-xl font-bold text-[#1a1a1a]">Fotografias Existentes Detetadas</h4>
+                    <p className="text-xs text-[#8e8a82]">
+                      Detetámos que {duplicateItems.length} fotografia(s) a importar já existem na base de dados.
+                    </p>
+                  </div>
+                </div>
+                <button onClick={handleDuplicateCancel} className="text-[#8e8a82] hover:text-[#1a1a1a]">
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Lista de fotografias duplicadas detetadas */}
+              <div className="space-y-3 max-h-[280px] overflow-y-auto pr-2">
+                {duplicateItems.map((item, idx) => (
+                  <div key={idx} className="bg-white p-3 border border-[#e2ddd5] rounded-sm flex items-center justify-between gap-4">
+                    {/* Lado Novo */}
+                    <div className="flex items-center gap-3 w-1/2 min-w-0">
+                      <img src={item.pendingPhoto.previewUrl} alt="" className="w-12 h-12 object-cover rounded-xs border border-amber-500/30 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-[9px] uppercase font-bold text-amber-600 tracking-wider block">NOVA A IMPORTAR</span>
+                        <p className="text-xs font-semibold text-[#1a1a1a] truncate">{item.pendingPhoto.title}</p>
+                        <p className="text-[10px] text-[#8e8a82] truncate">{item.pendingPhoto.file.name}</p>
+                      </div>
+                    </div>
+
+                    <div className="text-[#8e8a82] font-mono text-xs font-bold">VS</div>
+
+                    {/* Lado Existente */}
+                    <div className="flex items-center gap-3 w-1/2 min-w-0 justify-end text-right">
+                      <div className="min-w-0">
+                        <span className="text-[9px] uppercase font-bold text-[#8e8a82] tracking-wider block">JÁ NA BASE DE DADOS</span>
+                        <p className="text-xs font-semibold text-[#1a1a1a] truncate">{item.existingImage.title || 'Sem título'}</p>
+                        <p className="text-[10px] text-[#8e8a82] truncate">{item.existingImage.category || 'Geral'}</p>
+                      </div>
+                      {item.existingImage.url && (
+                        <img src={item.existingImage.url} alt="" className="w-12 h-12 object-cover rounded-xs border border-black/10 flex-shrink-0" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Resumo */}
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-900 rounded-sm text-xs space-y-1">
+                <p className="font-semibold">O que deseja fazer com as fotografias duplicadas?</p>
+                <p className="text-[11px] opacity-80">
+                  Total a importar: <strong>{nonDuplicatePhotosQueue.length}</strong> | Novas: <strong>{nonDuplicatePhotosQueue.length - duplicateItems.length}</strong> | Duplicadas: <strong>{duplicateItems.length}</strong>
+                </p>
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleDuplicateReplace}
+                  className="w-full py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold uppercase tracking-widest text-[10px] rounded-sm transition-colors flex items-center justify-center gap-2"
+                >
+                  <RefreshCw size={14} /> Substituir na Base de Dados
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDuplicateOnlyNew}
+                  className="w-full py-3 px-4 bg-white border border-[#1a1a1a]/20 hover:bg-[#1a1a1a]/5 text-[#1a1a1a] font-semibold uppercase tracking-widest text-[10px] rounded-sm transition-colors flex items-center justify-center gap-2"
+                >
+                  <Check size={14} /> Importar Apenas Novas ({nonDuplicatePhotosQueue.length - duplicateItems.length})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDuplicateKeepBoth}
+                  className="w-full py-3 px-4 bg-white border border-[#1a1a1a]/20 hover:bg-[#1a1a1a]/5 text-[#8e8a82] hover:text-[#1a1a1a] font-semibold uppercase tracking-widest text-[10px] rounded-sm transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus size={14} /> Importar Tudo (Manter Ambos)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDuplicateCancel}
+                  className="w-full py-3 px-4 bg-red-50 hover:bg-red-100 text-red-700 font-semibold uppercase tracking-widest text-[10px] rounded-sm transition-colors flex items-center justify-center gap-2"
+                >
+                  <X size={14} /> Cancelar Importação
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
