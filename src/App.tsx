@@ -9,12 +9,9 @@ import { X, ChevronLeft, ChevronRight, Cookie, ShieldCheck, Home, Image as Image
 import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import Footer from './components/Footer';
+import { InstallPWAModal } from './components/InstallPWAModal';
 import AdminPasswordPrompt from './components/AdminPasswordPrompt';
 import GalleryGrid from './components/GalleryGrid';
-import Lightbox from './components/Lightbox';
-import DesktopSidebar from './components/DesktopSidebar';
-import SlideshowView from './components/SlideshowView';
-
 import { getFontFamily, getTextStyleProps } from './utils/fontUtils';
 import { getSlideshowVariants, getLightboxVariants } from './utils/transitionUtils';
 import { getWatermarkClasses, getPositionClasses, getCaptionOffsetStyle } from './utils/watermarkUtils';
@@ -43,10 +40,16 @@ const fallbackImages = [
 ];
 
 import { View, ImageProps, SiteSettings } from './types';
-import { navItems } from './components/NavigationItems';
 
-
-
+const navItems = [
+  { id: 'inicio', label: 'INÍCIO', icon: Home },
+  { id: 'galeria', label: 'GALERIA', icon: ImageIcon },
+  { id: 'biografia', label: 'BIOGRAFIA', icon: User },
+  { id: 'livro', label: 'LIVRO DE VISITAS', icon: BookOpen },
+  { id: 'contacto', label: 'CONTACTO', icon: Mail },
+  { id: 'links', label: 'LINKS', icon: LinkIcon },
+  { id: 'admin', label: 'ADMIN', icon: Settings }
+];
 
 const menuOverlayVariants = {
   closed: {
@@ -101,7 +104,7 @@ export default function App() {
   }, []);
 
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
-
+  const [showInstallPWAModal, setShowInstallPWAModal] = useState<boolean>(false);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(() => {
     return sessionStorage.getItem('admin_unlocked') === 'true';
   });
@@ -112,16 +115,6 @@ export default function App() {
   const [showZenMode, setShowZenMode] = useState<boolean>(false);
   const [isAutoPlayActive, setIsAutoPlayActive] = useState<boolean>(false);
   const [slideshowSpeed, setSlideshowSpeed] = useState<number>(4000);
-  const [swipeHintVisible, setSwipeHintVisible] = useState<boolean>(false);
-  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
-  const [touchDelta, setTouchDelta] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [zoomLevel, setZoomLevel] = useState(100);
-  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const pinchStartDistRef = useRef<number | null>(null);
-  const pinchStartZoomRef = useRef<number>(100);
-  const panStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const lastTapTimeRef = useRef<number>(0);
-  const lastTapPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const [viewedPhotos, setViewedPhotos] = useState<string[]>(() => {
     try {
       const saved = sessionStorage.getItem('gallery_viewed_photos');
@@ -153,6 +146,9 @@ export default function App() {
       setToastMessage(prev => (prev === msg ? null : prev));
     }, 2800);
   }, []);
+  const [swipeHintVisible, setSwipeHintVisible] = useState<boolean>(false);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [touchDelta, setTouchDelta] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [slideIndex, setSlideIndex] = useState(0);
   const [galleryImages, setGalleryImages] = useState<ImageProps[]>(() => {
     if (typeof window !== 'undefined') {
@@ -199,6 +195,7 @@ export default function App() {
     }
   }, [favorites]);
 
+  const [zoomLevel, setZoomLevel] = useState(100);
   const [slideshowAspects, setSlideshowAspects] = useState<Record<string, number>>({});
   const [slideshowContainerSize, setSlideshowContainerSize] = useState<{ width: number; height: number } | null>(null);
   const slideshowContainerRef = useRef<HTMLDivElement>(null);
@@ -258,16 +255,9 @@ export default function App() {
     return unique.filter(Boolean);
   }, [galleryImages, siteSettings]);
 
-  const uncategorizedCount = React.useMemo(() => {
-    return galleryImages.filter(img => !img.category || !img.category.trim() || img.category.toLowerCase() === 'sem categoria').length;
-  }, [galleryImages]);
-
   const filteredGallery = React.useMemo(() => {
     if (activeView !== 'galeria' && activeView !== 'inicio') return galleryImages;
     if (selectedCategory === 'TODAS') return galleryImages;
-    if (selectedCategory === 'SEM_CATEGORIA' || selectedCategory === 'Sem Categoria') {
-      return galleryImages.filter(img => !img.category || !img.category.trim() || img.category.toLowerCase() === 'sem categoria');
-    }
     return galleryImages.filter(img => img.category === selectedCategory);
   }, [galleryImages, selectedCategory, activeView]);
 
@@ -378,19 +368,6 @@ export default function App() {
         >
           TODAS ({galleryImages.length})
         </button>
-
-        {(siteSettings?.showUncategorizedFilter ?? true) && uncategorizedCount > 0 && (
-          <button 
-            onClick={() => setSelectedCategory('SEM_CATEGORIA')}
-            className={`px-3 py-1.5 border transition-colors text-[9px] tracking-[0.1em] uppercase font-bold rounded-sm ${
-              selectedCategory === 'SEM_CATEGORIA' || selectedCategory === 'Sem Categoria'
-                ? 'bg-[#4a4a4a] text-white border-[#4a4a4a]' 
-                : 'border-[#4a4a4a]/10 text-[#7a7a7a] hover:text-[#4a4a4a] hover:border-[#4a4a4a]/30'
-            }`}
-          >
-            SEM CATEGORIA ({uncategorizedCount})
-          </button>
-        )}
         {allCategories.map(cat => {
           const count = galleryImages.filter(img => img.category?.trim().toLowerCase() === cat.trim().toLowerCase()).length;
           return (
@@ -595,38 +572,16 @@ export default function App() {
     setSelectedImageIndex(index);
     const initialZoom = Number(siteSettings?.defaultZoomLevel) || 100;
     setZoomLevel(initialZoom);
-    setPanOffset({ x: 0, y: 0 });
     setSwipeHintVisible(true);
     setTimeout(() => {
       setSwipeHintVisible(false);
     }, 4000);
   };
 
-  useEffect(() => {
-    if (selectedImageIndex !== null && filteredGallery[selectedImageIndex]) {
-      const img = filteredGallery[selectedImageIndex];
-      if (img && img.id) {
-        const incrementView = async () => {
-          try {
-            const { doc, updateDoc, increment } = await import('firebase/firestore');
-            const imgRef = doc(db, 'images', String(img.id));
-            await updateDoc(imgRef, {
-              views: increment(1)
-            });
-          } catch (err) {
-            console.error("Error incrementing view count:", err);
-          }
-        };
-        incrementView();
-      }
-    }
-  }, [selectedImageIndex]);
-
   const closeLightbox = () => {
     setSelectedImageIndex(null);
     const initialZoom = Number(siteSettings?.defaultZoomLevel) || 100;
     setZoomLevel(initialZoom);
-    setPanOffset({ x: 0, y: 0 });
     setShowExifPanel(false);
     setShowShortcutsModal(false);
     setHideLightboxControls(false);
@@ -638,7 +593,6 @@ export default function App() {
     if (e) e.stopPropagation();
     if (selectedImageIndex !== null && filteredGallery.length > 0) {
       setSelectedImageIndex((selectedImageIndex + 1) % filteredGallery.length);
-      setPanOffset({ x: 0, y: 0 });
     }
   }, [selectedImageIndex, filteredGallery.length]);
 
@@ -646,7 +600,6 @@ export default function App() {
     if (e) e.stopPropagation();
     if (selectedImageIndex !== null && filteredGallery.length > 0) {
       setSelectedImageIndex((selectedImageIndex - 1 + filteredGallery.length) % filteredGallery.length);
-      setPanOffset({ x: 0, y: 0 });
     }
   }, [selectedImageIndex, filteredGallery.length]);
 
@@ -660,6 +613,53 @@ export default function App() {
       }
     }
   }, []);
+
+  const handleZoom = (e: React.MouseEvent, type: 'in' | 'out') => {
+    e.stopPropagation();
+    setZoomLevel(prev => {
+      if (type === 'in') return Math.min(prev + 25, 300);
+      return Math.max(prev - 25, 50);
+    });
+  };
+
+  // Touch & Swipe handlers for mobile Lightbox
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      setTouchDelta({ x: 0, y: 0 });
+      setSwipeHintVisible(false);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStart || e.touches.length > 1) return;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    setTouchDelta({
+      x: currentX - touchStart.x,
+      y: currentY - touchStart.y
+    });
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart) return;
+    const { x, y } = touchDelta;
+    const absX = Math.abs(x);
+    const absY = Math.abs(y);
+
+    if (absX > absY && absX > 40) {
+      if (x < 0) {
+        nextImage();
+      } else {
+        prevImage();
+      }
+    } else if (absY > absX && (y > 60 || y < -80)) {
+      closeLightbox();
+    }
+
+    setTouchStart(null);
+    setTouchDelta({ x: 0, y: 0 });
+  };
 
   // SEO and Head Configuration
   useEffect(() => {
@@ -1171,14 +1171,109 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-      <DesktopSidebar
-        siteSettings={siteSettings}
-        activeView={activeView}
-        setActiveView={setActiveView}
-        isMobileLandscape={isMobileLandscape}
-        menuStyle={menuStyle}
-        navItemClass={navItemClass}
-      />
+
+      {/* Desktop Sidebar */}
+      <aside className={`w-[340px] flex-shrink-0 h-full bg-[#fafafa] border-r border-[#4a4a4a]/10 flex-col justify-between overflow-y-auto z-30 ${isMobileLandscape ? 'hidden' : 'hidden md:flex'}`}>
+        <div>
+          <div className="text-center typography-site-name-desktop" style={{ 
+            paddingTop: `${siteSettings?.sidebarTitleTopMargin !== undefined ? siteSettings.sidebarTitleTopMargin : 48}px`,
+            paddingBottom: `${siteSettings?.sidebarTitleBottomMargin !== undefined ? siteSettings.sidebarTitleBottomMargin : 32}px`,
+            paddingLeft: `${siteSettings?.sidebarTitleLeftMargin !== undefined ? siteSettings.sidebarTitleLeftMargin : 40}px`,
+            paddingRight: `${siteSettings?.sidebarTitleRightMargin !== undefined ? siteSettings.sidebarTitleRightMargin : 40}px`,
+            color: siteSettings?.siteNameColor || '#4a4a4a',
+            fontFamily: getFontFamily(siteSettings?.siteNameFont),
+            letterSpacing: siteSettings?.siteNameLetterSpacing || '0px',
+            ...getTextStyleProps(siteSettings?.siteNameTextStyle)
+          }}>
+            <h1 className="tracking-widest leading-tight uppercase whitespace-pre-line font-semibold">{siteSettings.siteName}</h1>
+            <p className="text-[#7a7a7a] tracking-widest text-[12px] font-sans mt-2 uppercase">{siteSettings.siteSubtitle}</p>
+          </div>
+          <div 
+            className="px-10 text-xs md:text-sm leading-relaxed mb-8 whitespace-pre-line typography-message"
+            style={{ 
+              marginTop: `${siteSettings?.messageSpacing !== undefined ? siteSettings.messageSpacing : 16}px`,
+              color: siteSettings?.messageColor || '#4a4a4a',
+              textAlign: (siteSettings?.messageAlignment as any) || 'left',
+              fontFamily: getFontFamily(siteSettings?.messageFont),
+              letterSpacing: siteSettings?.messageLetterSpacing || '0px',
+              ...getTextStyleProps(siteSettings?.messageTextStyle)
+            }}
+          >
+            <p>{siteSettings.welcomeMessage}</p>
+          </div>
+          <nav className="flex flex-col border-t border-[#1a1a1a]/5">
+            {navItems.map((item) => {
+              const isActive = activeView === item.id;
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveView(item.id as View)}
+                  style={{
+                    ...menuStyle,
+                    paddingTop: siteSettings?.sidebarButtonSpacing !== undefined ? `${siteSettings.sidebarButtonSpacing}px` : undefined,
+                    paddingBottom: siteSettings?.sidebarButtonSpacing !== undefined ? `${siteSettings.sidebarButtonSpacing}px` : undefined,
+                  }}
+                  className={navItemClass(isActive)}
+                >
+                  {isActive && (
+                    <div className="absolute left-8 top-0 bottom-0 w-[1.5px] bg-[#4a4a4a]" />
+                  )}
+                  <Icon className="w-4 h-4" strokeWidth={1} />
+                  {item.label}
+                </button>
+              )
+            })}
+          </nav>
+        </div>
+        <div 
+          className="px-10 pt-8 text-center text-[#7a7a7a]/60 text-[10px] tracking-[0.05em] font-sans flex flex-col items-center"
+          style={{ paddingBottom: siteSettings?.sidebarFooterBottomMargin !== undefined ? `${siteSettings.sidebarFooterBottomMargin}px` : '32px' }}
+        >
+          {/* Social Network Icons above copyright in sidebar */}
+          {(siteSettings?.instagram || siteSettings?.facebook || siteSettings?.twitter) && (
+            <div className="flex items-center justify-center gap-4 mb-4 text-[#4a4a4a]">
+              {siteSettings?.instagram && (
+                <a 
+                  href={siteSettings.instagram.startsWith('http') ? siteSettings.instagram : `https://${siteSettings.instagram}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-[#1a1a1a] hover:scale-110 transition-all p-1" 
+                  title="Instagram"
+                >
+                  <Instagram className="w-4 h-4 stroke-[1.5]" />
+                </a>
+              )}
+              {siteSettings?.facebook && (
+                <a 
+                  href={siteSettings.facebook.startsWith('http') ? siteSettings.facebook : `https://${siteSettings.facebook}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-[#1a1a1a] hover:scale-110 transition-all p-1" 
+                  title="Facebook"
+                >
+                  <Facebook className="w-4 h-4 stroke-[1.5]" />
+                </a>
+              )}
+              {siteSettings?.twitter && (
+                <a 
+                  href={siteSettings.twitter.startsWith('http') ? siteSettings.twitter : `https://${siteSettings.twitter}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-[#1a1a1a] hover:scale-110 transition-all p-1" 
+                  title="Twitter / X"
+                >
+                  <Twitter className="w-4 h-4 stroke-[1.5]" />
+                </a>
+              )}
+            </div>
+          )}
+
+          <p className="mb-1">{siteSettings.footerText || `© ${new Date().getFullYear()} — Todos os direitos reservados.`}</p>
+          <p>O conteúdo e as imagens não podem ser reproduzidos de qualquer forma sem o consentimento do autor.</p>
+        </div>
+      </aside>
+
       {/* Main Content Area */}
       <main className="flex-1 min-h-0 md:h-full relative overflow-hidden bg-[#f0f0f0]">
         {activeView === 'inicio' ? (
@@ -1188,19 +1283,248 @@ export default function App() {
               padding: `${siteSettings?.slideshowTopMargin !== undefined ? siteSettings.slideshowTopMargin : 0}px` 
             }}
           >
-            <SlideshowView 
-              galleryImages={galleryImages}
-              slideIndex={slideIndex}
-              siteSettings={siteSettings}
-              slideshowAspects={slideshowAspects}
-              setSlideshowAspects={setSlideshowAspects}
-              slideshowContainerSize={slideshowContainerSize}
-              slideshowContainerRef={slideshowContainerRef}
-              isMobileLandscape={isMobileLandscape}
-              setActiveView={setActiveView}
-              isAdminUnlocked={isAdminUnlocked}
-            />
+            <div 
+              className={`relative w-full h-full max-w-full max-h-full flex transition-colors duration-500 overflow-hidden ${
+                isMobileLandscape 
+                  ? 'flex-row' 
+                  : siteSettings?.slideshowControlsPosition === 'top' ? 'flex-col-reverse' : 'flex-col'
+              }`}
+              style={{ 
+                backgroundColor: siteSettings?.slideshowBgColor || '#1a1a1a',
+                borderRadius: siteSettings?.slideshowTopMargin ? '8px' : '0px'
+              }}
+            >
+            {galleryImages.length > 0 ? (
+              <>
+                <div ref={slideshowContainerRef} className="relative flex-1 min-h-0 min-w-0 overflow-hidden grid place-items-center">
+                {(() => {
+                  const slideshowVariants = getSlideshowVariants(siteSettings?.slideshowEffect, Number(siteSettings?.slideshowZoom) || 105, siteSettings?.reduceAnimations);
+                  const photoPadding = isMobileLandscape ? 6 : (siteSettings?.slideshowPhotoPadding !== undefined ? siteSettings.slideshowPhotoPadding : 16);
+                  return (
+                    <AnimatePresence mode="popLayout">
+                      <motion.div
+                        key={slideIndex}
+                        initial={slideshowVariants.initial}
+                        animate={slideshowVariants.animate}
+                        exit={slideshowVariants.exit}
+                        transition={slideshowVariants.transition}
+                        className="[grid-area:1/1] min-h-0 min-w-0 relative flex w-full h-full items-center justify-center"
+                        style={{ padding: `${photoPadding}px` }}
+                      >
+                        {(() => {
+                          const currentSlide = galleryImages[slideIndex];
+                          const currentAspect = currentSlide ? slideshowAspects[currentSlide.id || currentSlide.url] : null;
+                          const titleText = currentSlide?.title || currentSlide?.caption || (currentSlide?.alt !== 'Fotografia' ? currentSlide?.alt : '');
+                          const subtitleText = currentSlide?.subtitle || currentSlide?.description || '';
+                          const textPos = siteSettings?.slideshowTextPosition || 'bottom-left';
+                          const alignClasses = 
+                            textPos.includes('right') || textPos.includes('dto') || textPos.includes('direito') || textPos.includes('dir') ? 'items-end text-right' :
+                            textPos.includes('center') || textPos.includes('centro') || textPos.includes('centrado') || textPos.includes('meio') ? 'items-center text-center' :
+                            'items-start text-left';
+                          const zoomPercent = Number(siteSettings?.slideshowZoom) || 100;
+                          
+                          // Determine maximum multiplier for transition effects to prevent crop/cut-off
+                          let maxMultiplier = 1.05; // default fade transition max scale
+                          const effect = siteSettings?.slideshowEffect || '';
+                          if (effect.includes('Ken Burns')) {
+                            maxMultiplier = 1.2;
+                          } else if (effect.includes('Scale & Blur')) {
+                            maxMultiplier = 1.15;
+                          } else if (effect.includes('Rotate Cinema') || effect.includes('Crossfade Parallax')) {
+                            maxMultiplier = 1.1;
+                          }
+                          
+                          // Calculate base safe percentage to guarantee zero cropping at peak animation zoom
+                          const maxSafePercent = 100 / maxMultiplier;
+                          const safePercent = (zoomPercent / 100) * maxSafePercent;
+
+                          let wrapperStyle: React.CSSProperties = {
+                            width: `${safePercent}%`,
+                            height: `${safePercent}%`,
+                            maxWidth: '100%',
+                            maxHeight: '100%'
+                          };
+
+                          if (slideshowContainerSize && currentAspect) {
+                            const availW = slideshowContainerSize.width - 2 * photoPadding;
+                            const availH = slideshowContainerSize.height - 2 * photoPadding;
+                            
+                            if (availW > 0 && availH > 0) {
+                              const containerAspect = availW / availH;
+                              let w_fit = availW;
+                              let h_fit = availH;
+                              
+                              if (containerAspect > currentAspect) {
+                                // Height is the bottleneck (letterboxing on sides)
+                                h_fit = availH;
+                                w_fit = availH * currentAspect;
+                              } else {
+                                // Width is the bottleneck (letterboxing on top/bottom)
+                                w_fit = availW;
+                                h_fit = availW / currentAspect;
+                              }
+                              
+                              const finalWidth = w_fit * (safePercent / 100);
+                              const finalHeight = h_fit * (safePercent / 100);
+                              
+                              wrapperStyle = {
+                                width: `${finalWidth}px`,
+                                height: `${finalHeight}px`,
+                                maxWidth: '100%',
+                                maxHeight: '100%'
+                              };
+                            }
+                          } else if (currentAspect) {
+                            const isAspectLandscape = currentAspect >= 1;
+                            wrapperStyle = {
+                              width: isAspectLandscape ? `${safePercent}%` : 'auto',
+                              height: isAspectLandscape ? 'auto' : `${safePercent}%`,
+                              maxWidth: '100%',
+                              maxHeight: '100%',
+                              aspectRatio: `${currentAspect}`
+                            };
+                          }
+
+                          return (
+                            <div className="relative min-h-0 min-w-0 w-full h-full flex items-center justify-center rounded-sm">
+                              {/* Centered responsive inner container matching the image aspect ratio exactly */}
+                              <div 
+                                className="relative flex min-h-0 min-w-0 items-center justify-center rounded-sm"
+                                style={wrapperStyle}
+                              >
+                                <img
+                                  src={currentSlide?.url}
+                                  alt={currentSlide?.alt || titleText || 'Fotografia'}
+                                  decoding="async"
+                                  fetchPriority="high"
+                                  referrerPolicy="no-referrer"
+                                  onLoad={(e) => {
+                                    const img = e.currentTarget;
+                                    if (img.naturalWidth && img.naturalHeight && currentSlide) {
+                                      const aspect = img.naturalWidth / img.naturalHeight;
+                                      setSlideshowAspects(prev => ({
+                                        ...prev,
+                                        [currentSlide.id || currentSlide.url]: aspect
+                                      }));
+                                    }
+                                  }}
+                                  className="max-h-full max-w-full block object-contain select-none pointer-events-none"
+                                />
+
+                                {siteSettings?.enableWatermark && siteSettings?.showWatermarkInSlideshow !== false && (
+                                  <div className={`${getWatermarkClasses(siteSettings?.slideshowWatermarkPosition || siteSettings?.watermarkPosition, true)} z-40`}>
+                                    {siteSettings?.watermarkText || '© Manuel Francisco'}
+                                  </div>
+                                )}
+
+                                {/* Slideshow Caption inserida na foto, com os mesmos critérios do lightbox */}
+                                {siteSettings?.showSlideshowCaptions !== false && siteSettings?.slideshowTextPosition !== 'none' && siteSettings?.slideshowTextPosition !== 'Não mostrar' && (titleText || subtitleText) && (
+                                  <div 
+                                    className={`absolute z-50 pointer-events-none select-none flex flex-col ${getPositionClasses(textPos, true, siteSettings?.slideshowCaptionPlacement as 'inside' | 'outside')} ${alignClasses}`}
+                                    style={getCaptionOffsetStyle(textPos, siteSettings?.slideshowCaptionPlacement as 'inside' | 'outside', siteSettings?.slideshowCaptionPadding ?? 16)}
+                                  >
+                                  {titleText && (
+                                    <motion.h2 
+                                      initial={{ opacity: 0, y: 10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      transition={{ delay: 0.2, duration: 0.8 }}
+                                      className="tracking-widest drop-shadow-md w-fit max-w-full"
+                                      style={{
+                                        fontFamily: getFontFamily(siteSettings?.slideshowTitleFont),
+                                        fontSize: isMobileLandscape 
+                                          ? `calc(${(siteSettings?.slideshowTitleSize || '48px').replace(/\s+/g, '')} * 0.5)`
+                                          : (siteSettings?.slideshowTitleSize || '48px').replace(/\s+/g, ''),
+                                        color: siteSettings?.slideshowTextColor || '#ffffff',
+                                        letterSpacing: siteSettings?.slideshowTitleLetterSpacing || '1px',
+                                        backgroundColor: siteSettings?.enableSlideshowTextBg ? (siteSettings?.slideshowTextBgColor || '#000000') : 'transparent',
+                                        padding: siteSettings?.enableSlideshowTextBg ? '0.2em 0.4em' : 0,
+                                        ...getTextStyleProps(siteSettings?.slideshowTitleStyle)
+                                      }}
+                                    >
+                                      {titleText}
+                                    </motion.h2>
+                                  )}
+                                  {subtitleText && (
+                                    <motion.p 
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      transition={{ delay: 0.4, duration: 0.8 }}
+                                      className="tracking-widest opacity-90 drop-shadow-md mt-1 w-fit max-w-full"
+                                      style={{
+                                        fontFamily: getFontFamily(siteSettings?.slideshowSubtitleFont),
+                                        fontSize: isMobileLandscape
+                                          ? `calc(${(siteSettings?.slideshowSubtitleSize || '12px').replace(/\s+/g, '')} * 0.8)`
+                                          : (siteSettings?.slideshowSubtitleSize || '12px').replace(/\s+/g, ''),
+                                        color: siteSettings?.slideshowTextColor || '#ffffff',
+                                        letterSpacing: siteSettings?.slideshowSubtitleLetterSpacing || '1px',
+                                        backgroundColor: siteSettings?.enableSlideshowTextBg ? (siteSettings?.slideshowTextBgColor || '#000000') : 'transparent',
+                                        padding: siteSettings?.enableSlideshowTextBg ? '0.2em 0.4em' : 0,
+                                        ...getTextStyleProps(siteSettings?.slideshowSubtitleStyle)
+                                      }}
+                                    >
+                                      {subtitleText}
+                                    </motion.p>
+                                  )}
+                                </div>
+                              )}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </motion.div>
+                    </AnimatePresence>
+                  );
+                })()}
+
+                </div>
+
+                {/* Botão VER GALERIA na barra inferior, nunca se sobrepõe à imagem */}
+                {siteSettings?.showSlideshowGalleryButton !== false && (
+                  <div className={`w-full flex ${
+                    siteSettings?.slideshowGalleryButtonPosition === 'center' 
+                      ? 'justify-center' 
+                      : siteSettings?.slideshowGalleryButtonPosition === 'right' 
+                      ? 'justify-end' 
+                      : 'justify-start'
+                  } shrink-0 px-6 pb-6 md:px-8 md:pb-8 pt-2 z-50 pointer-events-none`}>
+                    <button 
+                      onClick={() => setActiveView('galeria')}
+                      className="pointer-events-auto flex items-center gap-3 py-2 tracking-[0.2em] uppercase hover:opacity-70 transition-all border-b pb-1 w-fit font-semibold drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] typography-slideshow-controls"
+                      style={{
+                        fontFamily: getFontFamily(siteSettings?.slideshowControlsFont),
+                        color: siteSettings?.slideshowControlsColor || '#ffffff',
+                        borderColor: `${siteSettings?.slideshowControlsColor || '#ffffff'}4d`
+                      }}
+                    >
+                      <span>VER GALERIA</span>
+                      <ArrowRight className="w-3 h-3" strokeWidth={1.5} />
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-center p-8 bg-[#1a1a1a]">
+                <div className="max-w-md space-y-4">
+                  <h2 className="font-serif text-2xl md:text-3xl text-white/95 font-light tracking-wide">
+                    Espaço de Fotografia
+                  </h2>
+                  <div className="w-12 h-px bg-white/20 mx-auto"></div>
+                  <p className="text-white/50 text-[10px] md:text-[11px] font-sans tracking-widest uppercase leading-relaxed">
+                    Nenhuma fotografia disponível de momento.
+                  </p>
+                  {isAdminUnlocked ? (
+                    <button 
+                      onClick={() => setActiveView('admin')}
+                      className="mt-6 px-6 py-3 bg-white text-[#1a1a1a] text-[10px] font-sans tracking-widest uppercase hover:bg-white/90 transition-all font-semibold"
+                    >
+                      Adicionar Fotografias
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            )}
           </div>
+        </div>
         ) : activeView === 'galeria' ? (
           siteSettings?.separateFooterDiv ? (
             <div className="w-full h-full flex flex-col overflow-hidden">
@@ -1264,6 +1588,7 @@ export default function App() {
                   setActiveView={setActiveView} 
                   settings={siteSettings} 
                   onOpenTerms={() => setShowTermsModal(true)} 
+                  onOpenInstallPWA={() => setShowInstallPWAModal(true)}
                 />
               </div>
             </div>
@@ -1327,6 +1652,7 @@ export default function App() {
                   setActiveView={setActiveView} 
                   settings={siteSettings} 
                   onOpenTerms={() => setShowTermsModal(true)} 
+                  onOpenInstallPWA={() => setShowInstallPWAModal(true)}
                 />
               </div>
             </div>
@@ -1337,6 +1663,7 @@ export default function App() {
               settings={siteSettings} 
               setActiveView={setActiveView} 
               onOpenTerms={() => setShowTermsModal(true)} 
+              onOpenInstallPWA={() => setShowInstallPWAModal(true)}
             />
           </Suspense>
         ) : activeView === 'livro' ? (
@@ -1346,6 +1673,7 @@ export default function App() {
               isAdminUnlocked={isAdminUnlocked} 
               setActiveView={setActiveView} 
               onOpenTerms={() => setShowTermsModal(true)} 
+              onOpenInstallPWA={() => setShowInstallPWAModal(true)}
             />
           </Suspense>
         ) : activeView === 'contacto' ? (
@@ -1354,6 +1682,7 @@ export default function App() {
               settings={siteSettings} 
               setActiveView={setActiveView} 
               onOpenTerms={() => setShowTermsModal(true)} 
+              onOpenInstallPWA={() => setShowInstallPWAModal(true)}
             />
           </Suspense>
         ) : activeView === 'links' ? (
@@ -1363,6 +1692,7 @@ export default function App() {
               isAdminUnlocked={isAdminUnlocked}
               setActiveView={setActiveView} 
               onOpenTerms={() => setShowTermsModal(true)} 
+              onOpenInstallPWA={() => setShowInstallPWAModal(true)}
             />
           </Suspense>
         ) : activeView === 'admin' ? (
@@ -1402,6 +1732,7 @@ export default function App() {
               setActiveView={setActiveView} 
               settings={siteSettings} 
               onOpenTerms={() => setShowTermsModal(true)} 
+              onOpenInstallPWA={() => setShowInstallPWAModal(true)}
             />
           </div>
         )}
@@ -1410,18 +1741,488 @@ export default function App() {
       {/* Lightbox for Gallery View */}
       <AnimatePresence>
         {selectedImageIndex !== null && (
-          <Lightbox
-            selectedImageIndex={selectedImageIndex}
-            filteredGallery={filteredGallery}
-            siteSettings={siteSettings}
-            onClose={closeLightbox}
-            onNext={nextImage}
-            onPrev={prevImage}
-            showToast={showToast}
-            toggleFullScreen={toggleFullScreen}
-          />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 z-[150] flex items-center justify-center transition-colors duration-300"
+            style={{ backgroundColor: siteSettings?.lightboxBgColor || '#0a0a0a' }}
+            onClick={closeLightbox}
+          >
+            {/* Top Right Controls */}
+            <div className="absolute top-6 right-6 z-[160] flex items-center gap-3 md:gap-4">
+              {!hideLightboxControls ? (
+                <>
+                  {siteSettings?.enableKeyboardShortcuts !== false && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowShortcutsModal(!showShortcutsModal);
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 ${
+                        showShortcutsModal 
+                          ? 'bg-white text-black font-bold shadow-lg' 
+                          : 'bg-black/40 text-white/90 hover:bg-black/60 border border-white/20'
+                      }`}
+                      title="Atalhos de Teclado & Gestos (?)"
+                    >
+                      <Keyboard size={14} /> <span className="hidden sm:inline">Atalhos</span>
+                    </button>
+                  )}
+
+                  {siteSettings?.showExifData !== false && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowExifPanel(!showExifPanel);
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 ${
+                        showExifPanel 
+                          ? 'bg-white text-black font-bold shadow-lg' 
+                          : 'bg-black/40 text-white/90 hover:bg-black/60 border border-white/20'
+                      }`}
+                      title="Ver Dados EXIF (E)"
+                    >
+                      <Camera size={14} /> EXIF
+                    </button>
+                  )}
+
+                  <div className="flex items-center gap-3 text-white bg-black/40 border border-white/20 px-3 py-1 rounded-full">
+                    <button onClick={(e) => handleZoom(e, 'out')} className="hover:text-white/70 transition-colors" title="Zoom Out (-)">
+                      <ZoomOut size={16} strokeWidth={1.5} />
+                    </button>
+                    <span className="text-[10px] tracking-wider font-sans w-8 text-center font-mono">{zoomLevel}%</span>
+                    <button onClick={(e) => handleZoom(e, 'in')} className="hover:text-white/70 transition-colors" title="Zoom In (+)">
+                      <ZoomIn size={16} strokeWidth={1.5} />
+                    </button>
+                  </div>
+
+                  {/* Auto-Play Presentation Mode Button & Speed Selector */}
+                  <div className="flex items-center gap-1 bg-black/40 border border-white/20 p-0.5 rounded-full">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsAutoPlayActive(!isAutoPlayActive);
+                        showToast(!isAutoPlayActive ? `Apresentação Automática Ativada (${slideshowSpeed / 1000}s)` : 'Apresentação Automática Pausada');
+                      }}
+                      className={`px-3 py-1 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 ${
+                        isAutoPlayActive 
+                          ? 'bg-[#c8b89e] text-[#1a1a1a] font-bold shadow-lg' 
+                          : 'text-white/90 hover:bg-white/10'
+                      }`}
+                      title="Apresentação Automática (Tecla P)"
+                    >
+                      {isAutoPlayActive ? <Pause size={13} /> : <Play size={13} />}
+                      <span className="hidden sm:inline">{isAutoPlayActive ? 'Pausar' : 'Apresentação'}</span>
+                    </button>
+
+                    {isAutoPlayActive && (
+                      <div className="flex items-center gap-0.5 pr-1 border-l border-white/20 pl-1">
+                        {[2000, 4000, 7000, 10000].map(speed => (
+                          <button
+                            key={speed}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSlideshowSpeed(speed);
+                              showToast(`Velocidade: ${speed / 1000}s por foto`);
+                            }}
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-all ${
+                              slideshowSpeed === speed
+                                ? 'bg-white text-black font-bold'
+                                : 'text-white/70 hover:text-white hover:bg-white/10'
+                            }`}
+                            title={`${speed / 1000} segundos por fotografia`}
+                          >
+                            {speed / 1000}s
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {siteSettings?.enablePhotoDownload && filteredGallery[selectedImageIndex] && (
+                    <a 
+                      href={filteredGallery[selectedImageIndex].url}
+                      download={filteredGallery[selectedImageIndex].title || 'fotografia-highres'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 bg-black/40 text-white/90 hover:bg-white hover:text-black border border-white/20"
+                      title="Descarregar Foto High-Res"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Download size={14} /> Download
+                    </a>
+                  )}
+
+                  <button onClick={toggleFullScreen} className="text-white bg-black/40 hover:bg-black/60 border border-white/20 p-2 rounded-full transition-colors" title="Ecrã Inteiro (F)">
+                    <Maximize size={16} strokeWidth={1.5} />
+                  </button>
+
+                  {/* Botão para esconder botões (posicionado ao lado do botão fechar) */}
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setHideLightboxControls(true);
+                    }}
+                    className="px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 bg-black/40 text-white/90 hover:bg-white hover:text-black border border-white/20"
+                    title="Esconder Todos os Botões (H)"
+                  >
+                    <EyeOff size={14} /> <span className="hidden sm:inline">Esconder</span>
+                  </button>
+                </>
+              ) : (
+                /* Quando os botões estão escondidos, exibe o botão Mostrar ao lado do botão fechar */
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setHideLightboxControls(false);
+                  }}
+                  className="px-3 py-1.5 rounded-full text-[10px] tracking-widest uppercase transition-all flex items-center gap-1.5 bg-black/60 hover:bg-black/80 text-white border border-white/30 shadow-lg"
+                  title="Mostrar Todos os Botões (H)"
+                >
+                  <Eye size={14} /> <span className="hidden sm:inline">Mostrar</span>
+                </button>
+              )}
+
+              <button onClick={closeLightbox} className="text-white bg-black/40 hover:bg-black/60 border border-white/20 p-2 rounded-full transition-colors ml-1" title="Fechar (Esc)">
+                <X size={18} strokeWidth={1.5} />
+              </button>
+            </div>
+
+            {/* Mobile Touch Swipe Hint Pill */}
+            <AnimatePresence>
+              {!hideLightboxControls && swipeHintVisible && siteSettings?.enableKeyboardShortcuts !== false && (
+                <motion.div
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="md:hidden absolute top-20 left-1/2 -translate-x-1/2 z-[160] bg-black/80 backdrop-blur-md text-white/90 px-4 py-2 rounded-full text-[10px] uppercase tracking-widest border border-white/20 shadow-xl flex items-center gap-2 pointer-events-none"
+                >
+                  <span>Deslize ← → para fotos, ↓ para fechar</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Navigation Arrows (sempre visíveis para navegação) */}
+            <button 
+              onClick={prevImage}
+              className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 p-3 text-white/60 hover:text-white bg-black/30 hover:bg-black/60 rounded-full border border-white/10 transition-colors z-[160]"
+              title="Foto Anterior (← / K)"
+            >
+              <ChevronLeft size={28} strokeWidth={1.5} />
+            </button>
+            <button 
+              onClick={nextImage}
+              className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 p-3 text-white/60 hover:text-white bg-black/30 hover:bg-black/60 rounded-full border border-white/10 transition-colors z-[160]"
+              title="Próxima Foto (→ / J)"
+            >
+              <ChevronRight size={28} strokeWidth={1.5} />
+            </button>
+
+            {/* Image Container with Touch Swipe Gesture Support */}
+            <div 
+              className="max-h-screen max-w-full flex items-center justify-center touch-pan-y relative select-none" 
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              {(() => {
+                const lightboxVariants = getLightboxVariants(siteSettings?.lightboxEffect, zoomLevel, siteSettings?.reduceAnimations);
+                return (
+                  <motion.div
+                    key={selectedImageIndex}
+                    initial={lightboxVariants.initial}
+                    animate={lightboxVariants.animate}
+                    exit={lightboxVariants.exit}
+                    transition={lightboxVariants.transition}
+                    style={{
+                      transform: touchStart ? `translate3d(${touchDelta.x}px, ${touchDelta.y}px, 0px)` : undefined,
+                      opacity: touchStart && Math.abs(touchDelta.y) > 30 ? Math.max(0.3, 1 - Math.abs(touchDelta.y) / 300) : 1,
+                      transition: touchStart ? 'none' : 'transform 0.25s ease-out, opacity 0.25s ease-out'
+                    }}
+                    className="relative z-[150] flex items-center justify-center max-w-full max-h-screen"
+                  >
+                    <img
+                      src={filteredGallery[selectedImageIndex]?.url}
+                      alt={filteredGallery[selectedImageIndex]?.alt}
+                      decoding="async"
+                      fetchPriority="high"
+                      referrerPolicy="no-referrer"
+                      className="max-h-screen max-w-full block"
+                    />
+                    {siteSettings?.enableWatermark && (
+                      <div className={getWatermarkClasses(siteSettings?.watermarkPosition, true)}>
+                        {siteSettings?.watermarkText || '© Manuel Francisco'}
+                      </div>
+                    )}
+                    
+                    {/* Lightbox Categoria inserida na foto */}
+                    {siteSettings?.showLightboxCategory !== false && 
+                      filteredGallery[selectedImageIndex]?.category && 
+                      (siteSettings?.lightboxCategoryPosition || 'canto inferior esq') !== 'none' && 
+                      (siteSettings?.lightboxCategoryPosition || 'canto inferior esq') !== 'Não mostrar' && (
+                      <div 
+                        className={`absolute pointer-events-none select-none flex flex-col ${getPositionClasses(siteSettings?.lightboxCategoryPosition || 'canto inferior esq', true, (siteSettings?.lightboxCategoryPlacement || 'inside') as 'inside' | 'outside')} ${
+                          (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('right') || (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('dir') || (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('direito') ? 'items-end text-right' :
+                          (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('center') || (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('centro') || (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('centrado') || (siteSettings?.lightboxCategoryPosition || 'canto inferior esq').includes('meio') ? 'items-center text-center' :
+                          'items-start text-left'
+                        }`}
+                        style={getCaptionOffsetStyle(siteSettings?.lightboxCategoryPosition || 'canto inferior esq', (siteSettings?.lightboxCategoryPlacement || 'inside') as 'inside' | 'outside', siteSettings?.lightboxCategoryPadding ?? 16)}
+                      >
+                        <span 
+                          className="tracking-widest uppercase opacity-80 drop-shadow-md w-fit max-w-full typography-lightbox-category font-semibold"
+                          style={{
+                            fontFamily: getFontFamily(siteSettings?.lightboxCategoryFont || siteSettings?.lightboxTitleFont),
+                            color: siteSettings?.lightboxCategoryColor || siteSettings?.lightboxTextColor || '#ffffff',
+                            letterSpacing: siteSettings?.lightboxCategoryLetterSpacing || '1px',
+                            backgroundColor: siteSettings?.enableLightboxCategoryBg ? (siteSettings?.lightboxCategoryBgColor || '#000000') : 'transparent',
+                            padding: siteSettings?.enableLightboxCategoryBg ? '0.2em 0.4em' : 0,
+                            ...getTextStyleProps(siteSettings?.lightboxCategoryStyle)
+                          }}
+                        >
+                          {filteredGallery[selectedImageIndex]?.category}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Lightbox Título e Subtítulo inseridos na foto */}
+                    {(siteSettings?.lightboxTextPosition || 'canto inferior dir') !== 'none' && 
+                      (siteSettings?.lightboxTextPosition || 'canto inferior dir') !== 'Não mostrar' && 
+                      (filteredGallery[selectedImageIndex]?.title || filteredGallery[selectedImageIndex]?.subtitle) && (
+                      <div 
+                        className={`absolute pointer-events-none select-none flex flex-col ${getPositionClasses(siteSettings?.lightboxTextPosition || 'canto inferior dir', true, (siteSettings?.lightboxCaptionPlacement || 'inside') as 'inside' | 'outside')} ${
+                          (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('right') || (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('dir') || (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('direito') ? 'items-end text-right' :
+                          (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('center') || (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('centro') || (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('centrado') || (siteSettings?.lightboxTextPosition || 'canto inferior dir').includes('meio') ? 'items-center text-center' :
+                          'items-start text-left'
+                        }`}
+                        style={getCaptionOffsetStyle(siteSettings?.lightboxTextPosition || 'canto inferior dir', (siteSettings?.lightboxCaptionPlacement || 'inside') as 'inside' | 'outside', siteSettings?.lightboxCaptionPadding ?? 16)}
+                      >
+                        {filteredGallery[selectedImageIndex]?.title && (
+                          <h3 
+                            className="tracking-widest drop-shadow-md w-fit max-w-full typography-lightbox-title"
+                            style={{
+                              fontFamily: getFontFamily(siteSettings?.lightboxTitleFont),
+                              color: siteSettings?.lightboxTextColor || '#ffffff',
+                              letterSpacing: siteSettings?.lightboxTitleLetterSpacing || '1px',
+                              backgroundColor: siteSettings?.enableLightboxTextBg ? (siteSettings?.lightboxTextBgColor || '#000000') : 'transparent',
+                              padding: siteSettings?.enableLightboxTextBg ? '0.2em 0.4em' : 0,
+                              ...getTextStyleProps(siteSettings?.lightboxTitleStyle)
+                            }}
+                          >
+                            {filteredGallery[selectedImageIndex]?.title}
+                          </h3>
+                        )}
+                        {filteredGallery[selectedImageIndex]?.subtitle && (
+                          <p 
+                            className="tracking-widest opacity-90 drop-shadow-md mt-1 w-fit max-w-full typography-lightbox-subtitle"
+                            style={{
+                              fontFamily: getFontFamily(siteSettings?.lightboxSubtitleFont),
+                              color: siteSettings?.lightboxTextColor || '#ffffff',
+                              letterSpacing: siteSettings?.lightboxSubtitleLetterSpacing || '1px',
+                              backgroundColor: siteSettings?.enableLightboxTextBg ? (siteSettings?.lightboxTextBgColor || '#000000') : 'transparent',
+                              padding: siteSettings?.enableLightboxTextBg ? '0.2em 0.4em' : 0,
+                              ...getTextStyleProps(siteSettings?.lightboxSubtitleStyle)
+                            }}
+                          >
+                            {filteredGallery[selectedImageIndex]?.subtitle}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })()}
+            </div>
+            
+            {/* EXIF Overlay Panel */}
+            <AnimatePresence>
+              {showExifPanel && filteredGallery[selectedImageIndex] && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute bottom-8 right-8 z-[170] bg-black/85 backdrop-blur-md text-white p-5 rounded-lg border border-white/10 max-w-sm w-full shadow-2xl space-y-3"
+                >
+                  <div className="flex justify-between items-center pb-2 border-b border-white/10">
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-white/90 flex items-center gap-2">
+                      <Camera size={14} className="text-[#8e8a82]" /> Informação EXIF
+                    </span>
+                    <button
+                      onClick={() => setShowExifPanel(false)}
+                      className="text-white/60 hover:text-white transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+                    {(filteredGallery[selectedImageIndex].exif?.camera || filteredGallery[selectedImageIndex].camera) && (
+                      <div className="col-span-2">
+                        <p className="text-[9px] uppercase tracking-wider text-white/50">Câmara</p>
+                        <p className="font-medium text-white/90">{filteredGallery[selectedImageIndex].exif?.camera || filteredGallery[selectedImageIndex].camera}</p>
+                      </div>
+                    )}
+
+                    {(filteredGallery[selectedImageIndex].exif?.lens || filteredGallery[selectedImageIndex].lens) && (
+                      <div className="col-span-2">
+                        <p className="text-[9px] uppercase tracking-wider text-white/50">Lente</p>
+                        <p className="font-medium text-white/90">{filteredGallery[selectedImageIndex].exif?.lens || filteredGallery[selectedImageIndex].lens}</p>
+                      </div>
+                    )}
+
+                    {(filteredGallery[selectedImageIndex].exif?.aperture || filteredGallery[selectedImageIndex].aperture) && (
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/50">Abertura</p>
+                        <p className="font-medium text-white/90">{filteredGallery[selectedImageIndex].exif?.aperture || filteredGallery[selectedImageIndex].aperture}</p>
+                      </div>
+                    )}
+
+                    {(filteredGallery[selectedImageIndex].exif?.shutter || filteredGallery[selectedImageIndex].shutter) && (
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/50">Velocidade</p>
+                        <p className="font-medium text-white/90">{filteredGallery[selectedImageIndex].exif?.shutter || filteredGallery[selectedImageIndex].shutter}</p>
+                      </div>
+                    )}
+
+                    {(filteredGallery[selectedImageIndex].exif?.iso || filteredGallery[selectedImageIndex].iso) && (
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/50">ISO</p>
+                        <p className="font-medium text-white/90">{filteredGallery[selectedImageIndex].exif?.iso || filteredGallery[selectedImageIndex].iso}</p>
+                      </div>
+                    )}
+
+                    {(filteredGallery[selectedImageIndex].exif?.focalLength || filteredGallery[selectedImageIndex].focalLength) && (
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/50">Distância Focal</p>
+                        <p className="font-medium text-white/90">{filteredGallery[selectedImageIndex].exif?.focalLength || filteredGallery[selectedImageIndex].focalLength}</p>
+                      </div>
+                    )}
+
+                    {filteredGallery[selectedImageIndex].cameraSettings && (
+                      <div className="col-span-2 pt-2 border-t border-white/10">
+                        <p className="text-[9px] uppercase tracking-wider text-white/50">Definições</p>
+                        <p className="font-mono text-[11px] text-[#e0ded8]">{filteredGallery[selectedImageIndex].cameraSettings}</p>
+                      </div>
+                    )}
+
+                    {filteredGallery[selectedImageIndex].description && (
+                      <div className="col-span-2 pt-2 border-t border-white/10">
+                        <p className="text-[9px] uppercase tracking-wider text-white/50">Descrição</p>
+                        <p className="text-[11px] text-white/80 leading-relaxed">{filteredGallery[selectedImageIndex].description}</p>
+                      </div>
+                    )}
+
+                    {(!filteredGallery[selectedImageIndex].exif?.camera && !filteredGallery[selectedImageIndex].cameraSettings) && (
+                      <p className="col-span-2 text-white/50 text-[11px] italic">Sem dados EXIF disponíveis para esta imagem.</p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Keyboard Shortcuts & Gestos Modal */}
+            <AnimatePresence>
+              {showShortcutsModal && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute top-20 right-6 md:right-8 z-[180] bg-black/90 backdrop-blur-xl text-white p-6 rounded-xl border border-white/15 max-w-sm w-full shadow-2xl space-y-4"
+                >
+                  <div className="flex justify-between items-center pb-3 border-b border-white/15">
+                    <span className="text-[11px] uppercase tracking-widest font-bold text-white flex items-center gap-2">
+                      <Keyboard size={16} className="text-[#c8b89e]" /> Atalhos & Gestos
+                    </span>
+                    <button
+                      onClick={() => setShowShortcutsModal(false)}
+                      className="text-white/60 hover:text-white transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4 text-xs font-sans">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-white/50 mb-2 font-bold">Navegação no Teclado</p>
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">←</kbd>
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">→</kbd>
+                          <span className="text-white/80">Fotos</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">Esc</kbd>
+                          <span className="text-white/80">Fechar</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">E</kbd>
+                          <span className="text-white/80">EXIF</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">F</kbd>
+                          <span className="text-white/80">Ecrã Inteiro</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">+</kbd>
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">-</kbd>
+                          <span className="text-white/80">Zoom</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">P</kbd>
+                          <span className="text-white/80">Apresentação</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">Z</kbd>
+                          <span className="text-white/80">Modo Zen</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">H</kbd>
+                          <span className="text-white/80">Esconder Botões</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <kbd className="px-2 py-0.5 bg-white/15 rounded border border-white/20 font-mono text-[10px]">?</kbd>
+                          <span className="text-white/80">Ajuda</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-white/10">
+                      <p className="text-[10px] uppercase tracking-wider text-white/50 mb-2 font-bold">Gestos em Dispositivos Móveis</p>
+                      <div className="space-y-1.5 text-[11px] text-white/80">
+                        <p className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#c8b89e]"></span> Deslizar ← / → para mudar de foto
+                        </p>
+                        <p className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#c8b89e]"></span> Deslizar ↓ para fechar visualizador
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-white/10">
+                      <p className="text-[10px] uppercase tracking-wider text-white/50 mb-2 font-bold">Atalhos Globais do Site</p>
+                      <p className="text-[10px] text-white/70 leading-relaxed">
+                        Pressione <kbd className="px-1.5 py-0.5 bg-white/15 rounded font-mono">G</kbd> para Galeria, <kbd className="px-1.5 py-0.5 bg-white/15 rounded font-mono">I</kbd> para Início, <kbd className="px-1.5 py-0.5 bg-white/15 rounded font-mono">B</kbd> para Biografia, <kbd className="px-1.5 py-0.5 bg-white/15 rounded font-mono">L</kbd> para Livro de Visitas, <kbd className="px-1.5 py-0.5 bg-white/15 rounded font-mono">C</kbd> para Contactos.
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Install PWA Modal */}
+      <InstallPWAModal 
+        isOpen={showInstallPWAModal} 
+        onClose={() => setShowInstallPWAModal(false)} 
+      />
 
       {/* Terms & Privacy Modal */}
       <AnimatePresence>

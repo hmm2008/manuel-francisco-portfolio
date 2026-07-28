@@ -6,9 +6,10 @@ interface ContactProps {
   settings: any;
   setActiveView: (view: any) => void;
   onOpenTerms: () => void;
+  onOpenInstallPWA?: () => void;
 }
 
-export default function Contact({ settings, setActiveView, onOpenTerms }: ContactProps) {
+export default function Contact({ settings, setActiveView, onOpenTerms, onOpenInstallPWA }: ContactProps) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -224,6 +225,7 @@ export default function Contact({ settings, setActiveView, onOpenTerms }: Contac
               setActiveView={setActiveView} 
               settings={settings} 
               onOpenTerms={onOpenTerms} 
+              onOpenInstallPWA={onOpenInstallPWA}
             />
           </div>
         </>
@@ -241,6 +243,7 @@ export default function Contact({ settings, setActiveView, onOpenTerms }: Contac
               setActiveView={setActiveView} 
               settings={settings} 
               onOpenTerms={onOpenTerms} 
+              onOpenInstallPWA={onOpenInstallPWA}
             />
           </div>
         </div>
