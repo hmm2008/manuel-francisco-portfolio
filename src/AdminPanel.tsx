@@ -379,7 +379,7 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
 
   const handleDropFiles = async (e: React.DragEvent) => {
     e.preventDefault();
-    const selectedFiles = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'));
+    const selectedFiles = (Array.from(e.dataTransfer.files || []) as File[]).filter(f => f.type.startsWith('image/'));
     await processSelectedFiles(selectedFiles);
   };
 
