@@ -34,9 +34,44 @@ export default function Lightbox({
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [isAutoPlayActive, setIsAutoPlayActive] = useState(false);
   const [slideshowSpeed, setSlideshowSpeed] = useState(4000);
-  const [zoomLevel, setZoomLevel] = useState(100);
+  const [zoomLevel, setZoomLevel] = useState(siteSettings?.defaultZoomLevel || 100);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  useEffect(() => {
+    setZoomLevel(siteSettings?.defaultZoomLevel || 100);
+    setPanOffset({ x: 0, y: 0 });
+  }, [selectedImageIndex, siteSettings?.defaultZoomLevel]);
+
   const [swipeHintVisible, setSwipeHintVisible] = useState(true);
+
+  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+  useEffect(() => {
+    const handleResize = () => setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = windowSize.width < 768;
+  const isLandscape = windowSize.width > windowSize.height;
+
+  let arrowPosition = 'sides';
+  if (isMobile) {
+    arrowPosition = isLandscape ? (siteSettings?.lightboxArrowsMobileLandscape || 'sides') : (siteSettings?.lightboxArrowsMobilePortrait || 'bottom');
+  } else {
+    arrowPosition = isLandscape ? (siteSettings?.lightboxArrowsDesktopLandscape || 'sides') : (siteSettings?.lightboxArrowsDesktopPortrait || 'sides');
+  }
+
+  const prevArrowClasses = arrowPosition === 'bottom' 
+    ? 'absolute bottom-6 left-1/2 -translate-x-[120%] p-3 text-white/60 hover:text-white bg-black/30 hover:bg-black/60 rounded-full border border-white/10 transition-colors z-[160]'
+    : arrowPosition === 'top'
+    ? 'absolute top-20 left-1/2 -translate-x-[120%] p-3 text-white/60 hover:text-white bg-black/30 hover:bg-black/60 rounded-full border border-white/10 transition-colors z-[160]'
+    : 'absolute left-4 md:left-8 top-1/2 -translate-y-1/2 p-3 text-white/60 hover:text-white bg-black/30 hover:bg-black/60 rounded-full border border-white/10 transition-colors z-[160]';
+
+  const nextArrowClasses = arrowPosition === 'bottom' 
+    ? 'absolute bottom-6 left-1/2 translate-x-[20%] p-3 text-white/60 hover:text-white bg-black/30 hover:bg-black/60 rounded-full border border-white/10 transition-colors z-[160]'
+    : arrowPosition === 'top'
+    ? 'absolute top-20 left-1/2 translate-x-[20%] p-3 text-white/60 hover:text-white bg-black/30 hover:bg-black/60 rounded-full border border-white/10 transition-colors z-[160]'
+    : 'absolute right-4 md:right-8 top-1/2 -translate-y-1/2 p-3 text-white/60 hover:text-white bg-black/30 hover:bg-black/60 rounded-full border border-white/10 transition-colors z-[160]';
+
 
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [touchDelta, setTouchDelta] = useState({ x: 0, y: 0 });
@@ -390,14 +425,14 @@ export default function Lightbox({
 
       <button 
         onClick={(e) => { e.stopPropagation(); onPrev(); }}
-        className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 p-3 text-white/60 hover:text-white bg-black/30 hover:bg-black/60 rounded-full border border-white/10 transition-colors z-[160]"
+        className={prevArrowClasses}
         title="Foto Anterior (← / K)"
       >
         <ChevronLeft size={28} strokeWidth={1.5} />
       </button>
       <button 
         onClick={(e) => { e.stopPropagation(); onNext(); }}
-        className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 p-3 text-white/60 hover:text-white bg-black/30 hover:bg-black/60 rounded-full border border-white/10 transition-colors z-[160]"
+        className={nextArrowClasses}
         title="Próxima Foto (→ / J)"
       >
         <ChevronRight size={28} strokeWidth={1.5} />
@@ -422,10 +457,8 @@ export default function Lightbox({
               onDoubleClick={handleDoubleClick}
               style={{
                 transform: touchStart && zoomLevel <= 105 
-                  ? `translate3d(${touchDelta.x}px, ${touchDelta.y}px, 0px)` 
-                  : (panOffset.x !== 0 || panOffset.y !== 0) 
-                  ? `translate3d(${panOffset.x}px, ${panOffset.y}px, 0px)` 
-                  : undefined,
+                  ? `translate3d(${touchDelta.x}px, ${touchDelta.y}px, 0px) scale(${zoomLevel / 100})` 
+                  : `translate3d(${panOffset.x}px, ${panOffset.y}px, 0px) scale(${zoomLevel / 100})`,
                 opacity: touchStart && zoomLevel <= 105 && Math.abs(touchDelta.y) > 30 ? Math.max(0.3, 1 - Math.abs(touchDelta.y) / 300) : 1,
                 transition: touchStart ? 'none' : 'transform 0.25s ease-out, opacity 0.25s ease-out',
                 touchAction: 'none'

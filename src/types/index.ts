@@ -235,6 +235,10 @@ export interface SiteSettings {
   showCaptions?: string;
   captionPosition?: string;
   lightboxEffect?: string;
+  lightboxArrowsDesktopLandscape?: string;
+  lightboxArrowsDesktopPortrait?: string;
+  lightboxArrowsMobileLandscape?: string;
+  lightboxArrowsMobilePortrait?: string;
   defaultZoomLevel?: number;
   lightboxBgColor?: string;
   protectPhotos?: boolean;
