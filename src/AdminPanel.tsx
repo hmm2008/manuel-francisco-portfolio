@@ -1143,7 +1143,9 @@ export default function AdminPanel({ images, setImages, onLogout }: { images: Im
                 description: pending.description || '',
                 exif: pending.exif || {},
                 createdAt: serverTimestamp(),
-                storagePath: snapshot.ref.fullPath
+                storagePath: snapshot.ref.fullPath,
+                likes: 0,
+                views: 0
               });
             }
 

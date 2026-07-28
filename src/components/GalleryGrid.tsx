@@ -393,7 +393,7 @@ function GalleryGrid({
     return [];
   });
 
-  const toggleLike = useCallback((e: React.MouseEvent, id: string | number) => {
+  const toggleLike = useCallback(async (e: React.MouseEvent, id: string | number) => {
     e.stopPropagation();
     const strId = String(id);
     const alreadyLiked = userLikedPhotos.includes(strId);
@@ -406,11 +406,28 @@ function GalleryGrid({
       return next;
     });
 
-    setPhotoLikes(prev => ({
-      ...prev,
-      [strId]: Math.max(0, (prev[strId] || 0) + (alreadyLiked ? -1 : 1))
-    }));
-  }, [userLikedPhotos]);
+    const imgObj = images.find(img => String(img.id) === strId);
+    const initialLikes = imgObj?.likes || 0;
+
+    setPhotoLikes(prev => {
+      const currentVal = prev[strId] !== undefined ? prev[strId] : initialLikes;
+      return {
+        ...prev,
+        [strId]: Math.max(0, currentVal + (alreadyLiked ? -1 : 1))
+      };
+    });
+
+    try {
+      const { doc, updateDoc, increment } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      const imgRef = doc(db, 'images', strId);
+      await updateDoc(imgRef, {
+        likes: increment(alreadyLiked ? -1 : 1)
+      });
+    } catch (err) {
+      console.error("Error updating like count in Firestore:", err);
+    }
+  }, [userLikedPhotos, images]);
 
   // Photo Comparison state
   const [comparisonIds, setComparisonIds] = useState<(string | number)[]>([]);
@@ -745,7 +762,7 @@ function GalleryGrid({
                 isFav={favorites.includes(String(image.id))}
                 isComp={comparisonIds.includes(image.id)}
                 isLiked={userLikedPhotos.includes(String(image.id))}
-                likesCount={photoLikes[String(image.id)] || 0}
+                likesCount={photoLikes[String(image.id)] !== undefined ? photoLikes[String(image.id)] : (image.likes || 0)}
                 onImageClick={handleImageCardClick}
                 onToggleLike={toggleLike}
                 onToggleFavorite={toggleFavorite}
@@ -787,7 +804,7 @@ function GalleryGrid({
                   isFav={favorites.includes(String(image.id))}
                   isComp={comparisonIds.includes(image.id)}
                   isLiked={userLikedPhotos.includes(String(image.id))}
-                  likesCount={photoLikes[String(image.id)] || 0}
+                  likesCount={photoLikes[String(image.id)] !== undefined ? photoLikes[String(image.id)] : (image.likes || 0)}
                   itemSize={itemSize}
                   itemsPerPage={itemsPerPage}
                   onImageClick={handleImageCardClick}

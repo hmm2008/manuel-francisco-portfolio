@@ -20,6 +20,8 @@ export interface ImageProps {
   shutterSpeed?: string;
   createdAt?: any;
   storagePath?: string;
+  likes?: number;
+  views?: number;
 }
 
 export interface SiteSettings {

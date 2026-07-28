@@ -9,7 +9,6 @@ import { X, ChevronLeft, ChevronRight, Cookie, ShieldCheck, Home, Image as Image
 import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import Footer from './components/Footer';
-import { InstallPWAModal } from './components/InstallPWAModal';
 import AdminPasswordPrompt from './components/AdminPasswordPrompt';
 import GalleryGrid from './components/GalleryGrid';
 import Lightbox from './components/Lightbox';
@@ -102,29 +101,7 @@ export default function App() {
   }, []);
 
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
-  const [showInstallPWAModal, setShowInstallPWAModal] = useState<boolean>(false);
 
-  // Auto-detect mobile devices (Android & iOS) and automatically prompt PWA installation if not installed
-  useEffect(() => {
-    const isStandaloneMode = 
-      window.matchMedia('(display-mode: standalone)').matches || 
-      (window.navigator as any).standalone === true;
-
-    if (isStandaloneMode) return;
-
-    const isDismissed = sessionStorage.getItem('pwa_prompt_dismissed') === 'true';
-    if (isDismissed) return;
-
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isMobile = /iphone|ipad|ipod|android|mobile/.test(userAgent);
-
-    if (isMobile) {
-      const timer = setTimeout(() => {
-        setShowInstallPWAModal(true);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(() => {
     return sessionStorage.getItem('admin_unlocked') === 'true';
   });
@@ -624,6 +601,26 @@ export default function App() {
       setSwipeHintVisible(false);
     }, 4000);
   };
+
+  useEffect(() => {
+    if (selectedImageIndex !== null && filteredGallery[selectedImageIndex]) {
+      const img = filteredGallery[selectedImageIndex];
+      if (img && img.id) {
+        const incrementView = async () => {
+          try {
+            const { doc, updateDoc, increment } = await import('firebase/firestore');
+            const imgRef = doc(db, 'images', String(img.id));
+            await updateDoc(imgRef, {
+              views: increment(1)
+            });
+          } catch (err) {
+            console.error("Error incrementing view count:", err);
+          }
+        };
+        incrementView();
+      }
+    }
+  }, [selectedImageIndex]);
 
   const closeLightbox = () => {
     setSelectedImageIndex(null);
@@ -1267,7 +1264,6 @@ export default function App() {
                   setActiveView={setActiveView} 
                   settings={siteSettings} 
                   onOpenTerms={() => setShowTermsModal(true)} 
-                  onOpenInstallPWA={() => setShowInstallPWAModal(true)}
                 />
               </div>
             </div>
@@ -1331,7 +1327,6 @@ export default function App() {
                   setActiveView={setActiveView} 
                   settings={siteSettings} 
                   onOpenTerms={() => setShowTermsModal(true)} 
-                  onOpenInstallPWA={() => setShowInstallPWAModal(true)}
                 />
               </div>
             </div>
@@ -1342,7 +1337,6 @@ export default function App() {
               settings={siteSettings} 
               setActiveView={setActiveView} 
               onOpenTerms={() => setShowTermsModal(true)} 
-              onOpenInstallPWA={() => setShowInstallPWAModal(true)}
             />
           </Suspense>
         ) : activeView === 'livro' ? (
@@ -1352,7 +1346,6 @@ export default function App() {
               isAdminUnlocked={isAdminUnlocked} 
               setActiveView={setActiveView} 
               onOpenTerms={() => setShowTermsModal(true)} 
-              onOpenInstallPWA={() => setShowInstallPWAModal(true)}
             />
           </Suspense>
         ) : activeView === 'contacto' ? (
@@ -1361,7 +1354,6 @@ export default function App() {
               settings={siteSettings} 
               setActiveView={setActiveView} 
               onOpenTerms={() => setShowTermsModal(true)} 
-              onOpenInstallPWA={() => setShowInstallPWAModal(true)}
             />
           </Suspense>
         ) : activeView === 'links' ? (
@@ -1371,7 +1363,6 @@ export default function App() {
               isAdminUnlocked={isAdminUnlocked}
               setActiveView={setActiveView} 
               onOpenTerms={() => setShowTermsModal(true)} 
-              onOpenInstallPWA={() => setShowInstallPWAModal(true)}
             />
           </Suspense>
         ) : activeView === 'admin' ? (
@@ -1411,7 +1402,6 @@ export default function App() {
               setActiveView={setActiveView} 
               settings={siteSettings} 
               onOpenTerms={() => setShowTermsModal(true)} 
-              onOpenInstallPWA={() => setShowInstallPWAModal(true)}
             />
           </div>
         )}
@@ -1432,12 +1422,6 @@ export default function App() {
           />
         )}
       </AnimatePresence>
-
-      {/* Install PWA Modal */}
-      <InstallPWAModal 
-        isOpen={showInstallPWAModal} 
-        onClose={() => setShowInstallPWAModal(false)} 
-      />
 
       {/* Terms & Privacy Modal */}
       <AnimatePresence>

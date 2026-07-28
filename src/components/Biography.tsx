@@ -15,10 +15,9 @@ interface BiographyProps {
   settings: any;
   setActiveView: (view: any) => void;
   onOpenTerms: () => void;
-  onOpenInstallPWA?: () => void;
 }
 
-export default function Biography({ settings, setActiveView, onOpenTerms, onOpenInstallPWA }: BiographyProps) {
+export default function Biography({ settings, setActiveView, onOpenTerms }: BiographyProps) {
   const content = (
     <div className="w-full max-w-5xl mx-auto flex flex-col items-center flex-1">
       {/* Header Section (Same as Gallery) */}
@@ -193,7 +192,6 @@ export default function Biography({ settings, setActiveView, onOpenTerms, onOpen
             setActiveView={setActiveView} 
             settings={settings} 
             onOpenTerms={onOpenTerms} 
-            onOpenInstallPWA={onOpenInstallPWA}
           />
         </div>
       </div>
@@ -214,7 +212,6 @@ export default function Biography({ settings, setActiveView, onOpenTerms, onOpen
           setActiveView={setActiveView} 
           settings={settings} 
           onOpenTerms={onOpenTerms} 
-          onOpenInstallPWA={onOpenInstallPWA}
         />
       </div>
     </div>

@@ -56,10 +56,9 @@ interface GuestbookProps {
   isAdminUnlocked: boolean;
   setActiveView: (view: any) => void;
   onOpenTerms: () => void;
-  onOpenInstallPWA?: () => void;
 }
 
-export default function Guestbook({ settings, isAdminUnlocked, setActiveView, onOpenTerms, onOpenInstallPWA }: GuestbookProps) {
+export default function Guestbook({ settings, isAdminUnlocked, setActiveView, onOpenTerms }: GuestbookProps) {
   const [signatures, setSignatures] = useState<Signature[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
@@ -272,7 +271,6 @@ export default function Guestbook({ settings, isAdminUnlocked, setActiveView, on
               setActiveView={setActiveView} 
               settings={settings} 
               onOpenTerms={onOpenTerms} 
-              onOpenInstallPWA={onOpenInstallPWA}
             />
           </div>
         </>
@@ -290,7 +288,6 @@ export default function Guestbook({ settings, isAdminUnlocked, setActiveView, on
               setActiveView={setActiveView} 
               settings={settings} 
               onOpenTerms={onOpenTerms} 
-              onOpenInstallPWA={onOpenInstallPWA}
             />
           </div>
         </div>
