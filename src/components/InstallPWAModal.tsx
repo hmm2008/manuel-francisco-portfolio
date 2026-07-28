@@ -19,6 +19,7 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
   const [isIOS, setIsIOS] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [isInApp, setIsInApp] = useState(false);
   const [installedSuccess, setInstalledSuccess] = useState(false);
   const [showIOSPointer, setShowIOSPointer] = useState(false);
   const [showManualSteps, setShowManualSteps] = useState(false);
@@ -38,6 +39,10 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
 
     setIsIOS(isIosDevice);
     setIsAndroid(isAndroidDevice);
+
+    // Detect in-app browsers (e.g. Instagram, Facebook, WhatsApp, Messenger, Telegram, Twitter, etc.)
+    const isInAppBrowser = /instagram|fb_iab|fb4a|fban|fbios|twitter|linkedin|snapchat|pinterest|whatsapp|messenger|telegram/i.test(userAgent);
+    setIsInApp(isInAppBrowser);
 
     if (window.deferredPWAInstallPrompt) {
       setDeferredPrompt(window.deferredPWAInstallPrompt);
@@ -190,9 +195,30 @@ export function InstallPWAModal({ isOpen, onClose, autoShowOnMobile = true }: In
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <p className="text-xs font-medium text-white/90">
-                    Instale a aplicação no seu dispositivo móvel para uma experiência otimizada em ecrã inteiro.
-                  </p>
+                  {isInApp ? (
+                    <div className="bg-amber-950/40 border border-amber-500/30 p-4 rounded-xl space-y-3">
+                      <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-wider">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                        Telemóvel: Rede Social ou In-App
+                      </div>
+                      <p className="text-xs text-amber-200/90 leading-relaxed">
+                        Está a aceder através de uma aplicação (Instagram, WhatsApp, Facebook, etc.). Estes browsers internos <strong className="text-white">impedem a instalação de aplicações</strong> e removem o logótipo oficial!
+                      </p>
+                      <div className="text-[11px] text-amber-300/80 bg-black/40 p-3 rounded-lg border border-amber-500/10 space-y-1.5">
+                        <span className="font-bold block text-white/90">Para instalar com o logotipo bonito:</span>
+                        <ol className="list-decimal pl-4 space-y-1 text-amber-200/70">
+                          <li>Use o botão <strong className="text-amber-400">Copiar Link</strong> abaixo.</li>
+                          <li>Abra a aplicação <strong className="text-white">{isIOS ? 'Safari' : 'Chrome'}</strong> no seu telemóvel.</li>
+                          <li>Cole o link na barra de endereços e aceda ao site.</li>
+                          <li>Toque no botão <strong className="text-white">Instalar App</strong> que aparecerá no ecrã!</li>
+                        </ol>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs font-medium text-white/90">
+                      Instale a aplicação no seu dispositivo móvel para uma experiência otimizada em ecrã inteiro.
+                    </p>
+                  )}
 
                   {/* Android / Direct Button */}
                   {(!isIOS || isAndroid) && (
