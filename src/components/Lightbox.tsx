@@ -112,9 +112,9 @@ export default function Lightbox({
       } else if (e.key === 'f' || e.key === 'F') {
         toggleFullScreen();
       } else if (e.key === '+' || e.key === '=') {
-        setZoomLevel(prev => Math.min(prev + 25, 300));
+        setZoomLevel(prev => Math.min(prev + 5, 300));
       } else if (e.key === '-' || e.key === '_') {
-        setZoomLevel(prev => Math.max(prev - 25, 50));
+        setZoomLevel(prev => Math.max(prev - 5, 50));
       } else if (e.key === 'p' || e.key === 'P') {
         setIsAutoPlayActive(prev => !prev);
       } else if (e.key === 'h' || e.key === 'H') {
@@ -140,7 +140,7 @@ export default function Lightbox({
   const handleZoom = (e: React.MouseEvent, type: 'in' | 'out') => {
     e.stopPropagation();
     setZoomLevel(prev => {
-      const nextZoom = type === 'in' ? Math.min(prev + 25, 350) : Math.max(prev - 25, 50);
+      const nextZoom = type === 'in' ? Math.min(prev + 5, 350) : Math.max(prev - 5, 50);
       if (nextZoom <= 100) {
         setPanOffset({ x: 0, y: 0 });
       }
